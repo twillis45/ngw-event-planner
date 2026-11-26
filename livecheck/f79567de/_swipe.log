@@ -1,0 +1,69 @@
+
+390x844 console:0 http:0 blocked:0
+  ok  01-partial-right-reveals sideways 0
+  ok  02-maybe-saves-and-moves [4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  03-coming-saves [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  04-partial-left-reveals sideways 0
+  ok  05-cant-make-it-saves [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  06-no-reply-saves [4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12] sideways 0
+  ok  07-remove-is-a-tap-with-undo sideways 0
+  ok  08-full-right-is-coming [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  09-full-left-is-cant-make-it [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  10-vertical-drag-reveals-nothing sideways 0
+  ok  11-one-open-and-tap-closes sideways 0
+
+834x1194 console:0 http:0 blocked:0
+  ok  01-partial-right-reveals sideways 0
+  ok  02-maybe-saves-and-moves [4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  03-coming-saves [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  04-partial-left-reveals sideways 0
+  ok  05-cant-make-it-saves [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  06-no-reply-saves [4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12] sideways 0
+  ok  07-remove-is-a-tap-with-undo sideways 0
+  ok  08-full-right-is-coming [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  09-full-left-is-cant-make-it [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  10-vertical-drag-reveals-nothing sideways 0
+  ok  11-one-open-and-tap-closes sideways 0
+
+1024x1366 console:0 http:0 blocked:0
+  ok  01-partial-right-reveals sideways 0
+  ok  02-maybe-saves-and-moves [4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  03-coming-saves [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  04-partial-left-reveals sideways 0
+  ok  05-cant-make-it-saves [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  06-no-reply-saves [4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12] sideways 0
+  ok  07-remove-is-a-tap-with-undo sideways 0
+  ok  08-full-right-is-coming [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  09-full-left-is-cant-make-it [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  10-vertical-drag-reveals-nothing sideways 0
+  ok  11-one-open-and-tap-closes sideways 0
+
+1194x834 console:0 http:0 blocked:0
+  ok  01-partial-right-reveals sideways 0
+  ok  02-maybe-saves-and-moves [4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  03-coming-saves [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  04-partial-left-reveals sideways 0
+  ok  05-cant-make-it-saves [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  06-no-reply-saves [4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12] sideways 0
+  ok  07-remove-is-a-tap-with-undo sideways 0
+  ok  08-full-right-is-coming [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  09-full-left-is-cant-make-it [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  10-vertical-drag-reveals-nothing sideways 0
+  ok  11-one-open-and-tap-closes sideways 0
+
+1440x900 console:0 http:0 blocked:0
+  ok  01-partial-right-reveals sideways 0
+  ok  02-maybe-saves-and-moves [4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  03-coming-saves [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  04-partial-left-reveals sideways 0
+  ok  05-cant-make-it-saves [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  06-no-reply-saves [4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12] sideways 0
+  ok  07-remove-is-a-tap-with-undo sideways 0
+  ok  08-full-right-is-coming [5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12] sideways 0
+  ok  09-full-left-is-cant-make-it [4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12] sideways 0
+  ok  10-vertical-drag-reveals-nothing sideways 0
+  ok  11-one-open-and-tap-closes sideways 0
+
+console: []
+http: []
+blocked: []

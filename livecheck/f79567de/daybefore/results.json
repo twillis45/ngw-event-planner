@@ -1,0 +1,368 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "v4-evening-before",
+    "ok": true,
+    "sub": "Tomorrow · guests at 3:00 PM",
+    "tonight": [
+     "Cook the make-ahead dishes",
+     "Do the shopping"
+    ],
+    "btn": "Done: cook the make-ahead dishes",
+    "rows": [
+     {
+      "id": "shopping",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Still to get 28 items",
+      "underline": "none"
+     },
+     {
+      "id": "vendors",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Reconfirm your vendors 1 to lock in",
+      "underline": "none"
+     },
+     {
+      "id": "rain",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Rain backup Not set",
+      "underline": "none"
+     }
+    ],
+    "wx": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the ",
+    "sideways": 0
+   },
+   {
+    "name": "v4-tonight-ticks",
+    "ok": true,
+    "firstDone": true,
+    "toast1": "Done: Cook the make-ahead dishes… — 1 still open. Undo",
+    "shopDone": true,
+    "foodGotMarked": 40,
+    "toast2": "Done: Do the shopping… — 0 still open. 40 items marked bought (40 at an estimate — tap any to add the real price). Undo",
+    "tonightLeft": 0,
+    "button": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-count-opens-guests",
+    "ok": true,
+    "text": "Final guest count Not settled",
+    "guestsOpened": 1,
+    "sideways": 0
+   },
+   {
+    "name": "v2-tick-unchanged",
+    "ok": true,
+    "done": true,
+    "foodGotMarked": 26,
+    "toast": "",
+    "cardGone": true,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "v4-evening-before",
+    "ok": true,
+    "sub": "Tomorrow · guests at 3:00 PM",
+    "tonight": [
+     "Cook the make-ahead dishes",
+     "Do the shopping"
+    ],
+    "btn": "Done: cook the make-ahead dishes",
+    "rows": [
+     {
+      "id": "shopping",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Still to get 28 items",
+      "underline": "none"
+     },
+     {
+      "id": "vendors",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Reconfirm your vendors 1 to lock in",
+      "underline": "none"
+     },
+     {
+      "id": "rain",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Rain backup Not set",
+      "underline": "none"
+     }
+    ],
+    "wx": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the ",
+    "sideways": 0
+   },
+   {
+    "name": "v4-tonight-ticks",
+    "ok": true,
+    "firstDone": true,
+    "toast1": "Done: Cook the make-ahead dishes… — 1 still open. Undo",
+    "shopDone": true,
+    "foodGotMarked": 40,
+    "toast2": "Done: Do the shopping… — 0 still open. 40 items marked bought (40 at an estimate — tap any to add the real price). Undo",
+    "tonightLeft": 0,
+    "button": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-count-opens-guests",
+    "ok": true,
+    "text": "Final guest count Not settled",
+    "guestsOpened": 1,
+    "sideways": 0
+   },
+   {
+    "name": "v2-tick-unchanged",
+    "ok": true,
+    "done": true,
+    "foodGotMarked": 26,
+    "toast": "",
+    "cardGone": true,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "v4-evening-before",
+    "ok": true,
+    "sub": "Tomorrow · guests at 3:00 PM",
+    "tonight": [
+     "Cook the make-ahead dishes",
+     "Do the shopping"
+    ],
+    "btn": "Done: cook the make-ahead dishes",
+    "rows": [
+     {
+      "id": "shopping",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Still to get 28 items",
+      "underline": "none"
+     },
+     {
+      "id": "vendors",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Reconfirm your vendors 1 to lock in",
+      "underline": "none"
+     },
+     {
+      "id": "rain",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Rain backup Not set",
+      "underline": "none"
+     }
+    ],
+    "wx": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the ",
+    "sideways": 0
+   },
+   {
+    "name": "v4-tonight-ticks",
+    "ok": true,
+    "firstDone": true,
+    "toast1": "Done: Cook the make-ahead dishes… — 1 still open. Undo",
+    "shopDone": true,
+    "foodGotMarked": 40,
+    "toast2": "Done: Do the shopping… — 0 still open. 40 items marked bought (40 at an estimate — tap any to add the real price). Undo",
+    "tonightLeft": 0,
+    "button": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-count-opens-guests",
+    "ok": true,
+    "text": "Final guest count Not settled",
+    "guestsOpened": 1,
+    "sideways": 0
+   },
+   {
+    "name": "v2-tick-unchanged",
+    "ok": true,
+    "done": true,
+    "foodGotMarked": 26,
+    "toast": "",
+    "cardGone": true,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "v4-evening-before",
+    "ok": true,
+    "sub": "Tomorrow · guests at 3:00 PM",
+    "tonight": [
+     "Cook the make-ahead dishes",
+     "Do the shopping"
+    ],
+    "btn": "Done: cook the make-ahead dishes",
+    "rows": [
+     {
+      "id": "shopping",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Still to get 28 items",
+      "underline": "none"
+     },
+     {
+      "id": "vendors",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Reconfirm your vendors 1 to lock in",
+      "underline": "none"
+     },
+     {
+      "id": "rain",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Rain backup Not set",
+      "underline": "none"
+     }
+    ],
+    "wx": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the ",
+    "sideways": 0
+   },
+   {
+    "name": "v4-tonight-ticks",
+    "ok": true,
+    "firstDone": true,
+    "toast1": "Done: Cook the make-ahead dishes… — 1 still open. Undo",
+    "shopDone": true,
+    "foodGotMarked": 40,
+    "toast2": "Done: Do the shopping… — 0 still open. 40 items marked bought (40 at an estimate — tap any to add the real price). Undo",
+    "tonightLeft": 0,
+    "button": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-count-opens-guests",
+    "ok": true,
+    "text": "Final guest count Not settled",
+    "guestsOpened": 1,
+    "sideways": 0
+   },
+   {
+    "name": "v2-tick-unchanged",
+    "ok": true,
+    "done": true,
+    "foodGotMarked": 26,
+    "toast": "",
+    "cardGone": true,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "v4-evening-before",
+    "ok": true,
+    "sub": "Tomorrow · guests at 3:00 PM",
+    "tonight": [
+     "Cook the make-ahead dishes",
+     "Do the shopping"
+    ],
+    "btn": "Done: cook the make-ahead dishes",
+    "rows": [
+     {
+      "id": "shopping",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Still to get 28 items",
+      "underline": "none"
+     },
+     {
+      "id": "vendors",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Reconfirm your vendors 1 to lock in",
+      "underline": "none"
+     },
+     {
+      "id": "rain",
+      "tag": "A",
+      "href": "../hostv2/",
+      "text": "Rain backup Not set",
+      "underline": "none"
+     }
+    ],
+    "wx": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the ",
+    "sideways": 0
+   },
+   {
+    "name": "v4-tonight-ticks",
+    "ok": true,
+    "firstDone": true,
+    "toast1": "Done: Cook the make-ahead dishes… — 1 still open. Undo",
+    "shopDone": true,
+    "foodGotMarked": 40,
+    "toast2": "Done: Do the shopping… — 0 still open. 40 items marked bought (40 at an estimate — tap any to add the real price). Undo",
+    "tonightLeft": 0,
+    "button": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-count-opens-guests",
+    "ok": true,
+    "text": "Final guest count Not settled",
+    "guestsOpened": 1,
+    "sideways": 0
+   },
+   {
+    "name": "v2-tick-unchanged",
+    "ok": true,
+    "done": true,
+    "foodGotMarked": 26,
+    "toast": "",
+    "cardGone": true,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]
