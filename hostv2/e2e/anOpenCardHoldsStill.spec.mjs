@@ -103,3 +103,25 @@ test('"Mark asked" holds the card even where the browser does not anchor scrolli
   await page.waitForTimeout(400);
   expect(Math.abs((await cardTop(page)) - before)).toBeLessThanOrEqual(2);
 });
+
+// AND WHEN THE LINE ABOVE REFLOWS LATE (11/26/2026, main red on WebKit phone:
+// the card moved 15px, run 45851381053). holdOpenCard corrected drift on ONE
+// frame after the write; a reflow above the card that lands after that frame
+// (here the summary line re-wrapping 120ms after the tap, as a later commit, a
+// toast or an effect can) moved the card and nothing put it back. Measured on
+// Chromium with the hold: 16px of drift left; the hold now keeps the card
+// through the settle window.
+test('"Mark asked" holds the card when the line above reflows after the first frame', async ({ page }) => {
+  await page.addInitScript(() => {
+    const add = () => { const s = document.createElement('style'); s.textContent = '*{overflow-anchor:none !important}'; document.head.appendChild(s); };
+    if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
+  });
+  await boot(page);
+  const before = await cardTop(page);
+  await page.locator('.vcard.open').getByRole('button', { name: /^Mark asked$/ }).first().evaluate((b) => {
+    b.click();
+    setTimeout(() => { const n = document.querySelector('.fstat-note'); if (n) { n.style.display = 'block'; n.style.maxWidth = '90px'; } }, 120);
+  });
+  await page.waitForTimeout(900);
+  expect(Math.abs((await cardTop(page)) - before)).toBeLessThanOrEqual(2);
+});
