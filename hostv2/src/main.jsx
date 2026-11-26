@@ -92,6 +92,20 @@ const rsvpCode = (() => {
   try { return new URLSearchParams(window.location.search).get('rsvp'); } catch { return null; }
 })();
 
+// ?invite-preview=PLAN_ID (owner, 11/26/2026: "start the invite preview"): the
+// guest's own invite page for a plan saved in THIS browser, in preview mode —
+// nothing fetched, sent, counted or stored. hostv4's Your invite frames it, so
+// the host sees exactly what a guest opens without a copy of the page.
+const invitePreviewId = (() => {
+  try { return new URLSearchParams(window.location.search).get('invite-preview'); } catch { return null; }
+})();
+const planInThisBrowser = (id) => {
+  try {
+    const list = JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]');
+    return (Array.isArray(list) ? list : []).find((e) => e && String(e.id) === String(id)) || null;
+  } catch { return null; }
+};
+
 // Code-split: load ONLY the surface this URL needs. A guest on ?rsvp=CODE gets
 // the invite chunk; the ~8,500-line host shell is never downloaded for them.
 // Each branch dynamic-imports its own component, so they land in separate chunks.
@@ -112,6 +126,13 @@ const rsvpCode = (() => {
     ? import('./HelperLinkV2.jsx').then(m => <m.default code={helperCode} />)
     : familyCode
     ? import('./FamilyViewV2.jsx').then(m => <m.default code={familyCode} />)
+    : invitePreviewId
+    ? import('./InviteV2.jsx').then((m) => {
+      const plan = planInThisBrowser(invitePreviewId);
+      return plan
+        ? <m.default code={plan.rsvpCode || plan.id} preview={plan} />
+        : <p className="grounding">That plan isn’t saved in this browser, so there’s nothing to preview.</p>;
+    })
     : rsvpCode
     ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
     : demo === 'lodging'
