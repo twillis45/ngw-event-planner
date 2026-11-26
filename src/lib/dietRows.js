@@ -145,3 +145,28 @@ export function mealTally(event) {
   const answered = Object.values(counts).reduce((a, b) => a + b, 0);
   return { counts, answered, unanswered: answered ? Math.max(0, gs.length - answered) : 0 };
 }
+
+/** AT THE TABLE (B6, 11/26/2026): who needs what, by name, grouped by need, in
+ *  the order the guest list first names each. The same reading as
+ *  guestDietCounts (needs, meal, diets, allergens; anyone who said no is not
+ *  coming); a need the tags don't cover is kept as written. */
+export function tableNeeds(event) {
+  const by = new Map();
+  for (const g of (Array.isArray(event && event.guests) ? event.guests : [])) {
+    if (!g || /^n/i.test(String(g.rsvp || ''))) continue;
+    const parts = [
+      ...String(g.needs || '').split(','), String(g.meal || ''),
+      ...(Array.isArray(g.diets) ? g.diets : []), ...(Array.isArray(g.allergens) ? g.allergens : []),
+    ].map((p) => String(p || '').trim()).filter(Boolean);
+    const seen = new Set();
+    for (const p of parts) {
+      const need = dietTagFor(p) || p;
+      const key = need.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!by.has(key)) by.set(key, { need, names: [] });
+      by.get(key).names.push(String(g.name || '').trim() || 'A guest');
+    }
+  }
+  return [...by.values()];
+}
