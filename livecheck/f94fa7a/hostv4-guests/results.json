@@ -1,0 +1,793 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "01-plan-guests-row",
+    "ok": true,
+    "q": "About how many are coming?",
+    "sub": null,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-questions",
+    "ok": true,
+    "seen": [
+     "count: About how many are coming?",
+     "mode",
+     "plus",
+     "kids",
+     "replyBy"
+    ],
+    "replyRow": "Friday, December 25 Our suggestion That’s Christmas. Keep it, or pick another date.",
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · replies by Dec 25",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "38x21 Undo",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "03-add-names",
+    "ok": true,
+    "rows": [
+     "Ada Pine No reply",
+     "John Smith No reply",
+     "Nicole Smith No reply"
+    ],
+    "couple": "Couples count as two people. Keep as written",
+    "sub": "Planning for 20 · 3 named · 0 coming",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [
+      "Ada Pine",
+      "John Smith",
+      "Nicole Smith"
+     ],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "38x21 Undo",
+      "111x39 Keep as written"
+     ]
+    }
+   },
+   {
+    "name": "04-guest-email-blur",
+    "ok": true,
+    "before": "Ada Pine",
+    "after": "Ada Pine <ada.pine@example.com>",
+    "asSheet": true,
+    "heads": [
+     "Reply",
+     "Meal",
+     "Their +1",
+     "Children",
+     "How to reach them"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "111x39 Keep as written"
+     ]
+    }
+   },
+   {
+    "name": "05-your-invite",
+    "ok": true,
+    "gaps": [
+     "date: The day Set",
+     "time: The time guests arrive Not confirmed",
+     "place: Where it is Missing"
+    ],
+    "primary": "Add what’s missing in the current app",
+    "href": "../hostv2/",
+    "sendBtn": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "114x41 Save this version"
+     ]
+    }
+   },
+   {
+    "name": "06-updates-signed-out",
+    "ok": true,
+    "body": "Guests Updates and questions Post an update Sign in to post updates. Questions Sign in to see guests’ questions. Sign in to see when guests opened the invite. Sending the day’s details is in the current app for now. Open the current app",
+    "postButtons": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "http": [
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/guest-threads",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/announcements",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/invite-opens"
+  ],
+  "blocked": [],
+  "shareCalls": 0
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "01-plan-guests-row",
+    "ok": true,
+    "q": "About how many are coming?",
+    "sub": "Monday, January 4",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "02-questions",
+    "ok": true,
+    "seen": [
+     "count: About how many are coming?",
+     "mode",
+     "plus",
+     "kids",
+     "replyBy"
+    ],
+    "replyRow": "Friday, December 25 Our suggestion That’s Christmas. Keep it, or pick another date.",
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · replies by Dec 25",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "03-add-names",
+    "ok": true,
+    "rows": [
+     "Ada Pine No reply",
+     "John Smith No reply",
+     "Nicole Smith No reply"
+    ],
+    "couple": "Couples count as two people. Keep as written",
+    "sub": "Monday, January 4 · 20 guests",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [
+      "Ada Pine",
+      "John Smith",
+      "Nicole Smith"
+     ],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 4,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "111x39 Keep as written",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "04-guest-email-blur",
+    "ok": true,
+    "before": "Ada Pine",
+    "after": "Ada Pine <ada.pine@example.com>",
+    "asSheet": false,
+    "heads": [
+     "Reply",
+     "Meal",
+     "Their +1",
+     "Children",
+     "How to reach them"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "111x39 Keep as written",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "05-your-invite",
+    "ok": true,
+    "gaps": [
+     "date: The day Set",
+     "time: The time guests arrive Not confirmed",
+     "place: Where it is Missing"
+    ],
+    "primary": "Add what’s missing in the current app",
+    "href": "../hostv2/",
+    "sendBtn": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app",
+      "114x41 Save this version"
+     ]
+    }
+   },
+   {
+    "name": "06-updates-signed-out",
+    "ok": true,
+    "body": "Guests Updates and questions Post an update Sign in to post updates. Questions Sign in to see guests’ questions. Sign in to see when guests opened the invite. Sending the day’s details is in the current app for now. Open the current app",
+    "postButtons": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "http": [
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/guest-threads",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/invite-opens",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/announcements"
+  ],
+  "blocked": [],
+  "shareCalls": 0
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "01-plan-guests-row",
+    "ok": true,
+    "q": "About how many are coming?",
+    "sub": "Monday, January 4",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "02-questions",
+    "ok": true,
+    "seen": [
+     "count: About how many are coming?",
+     "mode",
+     "plus",
+     "kids",
+     "replyBy"
+    ],
+    "replyRow": "Friday, December 25 Our suggestion That’s Christmas. Keep it, or pick another date.",
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · replies by Dec 25",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "03-add-names",
+    "ok": true,
+    "rows": [
+     "Ada Pine No reply",
+     "John Smith No reply",
+     "Nicole Smith No reply"
+    ],
+    "couple": "Couples count as two people. Keep as written",
+    "sub": "Monday, January 4 · 20 guests",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [
+      "Ada Pine",
+      "John Smith",
+      "Nicole Smith"
+     ],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 4,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "111x39 Keep as written",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "04-guest-email-blur",
+    "ok": true,
+    "before": "Ada Pine",
+    "after": "Ada Pine <ada.pine@example.com>",
+    "asSheet": false,
+    "heads": [
+     "Reply",
+     "Meal",
+     "Their +1",
+     "Children",
+     "How to reach them"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "111x39 Keep as written",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "05-your-invite",
+    "ok": true,
+    "gaps": [
+     "date: The day Set",
+     "time: The time guests arrive Not confirmed",
+     "place: Where it is Missing"
+    ],
+    "primary": "Add what’s missing in the current app",
+    "href": "../hostv2/",
+    "sendBtn": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app",
+      "114x41 Save this version"
+     ]
+    }
+   },
+   {
+    "name": "06-updates-signed-out",
+    "ok": true,
+    "body": "Guests Updates and questions Post an update Sign in to post updates. Questions Sign in to see guests’ questions. Sign in to see when guests opened the invite. Sending the day’s details is in the current app for now. Open the current app",
+    "postButtons": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "http": [
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/guest-threads",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/invite-opens",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/announcements"
+  ],
+  "blocked": [],
+  "shareCalls": 0
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "01-plan-guests-row",
+    "ok": true,
+    "q": "About how many are coming?",
+    "sub": "Monday, January 4",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "02-questions",
+    "ok": true,
+    "seen": [
+     "count: About how many are coming?",
+     "mode",
+     "plus",
+     "kids",
+     "replyBy"
+    ],
+    "replyRow": "Friday, December 25 Our suggestion That’s Christmas. Keep it, or pick another date.",
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · replies by Dec 25",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "143x41 Open the current app"
+     ]
+    }
+   },
+   {
+    "name": "03-add-names",
+    "ok": true,
+    "rows": [
+     "Ada Pine No reply",
+     "John Smith No reply",
+     "Nicole Smith No reply"
+    ],
+    "couple": "Couples count as two people. Keep as written",
+    "sub": "Monday, January 4 · 20 guests",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [
+      "Ada Pine",
+      "John Smith",
+      "Nicole Smith"
+     ],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo",
+      "111x39 Keep as written"
+     ]
+    }
+   },
+   {
+    "name": "04-guest-email-blur",
+    "ok": true,
+    "before": "Ada Pine",
+    "after": "Ada Pine <ada.pine@example.com>",
+    "asSheet": false,
+    "heads": [
+     "Reply",
+     "Meal",
+     "Their +1",
+     "Children",
+     "How to reach them"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "111x39 Keep as written"
+     ]
+    }
+   },
+   {
+    "name": "05-your-invite",
+    "ok": true,
+    "gaps": [
+     "date: The day Set",
+     "time: The time guests arrive Not confirmed",
+     "place: Where it is Missing"
+    ],
+    "primary": "Add what’s missing in the current app",
+    "href": "../hostv2/",
+    "sendBtn": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 3,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app",
+      "114x41 Save this version"
+     ]
+    }
+   },
+   {
+    "name": "06-updates-signed-out",
+    "ok": true,
+    "body": "Guests Updates and questions Post an update Sign in to post updates. Questions Sign in to see guests’ questions. Sign in to see when guests opened the invite. Sending the day’s details is in the current app for now. Open the current app",
+    "postButtons": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "http": [
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/guest-threads",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/invite-opens",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/announcements"
+  ],
+  "blocked": [],
+  "shareCalls": 0
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "01-plan-guests-row",
+    "ok": true,
+    "q": "About how many are coming?",
+    "sub": "Monday, January 4",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-questions",
+    "ok": true,
+    "seen": [
+     "count: About how many are coming?",
+     "mode",
+     "plus",
+     "kids",
+     "replyBy"
+    ],
+    "replyRow": "Friday, December 25 Our suggestion That’s Christmas. Keep it, or pick another date.",
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · replies by Dec 25",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-add-names",
+    "ok": true,
+    "rows": [
+     "Ada Pine No reply",
+     "John Smith No reply",
+     "Nicole Smith No reply"
+    ],
+    "couple": "Couples count as two people. Keep as written",
+    "sub": "Monday, January 4 · 20 guests",
+    "st": {
+     "guestEstimate": 20,
+     "guestMode": "list",
+     "plusOnePolicy": "plus_one_ok",
+     "kidsPolicy": "kids_welcome",
+     "rsvpDeadline": "2026-12-25",
+     "guests": [
+      "Ada Pine",
+      "John Smith",
+      "Nicole Smith"
+     ],
+     "invitesSentAt": null
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-guest-email-blur",
+    "ok": true,
+    "before": "Ada Pine",
+    "after": "Ada Pine <ada.pine@example.com>",
+    "asSheet": false,
+    "heads": [
+     "Reply",
+     "Meal",
+     "Their +1",
+     "Children",
+     "How to reach them"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-your-invite",
+    "ok": true,
+    "gaps": [
+     "date: The day Set",
+     "time: The time guests arrive Not confirmed",
+     "place: Where it is Missing"
+    ],
+    "primary": "Add what’s missing in the current app",
+    "href": "../hostv2/",
+    "sendBtn": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-updates-signed-out",
+    "ok": true,
+    "body": "Guests Updates and questions Post an update Sign in to post updates. Questions Sign in to see guests’ questions. Sign in to see when guests opened the invite. Sending the day’s details is in the current app for now. Open the current app",
+    "postButtons": 0,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "http": [
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/invite-opens",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/guest-threads",
+   "401 https://ngw-events-api.onrender.com/api/events/E2E_TEST_lc-v4g/announcements"
+  ],
+  "blocked": [],
+  "shareCalls": 0
+ }
+]
