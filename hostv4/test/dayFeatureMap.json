@@ -35,9 +35,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "Who’s confirmed"
       },
-      "home": "planned",
-      "where": "Helpers’ own answers show on Your day crew (Has it, Can’t do it); vendors’ answers come with B9",
-      "batch": "B9 vendors on the day"
+      "home": "built",
+      "where": "Vendors’ own answers on Vendors today; helpers’ on Your day crew",
+      "selector": "data-vendors-today"
     },
     {
       "id": "helper-links",
@@ -101,9 +101,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "shareVendorBrief"
       },
-      "home": "planned",
-      "where": "Vendors on the day: a row per vendor arriving",
-      "batch": "B9 vendors on the day"
+      "home": "linked",
+      "where": "The Day · Vendors today · a vendor’s sheet · Send the details (in the current app, with its pass)",
+      "selector": "data-vendor-brief"
     },
     {
       "id": "rain-plan",
@@ -354,9 +354,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "Mark asked"
       },
-      "home": "planned",
-      "where": "Vendors on the day: a row per vendor arriving",
-      "batch": "B9 vendors on the day"
+      "home": "built",
+      "where": "The Day · Vendors today: Call, They’re here, Running late; a “hasn’t arrived” alert opens the list",
+      "selector": "data-vendor-call"
     }
   ]
 }
