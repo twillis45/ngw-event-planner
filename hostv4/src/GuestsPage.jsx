@@ -194,9 +194,26 @@ function Field({ label, value, onSave, type = 'text', placeholder, invalid, form
   );
 }
 
-function Toggles({ label, items, on, onTap }) {
+// Diet and allergies in little space (owner chose "A + B", 11/25/2026): a row
+// that opens a checklist, and what is picked shown under it as chips that
+// remove it. Nothing picked, the row alone.
+function ListRow({ label, on, onOpen, onRemove }) {
   const set = Array.isArray(on) ? on : [];
-  return <div className="chips wrap" role="group" aria-label={label}>{items.map((x) => <button key={x} aria-pressed={set.includes(x)} onClick={() => onTap(x)}>{x}</button>)}</div>;
+  return (<>
+    <button className="row go" onClick={onOpen}><span className="nm">{label}</span>{!set.length && <span className="val">None</span>}{chev}</button>
+    {set.length > 0 && <div className="chips wrap picked">{set.map((x) => <button key={x} aria-label={'Remove ' + x} onClick={() => onRemove(x)}>{x} <span aria-hidden="true">✕</span></button>)}</div>}
+  </>);
+}
+
+function Checklist({ label, items, on, onTap, onDone, back }) {
+  const set = Array.isArray(on) ? on : [];
+  return (<>
+    <button className="link back" onClick={onDone}>‹ {back}</button>
+    <h3 className="lbl">{label}</h3>
+    <div className="grp" role="group" aria-label={label}>
+      {items.map((x) => <button key={x} className="row go" aria-pressed={set.includes(x)} onClick={() => onTap(x)}><span className="nm">{x}</span>{set.includes(x) ? <span className="check" aria-hidden="true">✓</span> : null}</button>)}
+    </div>
+  </>);
 }
 
 function MealPick({ label, value, onPick }) {
@@ -222,6 +239,9 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
   const kidsOk = ev.kidsPolicy === 'kids_welcome' || kids > 0;
   const told = isTold(guestToldMap(ev), g.id);
   const field = (fields) => save(guestFieldEdit(ev, i, fields, null));
+  const [list, setList] = useState(null); // 'diets' | 'allergens' while its checklist is open
+  const toggle = (f) => (x) => save(listToggleEdit(ev, i, f, x, name));
+  if (list) return <Checklist label={list === 'diets' ? 'Diet' : 'Allergies'} items={list === 'diets' ? DIET_RULES : ALLERGENS} on={g[list]} onTap={toggle(list)} onDone={() => setList(null)} back={first} />;
   return (<>
         <h3 className="lbl">Reply</h3>
         <div className="seg" role="group" aria-label="Reply">
@@ -231,10 +251,10 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
         <MealPick label={'Meal for ' + name} value={g.meal} onPick={(m) => save(mealEdit(ev, i, 'meal', m, name))} />
         {/* Diet and allergies asked apart, from the guest form's own lists
             (owner, 11/25/2026); the free text is for anything else. */}
-        <h3 className="lbl">Diet</h3>
-        <Toggles label="Diet" items={DIET_RULES} on={g.diets} onTap={(d) => save(listToggleEdit(ev, i, 'diets', d, name))} />
-        <h3 className="lbl">Allergies</h3>
-        <Toggles label="Allergies" items={ALLERGENS} on={g.allergens} onTap={(a) => save(listToggleEdit(ev, i, 'allergens', a, name))} />
+        <div className="grp lists">
+          <ListRow label="Diet" on={g.diets} onOpen={() => setList('diets')} onRemove={toggle('diets')} />
+          <ListRow label="Allergies" on={g.allergens} onOpen={() => setList('allergens')} onRemove={toggle('allergens')} />
+        </div>
         <Field label="Other needs" placeholder="Anything else, if any" value={g.needs} onSave={(v) => field({ needs: v })} />
         {plusOk && (<>
           <h3 className="lbl">Their +1</h3>

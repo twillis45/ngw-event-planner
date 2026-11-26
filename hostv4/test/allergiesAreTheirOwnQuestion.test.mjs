@@ -46,26 +46,49 @@ describe('listToggleEdit', () => {
   });
 });
 
-describe("the guest's sheet asks diet and allergies apart", () => {
+// The owner, same evening, on the chips: "Need to save more space", then chose
+// "A + B": one row each that opens a checklist (A), with what is picked shown
+// under its row as a chip that removes it (B). Nothing picked: two rows.
+describe("the guest's sheet asks diet and allergies apart, in little space", () => {
   let host; let root; let saved;
+  const render = (g) => act(() => root.render(createElement(GuestDetail, { ev: { ...ev, guests: [g] }, g, i: 0, save: (ed) => { saved.push(ed); return true; }, onDone: () => {} })));
   beforeEach(() => {
     saved = [];
     host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
-    act(() => root.render(createElement(GuestDetail, { ev, g: ev.guests[0], i: 0, save: (ed) => { saved.push(ed); return true; }, onDone: () => {} })));
+    render(ev.guests[0]);
   });
   afterEach(() => { act(() => root.unmount()); host.remove(); });
+  const btn = (re) => [...host.querySelectorAll('button')].find((b) => re.test(b.textContent));
   const group = (label) => host.querySelector(`[role="group"][aria-label="${label}"]`);
-  it('shows a Diet group and an Allergies group, each with every option', () => {
-    expect([...group('Diet').querySelectorAll('button')].map((b) => b.textContent)).toEqual(DIET_RULES);
-    expect([...group('Allergies').querySelectorAll('button')].map((b) => b.textContent)).toEqual(ALLERGENS);
+  it('shows one row for Diet and one for Allergies, not every option', () => {
+    expect(btn(/^Diet/)).toBeTruthy();
+    expect(btn(/^Allergies/)).toBeTruthy();
+    expect(btn(/^Sesame$/)).toBeUndefined();
+    expect(btn(/^Allergies/).textContent).toMatch(/None/);
+    expect(btn(/^Diet/).textContent).not.toMatch(/None|picked/);
   });
-  it('marks what is saved, and a tap saves only that list', () => {
-    const halal = [...group('Diet').querySelectorAll('button')].find((b) => b.textContent === 'Halal');
-    expect(halal.getAttribute('aria-pressed')).toBe('true');
-    const peanut = [...group('Allergies').querySelectorAll('button')].find((b) => b.textContent === 'Peanut');
+  it('a picked item shows under its row, and its chip removes it', () => {
+    const chip = host.querySelector('[aria-label="Remove Halal"]');
+    expect(chip).not.toBeNull();
+    act(() => chip.click());
+    expect(saved[0].patch.guests[0].diets).toEqual([]);
+  });
+  it('the row opens a checklist of every option, with what is saved checked', () => {
+    act(() => btn(/^Allergies/).click());
+    expect([...group('Allergies').querySelectorAll('button')].map((b) => b.querySelector('.nm').textContent)).toEqual(ALLERGENS);
+  });
+  it('a tap in the checklist saves only that list, and Done goes back', () => {
+    act(() => btn(/^Allergies/).click());
+    const peanut = [...group('Allergies').querySelectorAll('button')].find((b) => /Peanut/.test(b.textContent));
+    expect(peanut.getAttribute('aria-pressed')).toBe('false');
     act(() => peanut.click());
     expect(saved[0].patch.guests[0].allergens).toEqual(['Peanut']);
     expect(saved[0].patch.guests[0].diets).toEqual(['Halal']);
+    // One way back to the guest, not a second "Done" beside the sheet's own.
+    expect(btn(/^Done$/)).toBeUndefined();
+    act(() => btn(/^‹ Linda/).click());
+    expect(group('Allergies')).toBeNull();
+    expect(btn(/^Diet/)).toBeTruthy();
   });
   it('the free-text box is for anything else, not the diet', () => {
     expect(host.querySelector('[aria-label="Dietary needs"]')).toBeNull();
