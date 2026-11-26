@@ -16,6 +16,7 @@ import {
 } from '../lib/playbooks';
 import { buildDayBeforePlan } from '../lib/dayBefore';
 import { rainPlanStatus } from '../lib/weather';
+import { mayBeOutdoors } from '../lib/placeIntelligence';
 import { isVendorConfirmed } from '../lib/workstreams';
 import { effectiveDone } from '../lib/taskEngine';
 // LOCAL calendar dates, never toISOString() — that is UTC and slides a day
@@ -74,7 +75,8 @@ const FAMILIES = (ev, plan) => {
     } catch { /* honest zero */ }
     out.push(['shopping', unboughtFood + unboughtGear > 0, sectionByKey(plan, 'shopping')]);
   } catch { /* ignore */ }
-  try { out.push(['rain', !rainPlanStatus(ev).hasPlan, sectionByKey(plan, 'rain')]); } catch { /* ignore */ }
+  // Rain is a concern only where some of it may be outside (theRainBackupIsForOutdoors).
+  try { out.push(['rain', mayBeOutdoors(ev) && !rainPlanStatus(ev).hasPlan, sectionByKey(plan, 'rain')]); } catch { /* ignore */ }
   if ((ev.vendors || []).length) {
     const gaps = ev.vendors.filter(v => v && (!isVendorConfirmed(v) || !String(v.arrivalTime || '').trim())).length;
     out.push(['vendors', gaps > 0, sectionByKey(plan, 'vendors')]);
