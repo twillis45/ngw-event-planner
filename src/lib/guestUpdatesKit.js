@@ -127,7 +127,9 @@ export function useGuestQuestions(eventId, onWaiting) {
     setRows(sorted);
     if (onWaiting) onWaiting(questionsWaiting(sorted));
   };
-  useEffect(() => { if (isGuestMessagesApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No event id, no request: a caller passes null for a plan with no account
+  // to ask about (hostv4 Guests, 11/26/2026), which would only answer 401.
+  useEffect(() => { if (isGuestMessagesApiConfigured() && eventId) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // keep: a refresh after a reply or a block keeps that status line.
   const openThread = async (id, keep = false) => {

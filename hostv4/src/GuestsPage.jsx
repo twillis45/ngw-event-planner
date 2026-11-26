@@ -10,7 +10,7 @@
 // Every change is built by lib/guestEdits, the same builders hostv2 saves, and
 // saved by the shell. What this step does not build yet (the invite, sending,
 // nudges, locking the count, updates) says so and opens the current app.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
 import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, listToggleEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
@@ -28,10 +28,33 @@ import LockSheet from './LockSheet.jsx';
 import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
 import { downloadCSV } from '@app/lib/download';
 import { LINK_WHY } from './sendKit.jsx';
+import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
+import { getLastSyncTime } from '@app/lib/api/syncState';
+import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
+import { questionsWaitingLine } from '@app/lib/guestInbox';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
-const FILTERS = [['all', 'Everyone'], ['yes', 'Coming'], ['pending', 'Not replied'], ['maybe', 'Maybe'], ['no', 'Can’t make it']];
+// GUESTS FOLDS AWAY (owner chose option E, 11/25/2026: "minimize lists and
+// collapse where we can, hide"). The replies, folded into groups that open in
+// place one at a time; a find box only past FIND_AT names.
+const GROUPS = [['yes', 'Coming'], ['maybe', 'Maybe'], ['pending', 'No reply yet'], ['no', 'Can’t make it']];
+const FIND_AT = 21;
+const chevDown = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+
+/** The headcount at a glance: each reply against the plan's number. */
+function Headcount({ counts, of }) {
+  const named = counts.yes + counts.maybe + counts.pending + counts.no;
+  const open = Math.max(0, (of || 0) - named);
+  const parts = [[counts.yes, 'coming'], [counts.maybe, 'maybe'], [counts.pending, 'no reply'], [counts.no, 'can’t make it']].filter(([n], k) => k === 0 || n > 0);
+  const said = parts.map(([n, w]) => n + ' ' + w).join(', ') + (of ? ', of ' + of : '');
+  return (<>
+    <div className="hbar" data-headcount role="img" aria-label={said}>
+      {[['yes', counts.yes], ['maybe', counts.maybe], ['pending', counts.pending], ['no', counts.no], ['open', open]].filter(([, n]) => n > 0).map(([k, n]) => <i key={k} className={k} style={{ flex: n }} />)}
+    </div>
+    <p className="legend" aria-hidden="true">{parts.map(([n, w], k) => <Fragment key={w}>{k ? ' · ' : ''}<b>{n}</b> {w}</Fragment>)}{of ? ' · of ' + of : ''}</p>
+  </>);
+}
 const longDay = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
@@ -310,10 +333,17 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [text, setText] = useState('');
   const [couple, setCouple] = useState(null); // { lines, guests } after a couple was split
   const [find, setFind] = useState('');
-  const [filter, setFilter] = useState('all');
   const [open, setOpen] = useState(null);
   const [answers, setAnswers] = useState(false);
-  const [sheet, setSheet] = useState(null); // 'nudge' | 'lock'
+  const [sheet, setSheet] = useState(null); // 'nudge' | 'lock' | 'add' | 'more'
+  // The one open group. undefined: not yet chosen (on an iPad split, the
+  // selected guest's group opens, so the selection is in view); null: all closed.
+  // Remembered per plan in this browser, never in the plan (owner, 11/26/2026:
+  // "remember the open group across reloads").
+  const [group, setGroupState] = useState(() => readOpenGroup(ev.id));
+  const setGroup = (k) => { setGroupState(k); writeOpenGroup(ev.id, k); };
+  const [waiting, setWaiting] = useState(0);
+  useGuestQuestions(getLastSyncTime(ev.id) ? ev.id : null, setWaiting);
   const [shareLine, setShareLine] = useState('');
   // SHARE THE LINK: the checked reply link (lib/inviteSend), through the phone's
   // share sheet, else copied. A completed share is the invite going out.
@@ -361,7 +391,12 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     setCouple(null); if (ed) save(ed);
   };
   const indexOf = (g) => guests.findIndex((x) => x === g || (x.id && x.id === g.id));
-  const shown = filterGuestsByName(guests, find).filter((g) => filter === 'all' || rsvpState(g) === filter);
+  const counts = { yes: 0, maybe: 0, pending: 0, no: 0 };
+  for (const g of guests) counts[rsvpState(g)] = (counts[rsvpState(g)] || 0) + 1;
+  const finding = named >= FIND_AT && find.trim();
+  // A remembered group with no one left in it falls back to the default.
+  const openGroup = group === null || (group && guests.some((g) => rsvpState(g) === group)) ? group : (layout === 'split' && guests.length ? rsvpState((open != null && guests.find((g) => g.id === open)) || guests[0]) : null);
+  const shown = finding ? filterGuestsByName(guests, find) : openGroup ? guests.filter((g) => rsvpState(g) === openGroup) : guests;
   const opened = open != null ? guests.find((g) => g.id === open) : null;
   const tablet = layout !== 'phone';
   // SPLIT (UX_13): the detail pane always shows someone once there are names.
@@ -393,7 +428,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   // THE BOTTOM BUTTON, by state (prototype PRIMARY.guests). One action.
   const action = qs[0] === 'count' ? { label: 'Plan for ' + count, go: () => save(countEdit(ev, count)) }
     : qs.length ? null
-      : byName && !named ? { label: 'Add names', go: () => { const f = document.getElementById('addname'); if (f) f.focus(); } }
+      : byName && !named ? { label: 'Add names', go: () => { if (text.trim()) add(); else { const f = document.getElementById('addname'); if (f) f.focus(); } } }
         : !ev.invitesSentAt ? { label: 'Review your invite', go: onInvite }
           // LOCK THE COUNT: the bottom button after the reply-by date, and nowhere else (owner, 11/25/2026).
           : replyByPassed && !locked ? { label: 'Lock the count', go: () => setSheet('lock') }
@@ -404,17 +439,33 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const actionEl = action && <div className="action">{action.href
       ? <a className="primary" href={action.href}>{action.label}</a>
       : <button className="primary" onClick={action.go}>{action.label}</button>}</div>;
+  const row = (g) => (
+    <GuestRow key={g.id || g.name} g={g} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
+      onComing={() => save(rsvpEdit(ev, indexOf(g), 'Yes'))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
+  );
+  const addBox = (<>
+    <label className="lbl" htmlFor="addname">Names, one per line</label>
+    <div className="addrow">
+      <textarea className="field" id="addname" rows={text.includes('\n') ? 3 : 1} placeholder="For example: Jamie Lee" value={text} onChange={(e) => setText(e.target.value)} />
+      {text.trim() && <button className="link" onClick={add}>Add</button>}
+    </div>
+    {couple && <p className="line" data-couple>Couples count as two people. <button className="link" onClick={keepAsWritten}>Keep as written</button></p>}
+  </>);
+  // + and ⋯, beside the title: adding names and everything else, off the page.
+  const acts = !qs.length && (
+    <span className="pageacts">
+      {byName && named > 0 && <button className="ic" aria-label="Add names" onClick={() => setSheet('add')}>＋</button>}
+      <button className="ic" aria-label="More" onClick={() => setSheet('more')}>⋯</button>
+    </span>
+  );
   const listPane = (<>
     <main className="view" data-view="guests">
-    {nav}
+    {typeof nav === 'function' ? nav(acts) : <>{nav}{acts}</>}
     <section data-guests>
-      {planned && <p className="sub">{locked ? 'Locked at ' + locked : 'Planning for ' + planned}{byName && !qs.length ? ' · ' + named + ' named · ' + coming + ' coming' : ''}{sample ? ' · Sample' : ''}</p>}
+      {planned && !(byName && named > 0 && !qs.length) && <p className="sub">{locked ? 'Locked at ' + locked : 'Planning for ' + planned}{byName && !qs.length ? ' · ' + named + ' named · ' + coming + ' coming' : ''}{sample ? ' · Sample' : ''}</p>}
       {status}
       {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
-      {!qs.length && (
-        <div className="grp"><button className="row go" data-answers onClick={() => setAnswers(true)}><span className="nm">Your answers<small>{answersLine(ev)}</small></span>{chev}</button></div>
-      )}
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
 
       {!qs.length && !byName && (<>
@@ -423,52 +474,66 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
           <button className="row go" onClick={() => save(modeEdit('list'))}>Switch to a list of names{chev}</button></div>
       </>)}
 
-      {!qs.length && byName && (<>
-        <div className="sh"><h3>Names</h3><span>{named}</span></div>
-        <label className="lbl" htmlFor="addname">Add names, one per line</label>
-        <div className="addrow">
-          <textarea className="field" id="addname" rows={text.includes('\n') ? 3 : 1} placeholder="For example: Jamie Lee" value={text} onChange={(e) => setText(e.target.value)} />
-          {text.trim() && <button className="link" onClick={add}>Add</button>}
-        </div>
-        {couple && <p className="line" data-couple>Couples count as two people. <button className="link" onClick={keepAsWritten}>Keep as written</button></p>}
-        {named >= 8 && (<>
-          <input className="field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />
-          <div className="chips" role="group" aria-label="Show">{FILTERS.map(([k, l]) => <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>)}</div>
-        </>)}
-        {shown.length ? (
-          <div className="grp" data-names>
-            {shown.map((g) => (
-              <GuestRow key={g.id || g.name} g={g} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
-                onComing={() => save(rsvpEdit(ev, indexOf(g), 'Yes'))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
+      {!qs.length && byName && named > 0 && (<>
+        <Headcount counts={counts} of={locked || planned} />
+        {waiting > 0 && <button className="pill warn" data-questions-waiting onClick={onUpdates}>{questionsWaitingLine(waiting)}{chev}</button>}
+        {named >= FIND_AT && <input className="field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
+        {finding ? (
+          shown.length ? <div className="grp" data-names>{shown.map(row)}</div> : <p className="fine">No one here matches.</p>
+        ) : (
+          <div className="grp" data-groups>
+            {GROUPS.filter(([k]) => counts[k] > 0).map(([k, l]) => (
+              <Fragment key={k}>
+                <button className="row go" data-group={k} aria-expanded={openGroup === k} onClick={() => setGroup(openGroup === k ? null : k)}>
+                  <span className={'dot ' + k} aria-hidden="true" /><span className="nm">{l}</span><span className="val">{counts[k]}</span>{openGroup === k ? chevDown : chev}
+                </button>
+                {openGroup === k && <div className="inset" data-names>{shown.map(row)}</div>}
+              </Fragment>
             ))}
           </div>
-        ) : <p className="fine">{named ? 'No one here matches.' : 'No names yet. Add the people you know are coming.'}</p>}
-        {named > 0 && <p className="fine">Swipe a name right to mark them coming, left to remove. Or tap it.</p>}
+        )}
       </>)}
 
-      {!qs.length && (<>
-        <h3 className="sh">The invite</h3>
-        <div className="grp">
-          <button className="row go" data-open-invite onClick={onInvite}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button>
-          {ev.invitesSentAt && <div className="row" data-replied><span>Who has replied</span><span className="val">{replied} of {invited}</span></div>}
-          {(replyByPassed || locked > 0) && <button className="row go" data-count-row onClick={() => setSheet('lock')}><span>The count</span><span className={'val' + (locked ? ' ok' : '')}>{locked ? 'Locked at ' + locked : 'Not locked'}</span>{chev}</button>}
-          <button className="row go" data-open-updates onClick={onUpdates}><span>Updates and questions</span>{chev}</button>
-        </div>
+      {!qs.length && byName && !named && (<>
+        <p className="fine">Add who’s coming, one name per line.</p>
+        {addBox}
       </>)}
 
-      {!qs.length && byName && (<>
-        <h3 className="sh">More</h3>
-        <div className="grp" data-more>
-          <button className="row go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
-          {named > 0 && <button className="row go" data-download onClick={download}><span>Download the list</span>{chev}</button>}
-          <button className="row go" role="switch" aria-checked={ev.hostAlerts !== false} data-alerts onClick={() => save(replyAlertsEdit(ev))}>
-            <span className="nm">Tell me when someone replies<small>By email and notifications, at most once an hour</small></span>
-            <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
-          </button>
+      {sheet === 'add' && (
+        <div className="scrim" onClick={() => setSheet(null)}>
+          <div className="sheet" role="dialog" aria-label="Add names" onClick={(e) => e.stopPropagation()}>
+            <div className="grabber" aria-hidden="true" />
+            <div className="sheethead"><h2>Add names</h2><button className="link" onClick={() => setSheet(null)}>Done</button></div>
+            {addBox}
+          </div>
         </div>
-        {shareLine && <p className="fine" role="status" data-share-line>{shareLine}</p>}
-        <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
-      </>)}
+      )}
+
+      {sheet === 'more' && (
+        <div className="scrim" onClick={() => setSheet(null)}>
+          <div className="sheet" role="dialog" aria-label="More about guests" onClick={(e) => e.stopPropagation()}>
+            <div className="grabber" aria-hidden="true" />
+            <div className="sheethead"><h2>Guests</h2><button className="link" onClick={() => setSheet(null)}>Done</button></div>
+            <div className="grp"><button className="row go" data-answers onClick={() => { setSheet(null); setAnswers(true); }}><span className="nm">Your answers<small>{answersLine(ev)}</small></span>{chev}</button></div>
+            <div className="grp">
+              <button className="row go" data-open-invite onClick={() => { setSheet(null); onInvite(); }}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button>
+              {ev.invitesSentAt && <div className="row" data-replied><span>Who has replied</span><span className="val">{replied} of {invited}</span></div>}
+              {(replyByPassed || locked > 0) && <button className="row go" data-count-row onClick={() => setSheet('lock')}><span>The count</span><span className={'val' + (locked ? ' ok' : '')}>{locked ? 'Locked at ' + locked : 'Not locked'}</span>{chev}</button>}
+              <button className="row go" data-open-updates onClick={() => { setSheet(null); onUpdates(); }}><span>Updates and questions</span>{chev}</button>
+            </div>
+            {byName && (<div className="grp" data-more>
+              <button className="row go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
+              {named > 0 && <button className="row go" data-download onClick={download}><span>Download the list</span>{chev}</button>}
+              <button className="row go" role="switch" aria-checked={ev.hostAlerts !== false} data-alerts onClick={() => save(replyAlertsEdit(ev))}>
+                <span className="nm">Tell me when someone replies<small>By email and notifications, at most once an hour</small></span>
+                <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
+              </button>
+            </div>)}
+            {shareLine && <p className="fine" role="status" data-share-line>{shareLine}</p>}
+            <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+          </div>
+        </div>
+      )}
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {opened && layout === 'phone' && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} />}
