@@ -5,7 +5,7 @@
 // (owner: "App is lying somewhere"). Now every count of steps past their window
 // on the board is the same number, in the same words, and the run-through says
 // how many are left in all.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, goToStage } from './fixtures.mjs';
 
 const DAY = '2026-11-26';
 const step = (id, leadDays, done = false) => ({ id, task: 'Probe step ' + id, leadDays, done });
@@ -29,7 +29,11 @@ test('the day-of board prints one past-their-window number everywhere', async ({
   }, DAY);
   await page.goto('?elegant=1');
   await settled(page);
-  const text = await page.locator('body').innerText();
+  // On the day the app opens on The Day; the live check read Plan's board.
+  const dayText = await page.locator('body').innerText();
+  await goToStage(page, 'Plan');
+  await settled(page);
+  const text = dayText + '\n' + await page.locator('body').innerText();
   // The old words are gone…
   expect(text).not.toMatch(/\d+ things? still open/);
   expect(text).not.toMatch(/\d+ plan steps? still open/);
