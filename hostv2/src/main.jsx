@@ -131,7 +131,7 @@ const planInThisBrowser = (id) => {
       const plan = planInThisBrowser(invitePreviewId);
       return plan
         ? <m.default code={plan.rsvpCode || plan.id} preview={plan} />
-        : <div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>That plan isn’t saved in this browser, so there’s nothing to preview.</div>;
+        : <p className="grounding">That plan isn’t saved in this browser, so there’s nothing to preview.</p>;
     })
     : rsvpCode
     ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
