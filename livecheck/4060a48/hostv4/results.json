@@ -1,0 +1,1455 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "sample-next",
+    "ok": true,
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Sample · Monday, January 4",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 39
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-tabs",
+    "ok": true,
+    "s": {
+     "Your plan": {
+      "h1": "Your plan",
+      "sub": "Rosa’s 40th Birthday · Monday, January 4",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": "A sample plan. Plans you make in the current app open here.",
+      "words": 56
+     },
+     "The Day": {
+      "h1": "The Day",
+      "sub": "Sample · Monday, January 4",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 29
+     },
+     "Next step": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Sample · Monday, January 4",
+      "q": "How much do you want to spend?",
+      "budget": true,
+      "choices": [
+       "Just the essentials about $400",
+       "With extras about $550 ✓",
+       "Everything about $900"
+      ],
+      "primary": [
+       "Plan with $550"
+      ],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 39
+     }
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-budget-not-saved",
+    "ok": true,
+    "label": "Plan with $400",
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Sample · Monday, January 4",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Sample plan, not saved. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 51
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "how-we-got-these",
+    "ok": true,
+    "d": {
+     "heads": [
+      "Just the essentials $173–$621",
+      "With extras $246–$876",
+      "Everything $471–$1,326"
+     ],
+     "rows": 14,
+     "fine": [
+      "From our birthday shopping list for 25 guests. Every price has a published source; each choice adds to the one before.",
+      "Only the shopping list. Not included: anyone you hire, a venue, gifts or tips."
+     ],
+     "scrollable": true,
+     "fits": true
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-next",
+    "ok": true,
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 39
+    },
+    "st": {
+     "found": true,
+     "totalBudget": "(unset)",
+     "n": 1
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-save",
+    "ok": true,
+    "label": "Plan with $400",
+    "want": 400,
+    "st": {
+     "found": true,
+     "totalBudget": 400,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 49
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "seeded-undo",
+    "ok": true,
+    "st": {
+     "found": true,
+     "totalBudget": "",
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": "Undone.",
+     "alert": null,
+     "sample": null,
+     "words": 40
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-reload",
+    "ok": true,
+    "want": 550,
+    "st": {
+     "found": true,
+     "totalBudget": 550,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 44
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "sample-next",
+    "ok": true,
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-tabs",
+    "ok": true,
+    "s": {
+     "Your plan": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": "A sample plan. Plans you make in the current app open here.",
+      "words": 50
+     },
+     "The Day": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 23
+     },
+     "Next step": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": "How much do you want to spend?",
+      "budget": true,
+      "choices": [
+       "Just the essentials about $400",
+       "With extras about $550 ✓",
+       "Everything about $900"
+      ],
+      "primary": [
+       "Plan with $550"
+      ],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 33
+     }
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-budget-not-saved",
+    "ok": true,
+    "label": "Plan with $400",
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Sample plan, not saved. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 45
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "how-we-got-these",
+    "ok": true,
+    "d": {
+     "heads": [
+      "Just the essentials $173–$621",
+      "With extras $246–$876",
+      "Everything $471–$1,326"
+     ],
+     "rows": 14,
+     "fine": [
+      "From our birthday shopping list for 25 guests. Every price has a published source; each choice adds to the one before.",
+      "Only the shopping list. Not included: anyone you hire, a venue, gifts or tips."
+     ],
+     "scrollable": true,
+     "fits": true
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-next",
+    "ok": true,
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "st": {
+     "found": true,
+     "totalBudget": "(unset)",
+     "n": 1
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-save",
+    "ok": true,
+    "label": "Plan with $400",
+    "want": 400,
+    "st": {
+     "found": true,
+     "totalBudget": 400,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 43
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "seeded-undo",
+    "ok": true,
+    "st": {
+     "found": true,
+     "totalBudget": "",
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": "Undone.",
+     "alert": null,
+     "sample": null,
+     "words": 34
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-reload",
+    "ok": true,
+    "want": 550,
+    "st": {
+     "found": true,
+     "totalBudget": 550,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 38
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "sample-next",
+    "ok": true,
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-tabs",
+    "ok": true,
+    "s": {
+     "Your plan": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": "A sample plan. Plans you make in the current app open here.",
+      "words": 50
+     },
+     "The Day": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 23
+     },
+     "Next step": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": "How much do you want to spend?",
+      "budget": true,
+      "choices": [
+       "Just the essentials about $400",
+       "With extras about $550 ✓",
+       "Everything about $900"
+      ],
+      "primary": [
+       "Plan with $550"
+      ],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 33
+     }
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-budget-not-saved",
+    "ok": true,
+    "label": "Plan with $400",
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Sample plan, not saved. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 45
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "how-we-got-these",
+    "ok": true,
+    "d": {
+     "heads": [
+      "Just the essentials $173–$621",
+      "With extras $246–$876",
+      "Everything $471–$1,326"
+     ],
+     "rows": 14,
+     "fine": [
+      "From our birthday shopping list for 25 guests. Every price has a published source; each choice adds to the one before.",
+      "Only the shopping list. Not included: anyone you hire, a venue, gifts or tips."
+     ],
+     "scrollable": false,
+     "fits": false
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-next",
+    "ok": true,
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "st": {
+     "found": true,
+     "totalBudget": "(unset)",
+     "n": 1
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-save",
+    "ok": true,
+    "label": "Plan with $400",
+    "want": 400,
+    "st": {
+     "found": true,
+     "totalBudget": 400,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 43
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "seeded-undo",
+    "ok": true,
+    "st": {
+     "found": true,
+     "totalBudget": "",
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": "Undone.",
+     "alert": null,
+     "sample": null,
+     "words": 34
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-reload",
+    "ok": true,
+    "want": 550,
+    "st": {
+     "found": true,
+     "totalBudget": 550,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 38
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "sample-next",
+    "ok": true,
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-tabs",
+    "ok": true,
+    "s": {
+     "Your plan": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": "A sample plan. Plans you make in the current app open here.",
+      "words": 50
+     },
+     "The Day": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 23
+     },
+     "Next step": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": "How much do you want to spend?",
+      "budget": true,
+      "choices": [
+       "Just the essentials about $400",
+       "With extras about $550 ✓",
+       "Everything about $900"
+      ],
+      "primary": [
+       "Plan with $550"
+      ],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 33
+     }
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "sample-budget-not-saved",
+    "ok": true,
+    "label": "Plan with $400",
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Sample plan, not saved. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 45
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "how-we-got-these",
+    "ok": true,
+    "d": {
+     "heads": [
+      "Just the essentials $173–$621",
+      "With extras $246–$876",
+      "Everything $471–$1,326"
+     ],
+     "rows": 14,
+     "fine": [
+      "From our birthday shopping list for 25 guests. Every price has a published source; each choice adds to the one before.",
+      "Only the shopping list. Not included: anyone you hire, a venue, gifts or tips."
+     ],
+     "scrollable": true,
+     "fits": true
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-next",
+    "ok": true,
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "st": {
+     "found": true,
+     "totalBudget": "(unset)",
+     "n": 1
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-save",
+    "ok": true,
+    "label": "Plan with $400",
+    "want": 400,
+    "st": {
+     "found": true,
+     "totalBudget": 400,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 43
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "38x21 Undo"
+     ]
+    }
+   },
+   {
+    "name": "seeded-undo",
+    "ok": true,
+    "st": {
+     "found": true,
+     "totalBudget": "",
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": "Undone.",
+     "alert": null,
+     "sample": null,
+     "words": 34
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 2,
+     "smallTargetsEx": [
+      "143x41 Open the current app",
+      "120x41 How we got these"
+     ]
+    }
+   },
+   {
+    "name": "seeded-reload",
+    "ok": true,
+    "want": 550,
+    "st": {
+     "found": true,
+     "totalBudget": 550,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 38
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 1,
+     "smallTargetsEx": [
+      "143x41 Open the current app"
+     ]
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "sample-next",
+    "ok": true,
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "sample-tabs",
+    "ok": true,
+    "s": {
+     "Your plan": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": "A sample plan. Plans you make in the current app open here.",
+      "words": 50
+     },
+     "The Day": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": null,
+      "budget": false,
+      "choices": [],
+      "primary": [],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 23
+     },
+     "Next step": {
+      "h1": "Rosa’s 40th Birthday",
+      "sub": "Monday, January 4 · 25 guests",
+      "q": "How much do you want to spend?",
+      "budget": true,
+      "choices": [
+       "Just the essentials about $400",
+       "With extras about $550 ✓",
+       "Everything about $900"
+      ],
+      "primary": [
+       "Plan with $550"
+      ],
+      "done": null,
+      "alert": null,
+      "sample": null,
+      "words": 33
+     }
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "sample-budget-not-saved",
+    "ok": true,
+    "label": "Plan with $400",
+    "s": {
+     "h1": "Rosa’s 40th Birthday",
+     "sub": "Monday, January 4 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Sample plan, not saved. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 45
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "how-we-got-these",
+    "ok": true,
+    "d": {
+     "heads": [
+      "Just the essentials $173–$621",
+      "With extras $246–$876",
+      "Everything $471–$1,326"
+     ],
+     "rows": 14,
+     "fine": [
+      "From our birthday shopping list for 25 guests. Every price has a published source; each choice adds to the one before.",
+      "Only the shopping list. Not included: anyone you hire, a venue, gifts or tips."
+     ],
+     "scrollable": true,
+     "fits": true
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "seeded-next",
+    "ok": true,
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 33
+    },
+    "st": {
+     "found": true,
+     "totalBudget": "(unset)",
+     "n": 1
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "seeded-save",
+    "ok": true,
+    "label": "Plan with $400",
+    "want": 400,
+    "st": {
+     "found": true,
+     "totalBudget": 400,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": "Budget set to $400. Undo",
+     "alert": null,
+     "sample": null,
+     "words": 43
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "seeded-undo",
+    "ok": true,
+    "st": {
+     "found": true,
+     "totalBudget": "",
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "How much do you want to spend?",
+     "budget": true,
+     "choices": [
+      "Just the essentials about $400",
+      "With extras about $550 ✓",
+      "Everything about $900"
+     ],
+     "primary": [
+      "Plan with $550"
+     ],
+     "done": "Undone.",
+     "alert": null,
+     "sample": null,
+     "words": 34
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "seeded-reload",
+    "ok": true,
+    "want": 550,
+    "st": {
+     "found": true,
+     "totalBudget": 550,
+     "n": 1
+    },
+    "s": {
+     "h1": "E2E_TEST_ Rosa’s Harvest Dinner",
+     "sub": "Saturday, December 19 · 25 guests",
+     "q": "Add the location.",
+     "budget": false,
+     "choices": [],
+     "primary": [
+      "Open it in the current app → ../hostv2/"
+     ],
+     "done": null,
+     "alert": null,
+     "sample": null,
+     "words": 38
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTextEx": [],
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ }
+]

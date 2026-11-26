@@ -1,0 +1,58 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "picked-date-waits",
+    "ok": true,
+    "afterPick": "(unset)",
+    "label": "Use Sunday, December 20",
+    "afterUse": "2026-12-20"
+   },
+   {
+    "name": "no-reply-by-clears",
+    "ok": true,
+    "after": null,
+    "answers": "",
+    "question": "replyBy"
+   },
+   {
+    "name": "too-close-no-question",
+    "ok": true,
+    "date": "2026-11-29",
+    "question": null,
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · no reply-by date"
+   }
+  ],
+  "console": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "picked-date-waits",
+    "ok": true,
+    "afterPick": "(unset)",
+    "label": "Use Sunday, December 20",
+    "afterUse": "2026-12-20"
+   },
+   {
+    "name": "no-reply-by-clears",
+    "ok": true,
+    "after": null,
+    "answers": "",
+    "question": "replyBy"
+   },
+   {
+    "name": "too-close-no-question",
+    "ok": true,
+    "date": "2026-11-29",
+    "question": null,
+    "answers": "Your answers about 20 · by name · +1s welcome · kids welcome · no reply-by date"
+   }
+  ],
+  "console": [],
+  "blocked": []
+ }
+]
