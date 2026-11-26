@@ -187,6 +187,16 @@ select.field { appearance: none; -webkit-appearance: none; background-image: lin
 .tablet .view > .lt { margin-top: 0; }
 /* Portrait and split screen: one pane; the sidebar slides in over it. */
 .tablet.compact .app { left: 0; }
+/* CENTERED (owner, 11/26/2026, option B): one column, centered; the back link,
+   the menu button and the pane's button line up with its edges. One edge for
+   all four: max(24px, (width - 680px) / 2). */
+.tablet.compact .view { padding-left: max(24px, calc((100% - 680px) / 2)); padding-right: max(24px, calc((100% - 680px) / 2)); }
+.tablet.compact .view > .navbar { left: calc(max(24px, (100% - 680px) / 2) - 8px); }
+.tablet.compact .action { right: max(24px, calc((100% - 680px) / 2)); }
+.tablet.compact .menubtn { left: calc(max(24px, (100% - 680px) / 2) - 12px + env(safe-area-inset-left, 0px)); }
+/* The guest pushed over it centers its own (560px) column the same way. */
+.tablet.compact .gdetail.pushedpane { padding-left: max(24px, calc((100% - 560px) / 2)); padding-right: max(24px, calc((100% - 560px) / 2)); }
+.tablet.compact .gdetail.pushedpane > .navbar { left: calc(max(24px, (100% - 560px) / 2) - 8px); }
 .tablet.compact .side { transform: translateX(-105%); transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
 .tablet.compact.sideopen .side { transform: none; }
 .sidescrim { display: none; }
