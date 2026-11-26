@@ -29,6 +29,7 @@ import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
 import { downloadCSV } from '@app/lib/download';
 import { LINK_WHY } from './sendKit.jsx';
 import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
+import { getLastSyncTime } from '@app/lib/api/syncState';
 import { questionsWaitingLine } from '@app/lib/guestInbox';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
@@ -338,7 +339,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   // selected guest's group opens, so the selection is in view); null: all closed.
   const [group, setGroup] = useState(undefined);
   const [waiting, setWaiting] = useState(0);
-  useGuestQuestions(ev.id, setWaiting);
+  useGuestQuestions(getLastSyncTime(ev.id) ? ev.id : null, setWaiting);
   const [shareLine, setShareLine] = useState('');
   // SHARE THE LINK: the checked reply link (lib/inviteSend), through the phone's
   // share sheet, else copied. A completed share is the invite going out.

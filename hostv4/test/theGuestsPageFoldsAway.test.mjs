@@ -11,6 +11,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import GuestsPage from '../src/GuestsPage.jsx';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const NAMES = ['Ada Pine', 'Bo Reed', 'Cy Lane', 'Di Moss', 'Ed Park', 'Flo Hart', 'Gus Webb', 'Hal Ruiz', 'Ivy Cole', 'Jo Fenn'];
@@ -76,6 +80,15 @@ describe('Guests folds away', () => {
     const many = { ...answered, guests: Array.from({ length: 21 }, (_, k) => ({ id: 'm' + k, name: 'Guest ' + k, rsvp: '' })) };
     mount(many);
     expect(q('#findguest')).not.toBeNull();
+  });
+  // The live-check session, 11/26/2026: signed out, guest-threads came back 401
+  // as console errors. A plan that never reached an account has no threads to
+  // ask about, so Guests asks only for a plan in an account.
+  it('asks the server for waiting questions only for a plan in an account', () => {
+    const src = readFileSync(path.resolve(here, '../src/GuestsPage.jsx'), 'utf8');
+    expect(src).toMatch(/useGuestQuestions\(getLastSyncTime\(ev\.id\) \? ev\.id : null/);
+    const kit = readFileSync(path.resolve(here, '../../src/lib/guestUpdatesKit.js'), 'utf8');
+    expect(kit).toMatch(/isGuestMessagesApiConfigured\(\) && eventId\) load\(\)/);
   });
   it('on an iPad, the first name still fills the detail pane', () => {
     mount(ten, 'split');
