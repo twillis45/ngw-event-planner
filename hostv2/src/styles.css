@@ -3335,6 +3335,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .optsub{margin-left:auto; font-size:var(--t-meta); color:var(--muted)}
 /* A choice's note under its label ("Covers your plan", the budget question, 11/26/2026). Muted, not green: UX_12 keeps green for done. */
 .optnote{display:block; font-size:var(--t-row-sub); color:var(--muted); font-weight:500}
+/* THE BUDGET QUESTION (owner, 11/26/2026: "As rendered is fine"). Spacing for the
+   one question, its choices and its button, keyed on the block's own hooks. The
+   per-head stays with its figure as a unit. The button's row keeps 16px below it:
+   the attention cue's pulse reaches 15px past the button (outline-offset 12 + 3px
+   width, "THE ATTENTION CUE"), `.editor-slot` clips vertically, and iOS Safari
+   ignores overflow-clip-margin (owner's screenshot of the cut ring). */
+[data-budget-per]{ white-space:nowrap; }
+.optlist[aria-label="Budget"]{ margin-top:var(--sp-4); }
+[data-budget-why]{ margin-top:var(--sp-3); }
+[data-budget-why] > summary{ cursor:pointer; }
+[data-budget-why] > p{ margin:6px 0 0; }
+:has(> [data-budget-plan]){ padding-bottom:var(--sp-4); }
 
 
 

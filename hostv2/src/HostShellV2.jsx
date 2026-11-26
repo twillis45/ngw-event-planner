@@ -10805,10 +10805,10 @@ export default function HostShellV2() {
       const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
       return (
         <AskColumn>
-          <BigValue suffix={(pickedPer || mark) ? <span data-budget-per style={{ whiteSpace: 'nowrap' }}>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
+          <BigValue suffix={(pickedPer || mark) ? <span data-budget-per>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
           {short ? <Grounding>{short}</Grounding> : null}
           {roomsNote}
-          <OptionList ariaLabel="Budget" value={picked} style={{ marginTop: 16 }}
+          <OptionList ariaLabel="Budget" value={picked}
             onPick={(v) => { if (v === 'other') setBudgetChanging(true); else setBudgetPick(v); }}
             options={[
               ...choices.map((c) => ({
@@ -10818,18 +10818,19 @@ export default function HostShellV2() {
               })),
               { value: 'other', label: 'A different amount' },
             ]} />
-          <details className="excl-fold" data-budget-why style={{ marginTop: 12 }}>
-            <summary className="grounding" style={{ cursor: 'pointer' }}>How we got these{excl.length ? ' · ' + notIncludedLine(excl) : ''}</summary>
-            <p className="grounding" style={{ margin: '6px 0 0' }}>{ask.grounding}</p>
-            {excl.length > 0 && <p className="grounding" style={{ margin: '6px 0 0' }}>Not included: {excl.join(' · ')}</p>}
+          <details className="excl-fold" data-budget-why>
+            <summary className="grounding">How we got these{excl.length ? ' · ' + notIncludedLine(excl) : ''}</summary>
+            <p className="grounding">{ask.grounding}</p>
+            {excl.length > 0 && <p className="grounding">Not included: {excl.join(' · ')}</p>}
           </details>
           {/* The button is the last thing in `.editor-slot`, which clips vertically
               (its height animates). The attention cue's pulse reaches 15px below the
               button (outline-offset 12px + 3px width, styles.css "THE ATTENTION CUE"),
               and overflow-clip-margin does not reach iOS Safari (owner's phone,
               11/26/2026: the ring cut off under "Plan with $400"). 16px of real room
-              keeps the whole ring inside the slot. Pinned: theBudgetAskSaysItInFewWords. */}
-          <CtaRow style={{ paddingBottom: 16 }}>
+              keeps the whole ring inside the slot (styles.css, "THE BUDGET QUESTION").
+              Pinned: theBudgetAskSaysItInFewWords. */}
+          <CtaRow>
             <button className="cta" data-budget-plan onClick={() => setB(picked)}>Plan with {fmt(picked)}</button>
           </CtaRow>
         </AskColumn>
