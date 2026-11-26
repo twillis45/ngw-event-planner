@@ -1,4 +1,4 @@
-# Live check f79567de (#295 B2 the day before): Thu Nov 26, 2026, 10:10–10:40 AM EST
+# Live check f79567de (#295 B2 the day before): Thu Nov 26, 2026, 10:10–10:25 AM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read f79567debf5f (deployed 10:01 AM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted (only Sentry). Weather GETs answered locally (rain). Share, clipboard and open stubbed. E2E_TEST_ plans only. Nothing sent.
