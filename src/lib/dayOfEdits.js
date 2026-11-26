@@ -18,6 +18,7 @@ import { rainPlanStatus } from './weather';
 import { parseMin } from './dayAlerts';
 import { clock12 } from './clock';
 import { buildMomentSegment } from './momentLibrary';
+import { isVendorBooked, isHiredVendor } from './workstreams';
 
 /** Today's schedule: the effective run of show; mid-trip, day K's rows only
  *  (dayless rows count as day 1). Done is read from event.rosDone. */
@@ -148,5 +149,38 @@ export function addMomentEdit(event, moment, time) {
   return {
     patch: { ros: [...full, row], rosEdited: true },
     msg: t ? seg.segment + ' is on today’s run at ' + clock12(t) + '.' : seg.segment + ' is on the schedule — give it a time when you know it.',
+  };
+}
+
+/** VENDORS ON THE DAY (B9, 11/26/2026). The booked, hired vendors with an
+ *  arrival time (the ones the alert engine watches), earliest first, each with
+ *  their own answer through the brief link: `answers` is the latest per vendor
+ *  id (hostv2's confirmationByVendor); 'confirmed', or 'flagged' for anything
+ *  else they said, as lib/whoIsConfirmed reads it. */
+export function vendorsToday(event, answers) {
+  const said = (answers && typeof answers === 'object') ? answers : {};
+  return ((event && event.vendors) || [])
+    .filter((v) => v && v.id && String(v.name || '').trim() && v.arrivalTime && isHiredVendor(v) && isVendorBooked(v))
+    .map((v) => {
+      const a = said[String(v.id)];
+      const st = a && String(a.state || '').trim();
+      return { id: v.id, name: v.name, category: v.category || '', time: v.arrivalTime, status: v.arrivalStatus || null,
+        phone: v.phone || '', answer: st ? (st === 'confirmed' ? 'confirmed' : 'flagged') : null };
+    })
+    .sort((a, b) => (parseMin(a.time) ?? 9999) - (parseMin(b.time) ?? 9999));
+}
+
+/** A vendor arrived (or is running late): vendor.arrivalStatus, the field the
+ *  day's alerts read, so "X hasn't arrived" clears once they're here. The same
+ *  status again undoes it. hostv2 had no writer for it; the legacy app did. */
+export function vendorArrivalEdit(event, vendorId, status) {
+  const list = (event && event.vendors) || [];
+  const v = list.find((x) => x && x.id === vendorId);
+  if (!v) return null;
+  const next = v.arrivalStatus === status ? null : status;
+  const name = String(v.name || 'They').trim();
+  return {
+    patch: { vendors: list.map((x) => (x && x.id === vendorId ? { ...x, arrivalStatus: next } : x)) },
+    msg: next === 'arrived' ? name + ' is here.' : next === 'delayed' ? name + ' is running late.' : name + ' isn’t marked yet.',
   };
 }
