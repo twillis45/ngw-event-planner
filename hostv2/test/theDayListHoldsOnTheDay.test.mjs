@@ -25,7 +25,10 @@ test('one renderer for the day-of list and one for the moment', () => {
 });
 test('on the day: the list ("Before guests arrive") and the moment', () => {
   // until the doors open; once the event is under way the timeline leads
-  expect(live).toContain("{!eventLive && dayOfCard('Before guests arrive')}");
+  expect(live).toContain("{!doorsOpen && dayOfCard('Before guests arrive')}");
+  // Not eventLive: that is true all day, so the list never showed (e2e
+  // theListShowsBeforeTheDoorsOpen drives the screen with the clock set).
+  expect(live).not.toContain("{!eventLive && dayOfCard(");
   expect(live).toContain('momentSuggestion()');
 });
 test('before the day: the list ("Before the big day") and the moment', () => {
