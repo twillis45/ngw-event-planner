@@ -17,7 +17,7 @@ const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite:
 import UpdatesPage from './UpdatesPage.jsx';
 import DayPage, { RunPage, CounterMode, CrewPage } from './DayPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
-import { sourcedBudget } from '@app/lib/playbooks';
+import { budgetChoices } from '@app/lib/budgetChoices';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
 import { recordSaveResult, getLastSyncTime } from '@app/lib/api/syncState';
 import { eventPlan } from '@app/CommandCenter';
@@ -66,49 +66,41 @@ function usePlanRows(ev) {
 }
 
 const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
-const TIER = { essentials: 'Just the essentials', extras: 'With extras', everything: 'Everything' };
-const shortDay = (iso) => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'date unknown'; };
 
-// THE BUDGET QUESTION (owner, 11/25/2026: "Build from cited"). Every figure is
-// sourcedBudget's: cited shopping prices only, each choice adding to the one
-// before. How they were built is one tap down, never on the question screen.
-function BudgetChoices({ sb, pick, setPick }) {
+// THE BUDGET QUESTION (owner, 11/25/2026; one answer with hostv2 since
+// 11/26/2026, step 0 of bringing v4 into hostv2). The choices are hostv2's own
+// (lib/budgetChoices): Lean, Mid-range, All-out, and "Covers your plan" when the
+// plan's lines cost more than the middle; the figure hostv2's ask lights is
+// picked, and the picked one carries its per-head (T2: the chosen figure says
+// what it is a head; on every row it ran the screen past UX_12's 40 words). How they were reached is one tap down.
+function BudgetChoices({ bc, pick, setPick }) {
   return (
     <div className="grp" role="radiogroup" aria-label="Budget">
-      {sb.steps.map((t) => (
-        <button key={t.key} className="row choice" role="radio" aria-checked={pick === t.mid} onClick={() => setPick(t.mid)}>
+      {bc.choices.map((c) => (
+        <button key={c.key} className="row choice" role="radio" aria-checked={pick === c.amount} onClick={() => setPick(c.amount)}>
           <span className="radio" aria-hidden="true" />
-          <span>{TIER[t.key]}</span>
-          <span className="val">about {money(t.mid)}</span>
+          <span>{c.label}</span>
+          <span className="val">{money(c.amount)}{pick === c.amount && c.perHead ? <small>{c.perHead}</small> : null}</span>
         </button>
       ))}
     </div>
   );
 }
 
-function HowWeGotThese({ sb, type, onDone }) {
+function HowWeGotThese({ bc, onDone }) {
   return (
     <div className="scrim" onClick={onDone}>
       <div className="sheet" role="dialog" aria-label="How we got these" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>How we got these</h2><button className="link" onClick={onDone}>Done</button></div>
-        <p className="fine">From our {String(type || 'party').toLowerCase()} shopping list for {sb.guests} guests. Every price has a published source; each choice adds to the one before.</p>
-        {sb.steps.map((t) => (
-          <section key={t.key}>
-            <div className="sh"><h3>{TIER[t.key]}</h3><span>{money(t.low)}–{money(t.high)}</span></div>
-            <div className="grp">
-              {t.adds.map((l) => (
-                <div className="row" key={l.id}>
-                  <span className="nm">{l.item}<small>{l.sources.length} {l.sources.length === 1 ? 'source' : 'sources'} · checked {shortDay(l.lastVerified)}</small></span>
-                  <span className="val">{money(l.low)}–{money(l.high)}</span>
-                </div>
-              ))}
-            </div>
+        <p className="fine" data-why-grounding>{bc.ask.grounding}</p>
+        <p className="fine">Lean, Mid-range and All-out are the low, middle and high of our estimate for this kind of event with {bc.guests} guests.{bc.mustMark ? ' An estimate, not a quote.' : ''}</p>
+        {bc.notIncluded.length > 0 && (
+          <section>
+            <div className="sh"><h3>Not included</h3></div>
+            <div className="grp">{bc.notIncluded.map((l) => <div className="row" key={l}><span className="nm">{l}</span></div>)}</div>
           </section>
-        ))}
-        {sb.stale.length > 0 && <p className="fine warn" data-stale>{sb.stale.length === 1 ? 'One price was' : sb.stale.length + ' prices were'} last checked more than four weeks ago.</p>}
-        {sb.leftOut.length > 0 && <p className="fine">Left out, no published price yet: {sb.leftOut.map((l) => l.item).join(', ')}.</p>}
-        <p className="fine">Only the shopping list. Not included: anyone you hire, a venue, gifts or tips.</p>
+        )}
       </div>
     </div>
   );
@@ -154,8 +146,8 @@ export default function HostShellV4() {
   const firstOpen = askRow >= 0 ? askRow : rows.findIndex((r) => cue && r.id === cue.id);
   // The sample is not in the current app, so its button opens the app, not "it".
   const openInCurrent = <a className="primary" href="../hostv2/">{sample ? 'Open the current app' : 'Open it in the current app'}</a>;
-  const sb = useMemo(() => (next && next.budget ? sourcedBudget(ev) : null), [ev, next]);
-  const tierPick = sb ? (pick != null ? pick : (sb.steps[1] || sb.steps[0]).mid) : null;
+  const sb = useMemo(() => (next && next.budget ? budgetChoices(ev) : null), [ev, next]);
+  const tierPick = sb ? (pick != null ? pick : sb.cta.lit) : null;
 
   // SAVE: one edit to one saved event, through the function hostv2 saves with
   // (patchSavedEvent). A plan already in an account also goes to the account,
@@ -263,7 +255,7 @@ export default function HostShellV4() {
         {tab === 'next' && sb && (
           <section data-next data-budget>
             <h2 className="q">How much do you want to spend?</h2>
-            <BudgetChoices sb={sb} pick={tierPick} setPick={setPick} />
+            <BudgetChoices bc={sb} pick={tierPick} setPick={setPick} />
             <p className="fine"><button className="link" onClick={() => setWhy(true)}>How we got these</button></p>
           </section>
         )}
@@ -292,7 +284,7 @@ export default function HostShellV4() {
       {/* Never a dead end (live check, 11/25/2026): the sample said "opens in the current app" with nothing to tap. */}
       {tab === 'next' && !sb && next && next.guests && <div className="action"><button className="primary" onClick={() => push('guests')}>Open Guests</button></div>}
       {tab === 'next' && !sb && next && !next.guests && <div className="action">{openInCurrent}</div>}
-      {why && sb && <HowWeGotThese sb={sb} type={ev.type} onDone={() => setWhy(false)} />}
+      {why && sb && <HowWeGotThese bc={sb} onDone={() => setWhy(false)} />}
 
       {tabbar}
     </div>
