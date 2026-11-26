@@ -12,7 +12,7 @@
 // nudges, locking the count, updates) says so and opens the current app.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -42,7 +42,13 @@ export function guestQuestions(ev) {
   // Unset or cleared (Undo writes null back) is unanswered: the question returns.
   if (ev.plusOnePolicy == null) q.push('plus');
   if (ev.kidsPolicy == null) q.push('kids');
-  if (!String(ev.rsvpDeadline || '').trim()) q.push('replyBy');
+  // Too close for an honest reply-by date (owner's Thanksgiving, 11/25/2026:
+  // the party was the next day), the question has no answer, so it isn't asked.
+  if (!String(ev.rsvpDeadline || '').trim()) {
+    let close = false;
+    try { const p = proposeReplyBy(ev); close = !!(p && p.tooClose); } catch { close = false; }
+    if (!close) q.push('replyBy');
+  }
   return q;
 }
 
@@ -89,6 +95,8 @@ export function QuestionCard({ k, ev, count, setCount, save }) {
 // The proposal's reasoning is one tap down (UX_12 §1.4), so the screen stays a question.
 function ReplyByCard({ ev, save }) {
   const [why, setWhy] = useState(false);
+  const [picked, setPicked] = useState('');
+  const problem = picked ? replyByProblem(ev, picked) : null;
   {
     let prop = null;
     try { prop = proposeReplyBy(ev); } catch { prop = null; }
@@ -100,10 +108,18 @@ function ReplyByCard({ ev, save }) {
             <span className="nm">{longDay(prop.iso)}<small>Our suggestion</small>{prop.holiday && <small className="hol" data-holiday>That’s {prop.holiday}. Keep it, or pick another date.</small>}</span>{chev}
           </button>
         )}
+        {/* iPad's picker changes the field as soon as it is touched, so a pick
+            waits for a tap on "Use <date>" (owner, 11/25/2026: the date kept
+            coming back after Undo). */}
         <label className="row">Pick another date
-          <input type="date" className="datein" aria-label="Reply-by date" onChange={(e) => e.target.value && save(replyByEdit(e.target.value))} />
+          <input type="date" className="datein" aria-label="Reply-by date" value={picked} onChange={(e) => setPicked(e.target.value)} />
         </label>
+        {picked && !problem && (
+          <button className="row go" onClick={() => save(replyByEdit(picked))}><span className="nm">Use {longDay(picked)}</span>{chev}</button>
+        )}
+        {String(ev.rsvpDeadline || '').trim() && <button className="row go" onClick={() => save(clearReplyByEdit())}>No reply-by date</button>}
       </div>
+      {picked && problem && <p className="fine" data-problem>{problem}</p>}
       {prop && prop.tooClose && <p className="fine">{prop.why}</p>}
       {prop && !prop.tooClose && (why ? <p className="fine" data-why>{prop.why}</p> : <p className="fine"><button className="link" onClick={() => setWhy(true)}>Why this date</button></p>)}
     </>);
@@ -115,8 +131,9 @@ const ANSWER = {
   mode: (ev) => (ev.guestMode === 'count' ? 'by headcount' : 'by name'),
   plus: (ev) => (ev.plusOnePolicy === 'plus_one_ok' ? '+1s welcome' : 'no +1s'),
   kids: (ev) => (ev.kidsPolicy === 'kids_welcome' ? 'kids welcome' : 'adults only'),
-  replyBy: (ev) => 'replies by ' + new Date(ev.rsvpDeadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  replyBy: (ev) => (String(ev.rsvpDeadline || '').trim() ? 'replies by ' + new Date(ev.rsvpDeadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'no reply-by date'),
 };
+export const answersLine = (ev) => Object.keys(ANSWER).map((k) => ANSWER[k](ev)).join(' · ');
 
 /** Your answers: every question again, in a sheet, to change one. */
 function AnswersSheet({ ev, save, onDone }) {
@@ -364,7 +381,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
       {!qs.length && (
-        <div className="grp"><button className="row go" data-answers onClick={() => setAnswers(true)}><span className="nm">Your answers<small>{Object.keys(ANSWER).map((k) => ANSWER[k](ev)).join(' · ')}</small></span>{chev}</button></div>
+        <div className="grp"><button className="row go" data-answers onClick={() => setAnswers(true)}><span className="nm">Your answers<small>{answersLine(ev)}</small></span>{chev}</button></div>
       )}
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
 
