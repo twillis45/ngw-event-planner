@@ -4,10 +4,10 @@
 // the current app; nothing here pretends.
 import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 
-export default function Sidebar({ ev, date, tabs, here, onTab, onGuests, onClose }) {
+export default function Sidebar({ ev, date, tabs, here, onTab, onGuests, onClose, hidden }) {
   const coming = confirmedRsvpCovers(ev);
   return (
-    <aside className="side" aria-label="Places">
+    <aside className="side" aria-label="Places" inert={hidden || undefined}>
       <div className="sidehead">
         <h1>{ev.name}</h1>
         <p className="sub">{date}{Number(ev.guestEstimate) ? ' · ' + ev.guestEstimate + ' guests' : ''}</p>
