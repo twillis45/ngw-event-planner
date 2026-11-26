@@ -180,7 +180,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -363,7 +363,7 @@ import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draf
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState, nominatimToSuggestion } from '@app/lib/addressSuggest';
 import { aOccasion } from '@app/lib/occasionWords';
-import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
+import { stepToggleEdit } from '@app/lib/stepToggle';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
@@ -375,7 +375,7 @@ import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor, actionRoute, upNextRoute } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
-import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
+import { riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { urgencyOf } from '@app/lib/urgency';
 import { COUNT_LABELS } from '@app/lib/itemCounts';
@@ -7697,53 +7697,14 @@ export default function HostShellV2() {
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
   // catching up genuinely closes the "Catch up on overdue planning" card.
+  // ONE TICK FOR A STEP (B2, 11/26/2026): lib/stepToggle, the same tick
+  // hostv4's day-before "Tonight" calls. It flips the step, marks what a shop
+  // step names bought (raw feeds truth; unchecking never un-buys), records the
+  // fact a tick stands for (factsATickRecords), and says when a send step sent
+  // nothing; its message counts what is still open the way the checklist does.
   const toggleTask = (i) => {
-    const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
-    // Counted the way the checklist counts (single-source audit, 11/18/2026):
-    // a step the plan already proves is not "still open" in the toast either.
-    const open = tl.filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
-    // RAW FEEDS TRUTH, both directions: checking a buy/shop step is the host
-    // asserting the purchases happened — write the raw layer (foodGot) so
-    // "Still to get", totals, and the day-before brief all agree. Unchecking
-    // never un-buys (asymmetric on purpose).
-    let extra = {};
-    let boughtNote = '';
-    // ONLY WHAT IT NAMES (50-host run, 11/16/2026): "Buy the turkey" used to mark
-    // the whole list bought. lib/shopTaskItems decides: named items, the whole
-    // list for a general shopping step, or nothing.
-    const buys = tl[i].done ? itemsBoughtByTask(tl[i].task, foodPlan && foodPlan.list) : { scope: 'none', ids: [] };
-    if (buys.scope !== 'none') {
-      // UNGATED (matches toggleGot, 555e770): checking the shop step asserts
-      // every open food line was bought. Price stays optional — an unpriced line
-      // is marked bought at its honest estimate, never withheld. We surface how
-      // many landed firm (host-added or a real locked price) vs still an estimate
-      // — the same firm test hostSpending uses — so the host stays informed and
-      // "spent" carries its estimated portion openly rather than pretending.
-      const got = { ...(event.foodGot || {}) };
-      const real = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
-      let n = 0, firm = 0;
-      ((foodPlan && foodPlan.list) || []).forEach(it => {
-        if (!it || it.skipped || got[it.id] || !buys.ids.includes(it.id)) return;
-        got[it.id] = true; n += 1;
-        if (it.added || (it.locked != null && real[it.id])) firm += 1;
-      });
-      if (n > 0) extra = { foodGot: got };
-      if (n > 0) {
-        const est = n - firm;
-        boughtNote = ' ' + n + ' item' + (n === 1 ? '' : 's') + ' marked bought'
-          + (est > 0 ? ' (' + est + ' at an estimate — tap any to add the real price).' : '.');
-      }
-    }
-    // A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): "Send the invite"
-    // writes invitesSentAt and "Collect dietary needs" writes dietaryNoted, so
-    // the guest and food sheets agree with the checklist. taskEngine decides,
-    // from the same rule that ticks the step when the section is done first.
-    // Checking only; unchecking never un-sends (asymmetric, like the buys above).
-    if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
-    // A tick on a send step sends nothing and records no send — say so (cause 1).
-    const sentNothing = tl[i].done && stepIsASend(event, tl[i]) ? ' Nothing was sent from here.' : '';
-    patchEvent({ timeline: tl, ...extra },
-      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote + sentNothing);
+    const ed = stepToggleEdit(event, i, foodPlan && foodPlan.list);
+    if (ed) patchEvent(ed.patch, ed.msg);
   };
 
   // No timeline yet → draft one from the playbook's REAL task list, honoring
