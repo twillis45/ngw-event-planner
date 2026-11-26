@@ -71,11 +71,11 @@ export function phoneProblem(v) {
   if (isValidPhone(v)) return null;
   const d = normalizePhone(v);
   const sig = d[0] === '1' ? d.length - 1 : d.length;
-  return sig < 10 ? 'That number is missing digits. US numbers have 10.' : 'That number has too many digits. US numbers have 10.';
+  return sig < 10 ? 'Needs 10 digits.' : 'Too many digits.';
 }
 
 export function emailProblem(v) {
-  return isMalformedEmail(v) ? 'That email doesn’t look right. It needs a name, an @ and a domain, like name@example.com.' : null;
+  return isMalformedEmail(v) ? 'Needs a full email, like name@example.com.' : null;
 }
 
 export default { normalizePhone, formatPhoneUS, isValidPhone, isIncompletePhone, isValidEmail, isMalformedEmail, cleanEmail, phoneProblem, emailProblem };

@@ -16,10 +16,10 @@ describe('a phone says what is wrong', () => {
     for (const v of ['', '(410) 555-1234', '1 (410) 555-1234']) expect(phoneProblem(v)).toBeNull();
   });
   it('a short number asks for the rest', () => {
-    expect(phoneProblem('(410) 555-12')).toBe('That number is missing digits. US numbers have 10.');
+    expect(phoneProblem('(410) 555-12')).toBe('Needs 10 digits.');
   });
   it('a long number says so', () => {
-    expect(phoneProblem('410555123456')).toBe('That number has too many digits. US numbers have 10.');
+    expect(phoneProblem('410555123456')).toBe('Too many digits.');
   });
 });
 
@@ -31,6 +31,6 @@ describe('an email is saved clean and says what is wrong', () => {
     for (const v of ['', 'ana@example.com', 'a.b+c@mail.example.org']) expect(emailProblem(v)).toBeNull();
   });
   it.each(['ana', 'ana@', 'ana@example', 'ana example@x.com', '@example.com'])('%s is flagged', (v) => {
-    expect(emailProblem(v)).toBe('That email doesn’t look right. It needs a name, an @ and a domain, like name@example.com.');
+    expect(emailProblem(v)).toBe('Needs a full email, like name@example.com.');
   });
 });

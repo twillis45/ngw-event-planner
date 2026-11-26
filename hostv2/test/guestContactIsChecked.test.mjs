@@ -35,7 +35,7 @@ describe('hostv2 guest contact', () => {
     expect(input().value).toBe('(410) 55');
     expect(problem('phone')).toBeNull();
     leave();
-    expect(problem('phone').textContent).toMatch(/missing digits/);
+    expect(problem('phone').textContent).toMatch(/Needs 10 digits/);
     expect(input().getAttribute('aria-invalid')).toBe('true');
     type('4105551234');
     expect(input().value).toBe('(410) 555-1234');
@@ -45,7 +45,7 @@ describe('hostv2 guest contact', () => {
   it('a bad email shows a line; a good one is written trimmed', () => {
     mount('email');
     type('ana@example'); leave();
-    expect(problem('email').textContent).toMatch(/doesn’t look right/);
+    expect(problem('email').textContent).toMatch(/Needs a full email/);
     type('  ana@example.com '); leave();
     expect(writes[writes.length - 1]).toBe('ana@example.com');
     expect(problem('email')).toBeNull();

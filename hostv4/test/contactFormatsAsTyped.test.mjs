@@ -37,14 +37,14 @@ describe('contact formats as it is typed and says what is wrong', () => {
     type(p, '41055');
     expect(host.querySelector('[data-contact-problem="phone"]')).toBeNull();
     leave(p);
-    expect(host.querySelector('[data-contact-problem="phone"]').textContent).toMatch(/missing digits/);
+    expect(host.querySelector('[data-contact-problem="phone"]').textContent).toMatch(/Needs 10 digits/);
     expect(p.getAttribute('aria-invalid')).toBe('true');
   });
   it('a bad email says so; a good one is saved trimmed', () => {
     const e = input('Email');
     type(e, 'ana@example');
     leave(e);
-    expect(host.querySelector('[data-contact-problem="email"]').textContent).toMatch(/doesn’t look right/);
+    expect(host.querySelector('[data-contact-problem="email"]').textContent).toMatch(/Needs a full email/);
     type(e, '  ana@example.com ');
     leave(e);
     expect(lastGuest().email).toBe('ana@example.com');
