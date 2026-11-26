@@ -24136,7 +24136,7 @@ export default function HostShellV2() {
                           : doneN === 0
                             ? 'Nothing checked yet — check things off and your plan keeps up.'
                             : inferredN
-                              ? `${openN} still open · ${inferredN} already handled by your plan — tap to confirm.`
+                              ? `${openN - inferredN} still open · ${inferredN} already handled by your plan — tap to confirm.`
                               : `${openN} still open — check things off and your plan keeps up.`}
                       />
                     );

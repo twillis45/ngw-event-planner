@@ -174,7 +174,12 @@ export function taskWasReachable(task, event) {
  * suppresses overdue until the snooze date passes — previously App.js applied this and
  * the lib didn't, so a deferred item was hidden on one surface and counted on another.
  */
-export function taskIsOverdue(task, event, now) {
+// OPEN PAST ITS WINDOW (owner, 11/26/2026: "App is lying somewhere"): not done,
+// not handled by the plan, not snoozed, and past its due date — whether or not
+// the plan existed back then. What The Day counts as "still open". A step that
+// was due before the plan was made is still undone; it is just not the host's
+// fault, which is the one thing taskIsOverdue adds below.
+export function taskIsOpenPastWindow(task, event, now) {
   if (!task || task.done) return false;
   // ONE done-truth (W12 closed, 2026-07-22): a task the event's own state proves
   // handled (effectiveDone — booked venue, paid balance) cannot be overdue, even
@@ -191,8 +196,11 @@ export function taskIsOverdue(task, event, now) {
   if (planningStepAfterTheDay(task, event, now)) return false;
   const due = taskDueInDays(task, event, now);
   if (due == null) return false;
-  if (due >= 0) return false;
-  return taskWasReachable(task, event);
+  return due < 0;
+}
+
+export function taskIsOverdue(task, event, now) {
+  return taskIsOpenPastWindow(task, event, now) && taskWasReachable(task, event);
 }
 
 /**

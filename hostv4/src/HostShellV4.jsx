@@ -10,6 +10,10 @@ import GuestsPage from './GuestsPage.jsx';
 import Sidebar from './Sidebar.jsx';
 import { useLayout } from './layout.js';
 import InvitePage from './InvitePage.jsx';
+import InviteDesignPage from './InviteDesignPage.jsx';
+
+// Pushed pages, by id: their title and the name of the link back to them.
+const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page' };
 import UpdatesPage from './UpdatesPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
@@ -216,16 +220,18 @@ export default function HostShellV4() {
   ));
 
   if (page) {
-    const from = stack.length > 1 ? 'Guests' : tab === 'plan' ? 'Your plan' : 'Next step';
+    // The link back names the page it goes to (one table names both).
+    const from = stack.length > 1 ? PAGE_TITLE[stack[stack.length - 2]] : tab === 'plan' ? 'Your plan' : 'Next step';
     const navbar = (title, acts) => (<>
       <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
       {acts ? <div className="ltrow"><h1 className="lt">{title}</h1>{acts}</div> : <h1 className="lt">{title}</h1>}
     </>);
     return frame(
       <div className="app pushed" key={page}>
-        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={(acts) => navbar('Guests', acts)} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
-        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar('Updates and questions')} status={status} />}
-        {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={(acts) => navbar(PAGE_TITLE.guests, acts)} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
+        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar(PAGE_TITLE.updates)} status={status} />}
+        {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.invite)} status={status} onDesign={() => push('invite-design')} />}
+        {page === 'invite-design' && <InviteDesignPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE['invite-design'])} status={status} />}
         {tabbar}
       </div>
     );
