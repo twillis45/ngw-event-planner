@@ -12,7 +12,7 @@
 // nudges, locking the count, updates) says so and opens the current app.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, listToggleEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -21,6 +21,7 @@ import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { rsvpState } from '@app/lib/rsvp';
 import { filterGuestsByName } from '@app/lib/seatingPlan';
 import { proposeReplyBy } from '@app/lib/replyBy';
+import { ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
 import { nudgeRecipients, nudgeCount, wasInvited } from '@app/lib/replyNudge';
 import NudgeSheet from './NudgeSheet.jsx';
 import LockSheet from './LockSheet.jsx';
@@ -176,6 +177,11 @@ function Field({ label, value, onSave, type = 'text', placeholder, invalid, form
   );
 }
 
+function Toggles({ label, items, on, onTap }) {
+  const set = Array.isArray(on) ? on : [];
+  return <div className="chips wrap" role="group" aria-label={label}>{items.map((x) => <button key={x} aria-pressed={set.includes(x)} onClick={() => onTap(x)}>{x}</button>)}</div>;
+}
+
 function MealPick({ label, value, onPick }) {
   const v = String(value || '—');
   const opts = MEAL_CHOICES.includes(v) ? MEAL_CHOICES : [...MEAL_CHOICES, v];
@@ -190,7 +196,7 @@ function MealPick({ label, value, onPick }) {
 // the ones hostv2's guest editor saves: reply, meal and needs, their +1 (when
 // plus-ones are welcome), children (when kids are welcome), how to reach them,
 // "I told them myself" (a record only), remove.
-function GuestDetail({ ev, g, i, save, onDone, keys }) {
+export function GuestDetail({ ev, g, i, save, onDone, keys }) {
   const r = rsvpState(g);
   const name = String(g.name || '').trim();
   const first = name.split(/\s+/)[0] || 'them';
@@ -206,7 +212,13 @@ function GuestDetail({ ev, g, i, save, onDone, keys }) {
         </div>
         <h3 className="lbl">Meal</h3>
         <MealPick label={'Meal for ' + name} value={g.meal} onPick={(m) => save(mealEdit(ev, i, 'meal', m, name))} />
-        <Field label="Dietary needs" placeholder="Dietary needs, if any" value={g.needs} onSave={(v) => field({ needs: v })} />
+        {/* Diet and allergies asked apart, from the guest form's own lists
+            (owner, 11/25/2026); the free text is for anything else. */}
+        <h3 className="lbl">Diet</h3>
+        <Toggles label="Diet" items={DIET_RULES} on={g.diets} onTap={(d) => save(listToggleEdit(ev, i, 'diets', d, name))} />
+        <h3 className="lbl">Allergies</h3>
+        <Toggles label="Allergies" items={ALLERGENS} on={g.allergens} onTap={(a) => save(listToggleEdit(ev, i, 'allergens', a, name))} />
+        <Field label="Other needs" placeholder="Anything else, if any" value={g.needs} onSave={(v) => field({ needs: v })} />
         {plusOk && (<>
           <h3 className="lbl">Their +1</h3>
           <Field label="Plus one name" placeholder="Their +1’s name, if any" value={g.plusOne} onSave={(v) => field({ plusOne: v })} />
