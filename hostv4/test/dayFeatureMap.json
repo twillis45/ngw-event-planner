@@ -79,9 +79,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "draftParkingInstructions"
       },
-      "home": "planned",
-      "where": "Tell your guests sheet",
-      "batch": "B4 tell guests"
+      "home": "built",
+      "where": "The Day · Tell your guests · Parking note",
+      "selector": "data-tell-parking"
     },
     {
       "id": "guest-brief",
@@ -90,9 +90,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "draftGuestBrief"
       },
-      "home": "planned",
-      "where": "Tell your guests sheet",
-      "batch": "B4 tell guests"
+      "home": "built",
+      "where": "The Day · Tell your guests · Send the details (with the reply link)",
+      "selector": "data-tell-brief"
     },
     {
       "id": "vendor-brief",
