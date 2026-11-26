@@ -1,5 +1,11 @@
 # Where We Are -- live status board
 
+## November 26, 2026 (Thanksgiving, after midnight) — the path comes back, the column centers, and The Day is checked for every type
+
+The owner looked at the folded Guests page and said we had condensed too far, so the steps came back: "Your guests, start to finish", every step on the page with the current one lit, and the lit step computed from the same place as the bottom button so the two can never disagree. A rotation pass across thirteen iOS and Android devices found the iPad-upright column pinned left with up to 300 pixels empty beside it; he chose to center it, and the back link and button now sit on its edges. A live check found signed-out pages asking the server for things it could only refuse, so the API layer now answers "signed out" itself; the first version of that broke the test build, which has no account system, and was narrowed to builds that do. Phone and email now format as they're typed and say plainly what's wrong, in both versions.
+
+Then, on Thanksgiving morning, he asked where the photo moments and the drinking-safety notes had gone. Measured, the morning's checklist had never been shown on the morning itself, most event types had no moments of their own, no rides-home check, and no grease-fire line. He asked for rules rather than holiday patches, so each now reads the plan: what it serves, whether the host cooks, what its own playbook says matters. That change (#281) is built, tested across all 47 types, and waiting for his look at the renders.
+
 ## November 26, 2026 — hostv4 on the iPad, and the owner's own iPad sets the fixes
 
 hostv4 learned the iPad: three panes side by side in landscape, one at a time in portrait, with keyboard shortcuts. Then the owner used it on his own iPad for a Thanksgiving the next day, and each thing he hit became a fix the same evening. A reply-by date that came back after Undo turned out to be the iPad's date picker saving on touch, and a party too close for any honest reply-by date; both are handled now. Hints in the reply boxes that looked like answers were rewritten in both shells, and the host's replies are now outlined so they read apart from a guest's. Diet and allergies became two separate pick-lists, from one list the guest's form uses too.
