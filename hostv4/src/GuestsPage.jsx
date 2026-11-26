@@ -179,29 +179,65 @@ function AnswersSheet({ ev, save, onDone }) {
 }
 
 /** A row that follows the finger: right past 90px marks coming, left removes. Taps open the guest. */
-function GuestRow({ g, onOpen, onComing, onRemove, selected }) {
+// SWIPE DOES THE REST (owner, 11/26/2026), the iOS Mail way. Right reveals
+// Coming and Maybe; a full swipe right does Coming. Left reveals Can't make it,
+// No reply and Remove; a full swipe left does Can't make it, so Remove always
+// takes a deliberate tap (owner chose this; Remove keeps its Undo). One row is
+// open at a time (the page holds which); a tap closes it. The axis locks to
+// the way the drag starts, so scrolling never reveals anything. The same
+// actions are on the guest sheet and the iPad's Y/M/X keys.
+const OPEN_AT = 60; const FULL_AT = 200; const BTN = 84;
+function GuestRow({ g, onOpen, onReply, onRemove, selected, open, setOpen }) {
   const ref = useRef(null); const st = useRef(null);
-  const set = (x, anim) => { const el = ref.current; if (!el) return; el.style.transition = anim ? 'transform .25s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'; el.style.transform = x ? 'translateX(' + x + 'px)' : ''; };
-  const down = (e) => { st.current = { x: e.clientX, y: e.clientY, dx: 0, axis: null, t: Date.now() }; };
+  const name = String(g.name || '').trim();
+  const rightW = BTN * 2; const leftW = BTN * 3;
+  const rest = open === 'right' ? rightW : open === 'left' ? -leftW : 0;
+  // Only the set on the side the row moves toward is shown, so the other set
+  // never shows through (seen in the first render).
+  const set = (x, anim) => {
+    const el = ref.current; if (!el) return;
+    el.style.transition = anim ? 'transform .25s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'; el.style.transform = x ? 'translateX(' + x + 'px)' : '';
+    if (el.parentNode) el.parentNode.dataset.dir = x > 0 ? 'right' : x < 0 ? 'left' : '';
+  };
+  useEffect(() => { set(rest, true); }, [rest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const down = (e) => { st.current = { x: e.clientX, y: e.clientY, dx: 0, axis: null }; };
   const move = (e) => {
     const s = st.current; if (!s) return;
     const dx = e.clientX - s.x; const dy = e.clientY - s.y;
     if (!s.axis && Math.hypot(dx, dy) > 8) s.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; // locks to the axis it starts on
-    if (s.axis === 'x') { s.dx = dx; set(dx, false); }
+    if (s.axis === 'x') { s.dx = dx; set(rest + dx, false); }
   };
   const up = () => {
     const s = st.current; st.current = null; if (!s) return;
-    const flick = Math.abs(s.dx) > 30 && Date.now() - s.t < 200;
-    if (s.axis === 'x' && (s.dx > 90 || (flick && s.dx > 0))) { set(0, true); onComing(); return; }
-    if (s.axis === 'x' && (s.dx < -90 || (flick && s.dx < 0))) { set(0, true); onRemove(); return; }
-    set(0, true);
-    if (!s.axis) onOpen();
+    const x = rest + s.dx;
+    if (s.axis === 'x') {
+      // From a closed row a long swipe acts; from an open one it takes 40px past
+      // the buttons, so nudging an open row never acts by accident.
+      const fullRight = open === 'right' ? rightW + 40 : FULL_AT;
+      const fullLeft = open === 'left' ? -(leftW + 40) : -FULL_AT;
+      if (x >= fullRight) { setOpen(null); set(0, true); onReply('Yes'); return; }
+      if (x <= fullLeft) { setOpen(null); set(0, true); onReply('No'); return; }
+      const side = x > OPEN_AT ? 'right' : x < -OPEN_AT ? 'left' : null;
+      setOpen(side); set(side === 'right' ? rightW : side === 'left' ? -leftW : 0, true);
+      return;
+    }
+    if (!s.axis) { if (open) { setOpen(null); set(0, true); } else onOpen(); }
   };
+  const act = (fn) => () => { setOpen(null); set(0, true); fn(); };
   const r = rsvpState(g);
+  const hidden = (side) => open !== side;
   return (
     <div className="swipe">
-      <span className="under ok" aria-hidden="true">Coming</span><span className="under rm" aria-hidden="true">Remove</span>
-      <button ref={ref} className="row guest" data-guest={g.id} aria-selected={selected || undefined} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { st.current = null; set(0, true); }}
+      <div className="acts right" aria-hidden={hidden('right') || undefined}>
+        <button tabIndex={hidden('right') ? -1 : 0} className="a ok" aria-label={'Mark ' + name + ' coming'} onClick={act(() => onReply('Yes'))}>Coming</button>
+        <button tabIndex={hidden('right') ? -1 : 0} className="a maybe" aria-label={'Mark ' + name + ' maybe'} onClick={act(() => onReply('Maybe'))}>Maybe</button>
+      </div>
+      <div className="acts left" aria-hidden={hidden('left') || undefined}>
+        <button tabIndex={hidden('left') ? -1 : 0} className="a no" aria-label={'Mark ' + name + ' can’t make it'} onClick={act(() => onReply('No'))}>Can’t make it</button>
+        <button tabIndex={hidden('left') ? -1 : 0} className="a none" aria-label={'Mark ' + name + ' no reply'} onClick={act(() => onReply(''))}>No reply</button>
+        <button tabIndex={hidden('left') ? -1 : 0} className="a rm" aria-label={'Remove ' + name} onClick={act(onRemove)}>Remove</button>
+      </div>
+      <button ref={ref} className="row guest" data-guest={g.id} aria-selected={selected || undefined} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { st.current = null; set(rest, true); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
         <span>{g.name}</span><span className={'val' + (r === 'yes' ? ' ok' : '')}>{REPLY[r]}</span>
       </button>
@@ -343,6 +379,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [group, setGroupState] = useState(() => readOpenGroup(ev.id));
   const setGroup = (k) => { setGroupState(k); writeOpenGroup(ev.id, k); };
   const [waiting, setWaiting] = useState(0);
+  const [swiped, setSwiped] = useState(null); // the one row swiped open: { id, side }
   useGuestQuestions(getLastSyncTime(ev.id) ? ev.id : null, setWaiting);
   const [shareLine, setShareLine] = useState('');
   // SHARE THE LINK: the checked reply link (lib/inviteSend), through the phone's
@@ -441,7 +478,8 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       : <button className="primary" onClick={action.go}>{action.label}</button>}</div>;
   const row = (g) => (
     <GuestRow key={g.id || g.name} g={g} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
-      onComing={() => save(rsvpEdit(ev, indexOf(g), 'Yes'))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
+      open={swiped && swiped.id === g.id ? swiped.side : null} setOpen={(side) => setSwiped(side ? { id: g.id, side } : null)}
+      onReply={(v) => save(rsvpEdit(ev, indexOf(g), v))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
   );
   const addBox = (<>
     <label className="lbl" htmlFor="addname">Names, one per line</label>
