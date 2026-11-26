@@ -429,7 +429,9 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const locked = ev.guestMode === 'count' ? Number(ev.guestCount) || 0 : 0;
   const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
   const replyByPassed = !!ev.rsvpDeadline && String(ev.rsvpDeadline).slice(0, 10) < today;
-  const toNudge = nudgeCount(nudgeRecipients(ev));
+  const reach = nudgeRecipients(ev);
+  const toNudge = nudgeCount(reach);
+  const noReach = reach.unreachable.length;
   const invited = guests.filter((g) => wasInvited(ev, g)).length;
   const replied = guests.filter((g) => wasInvited(ev, g) && rsvpState(g) !== 'pending').length;
 
@@ -482,7 +484,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   // THE PATH AND THE BOTTOM BUTTON come from one place (guestPath), so the lit
   // step is always the button. LOCK THE COUNT stays the button after the reply-by
   // date, and nowhere else (owner, 11/25/2026).
-  const path = guestPath({ qs, byName, named, sent: !!ev.invitesSentAt, replyByPassed, locked, toNudge, replied, invited, waiting, deadline: ev.rsvpDeadline }, 'Plan for ' + count);
+  const path = guestPath({ qs, byName, named, sent: !!ev.invitesSentAt, replyByPassed, locked, toNudge, noReach, replied, invited, waiting, deadline: ev.rsvpDeadline }, 'Plan for ' + count);
   const focusAdd = () => { const f = document.getElementById('addname'); if (f) f.focus(); };
   const GO = {
     plan: () => save(countEdit(ev, count)),
@@ -490,6 +492,11 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     invite: onInvite,
     lock: () => setSheet('lock'),
     nudge: () => setSheet('nudge'),
+    // The first waiting guest with no phone or email, cursor in Phone.
+    reach: () => {
+      setOpen(reach.unreachable[0].id);
+      setTimeout(() => { const f = document.querySelector('input[aria-label="Phone"]'); if (f) f.focus(); }, 0);
+    },
   };
   const action = path.action && { label: path.action.label, go: GO[path.action.kind] };
   // A step you can tap: where it leads. Later steps with nowhere to go yet are plain rows.
@@ -497,7 +504,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     answers: !qs.length ? () => setAnswers(true) : null,
     names: !byName ? null : named ? () => setSheet('add') : focusAdd,
     invite: onInvite,
-    replies: ev.invitesSentAt && toNudge ? () => setSheet('nudge') : null,
+    replies: ev.invitesSentAt && toNudge ? () => setSheet('nudge') : ev.invitesSentAt && noReach ? () => GO.reach() : null,
     count: replyByPassed || locked ? () => setSheet('lock') : null,
   };
   const stepRow = (st) => {

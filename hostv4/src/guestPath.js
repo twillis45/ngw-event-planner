@@ -18,7 +18,9 @@ export function guestPath(s, planLabel = '') {
       : current === 'invite' ? { step: 'invite', kind: 'invite', label: 'Review your invite' }
         : current === 'count' ? { step: 'count', kind: 'lock', label: 'Lock the count' }
           : current === 'replies' && s.toNudge ? { step: 'replies', kind: 'nudge', label: s.toNudge === 1 ? 'Nudge the one who hasn’t replied' : 'Nudge the ' + s.toNudge + ' who haven’t replied' }
-            : null;
+            // No one to nudge because no phone or email is on file (owner, 11/26/2026: "Yes add button").
+            : current === 'replies' && s.noReach ? { step: 'replies', kind: 'reach', label: 'Add how to reach them' }
+              : null;
   const at = current ? STEPS.indexOf(current) : STEPS.length;
   const val = {
     answers: s.qs.length ? s.qs.length + ' to answer' : '',
