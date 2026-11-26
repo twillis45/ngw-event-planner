@@ -129,3 +129,28 @@ describe('counter mode', () => {
     expect(saved[0].patch.rosDone).toBeTruthy();
   });
 });
+
+// THE DAY'S WEATHER (owner, 11/26/2026: "Yes build the weather line and rain
+// actions"). The same lib/weather dayWeather hostv2's day view reads.
+describe('the day’s weather', () => {
+  const rain = { date: '2026-11-26', conditions: 'moderate rain', icon: '10d', precipitation: 100, temp: { min: 48, max: 54 } };
+  const clear = { date: '2026-11-26', conditions: 'few clouds', icon: '02d', precipitation: 0, temp: { min: 34, max: 62 } };
+  it('rain: the line, the wet-coats check, and a note to guests', () => {
+    mount(DayPage, { now: at('2026-11-26', '10:40'), forecast: rain });
+    const card = q('[data-day-weather="rain"]');
+    expect(card.textContent).toMatch(/Moderate rain · 48°–54°F · 100% chance of rain or snow/);
+    act(() => card.querySelector('[data-check="wx-coats"] .tickbtn').click());
+    expect(saved[0].patch).toEqual({ safetyChecked: { 'wx-coats': true } });
+    act(() => card.querySelector('[data-wx-note]').click());
+    expect(q('[role="dialog"]').textContent).toMatch(/the forecast shows rain\. Leave a little extra time to get here, and bring an umbrella\./);
+  });
+  it('a clear day: the line alone', () => {
+    mount(DayPage, { now: at('2026-11-26', '07:30'), forecast: clear });
+    expect(q('[data-day-weather="clear"]').textContent).toMatch(/Few clouds · 34°–62°F/);
+    expect(q('[data-day-weather] [data-check]')).toBeNull();
+  });
+  it('no forecast, no weather card', () => {
+    mount(DayPage, { now: at('2026-11-26', '07:30'), forecast: null });
+    expect(q('[data-day-weather]')).toBeNull();
+  });
+});

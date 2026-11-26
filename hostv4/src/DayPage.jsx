@@ -17,6 +17,9 @@ import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, rides
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { clock12 } from '@app/lib/clock';
 import { parseMin } from '@app/lib/dayAlerts';
+import { dayWeather, guestTravelMessage, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { venueGeoQuery } from '@app/lib/venueFor';
+import { daysUntil, daysUntilEnd } from '@app/lib/dates';
 
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());
@@ -41,6 +44,34 @@ export function useNow(fixed) {
     return () => clearInterval(id);
   }, [fixed]);
   return fixed || t;
+}
+
+// THE DAY'S FORECAST (owner, 11/26/2026: "Yes build the weather line and rain
+// actions"): the one fetch hostv2 makes (geocode the venue's query, then the
+// span), live only, within the 14 days a forecast reaches. A passed `forecast`
+// (tests, renders) is used as it is; null means none.
+export function useForecast(ev, given) {
+  const [row, setRow] = useState(null);
+  useEffect(() => {
+    if (given !== undefined) return undefined;
+    let dead = false;
+    setRow(null);
+    (async () => {
+      try {
+        if (!isWeatherConfigured() || !ev.date) return;
+        const d = daysUntil(ev.date); const dEnd = daysUntilEnd(ev);
+        if (d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
+        const q = venueGeoQuery(ev);
+        if (!q) return;
+        const at = await geocodeVenue(q);
+        if (dead || !at) return;
+        const span = await getEventWeatherSpan(at.lat, at.lon, ev);
+        if (!dead && span) setRow(span.primary);
+      } catch { /* no forecast beats a wrong one */ }
+    })();
+    return () => { dead = true; };
+  }, [ev.id, ev.date, ev.endDate, given]); // eslint-disable-line react-hooks/exhaustive-deps
+  return given !== undefined ? given : row;
 }
 
 function useDay(ev, now) {
@@ -87,9 +118,12 @@ function CheckRow({ item, onTick, onDetail, attr }) {
   );
 }
 
-export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, date }) {
+export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, date, forecast }) {
   const now = useNow(fixed);
   const { ros, st, list } = useDay(ev, now);
+  const wxRow = useForecast(ev, forecast);
+  const wx = (() => { try { return dayWeather(wxRow); } catch { return null; } })();
+  const [copied, setCopied] = useState(false);
   const [sheet, setSheet] = useState(null); // 'help' | 'list' | { detail: key }
   const [more, setMore] = useState(false);
   const start = clock12(ev.startTime);
@@ -103,8 +137,29 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const markEarlier = () => save(cuesDoneEdit(ev, st.earlierCues.map((c) => c.id)));
 
   const detailItem = sheet && sheet.detail && list ? list.items.find((i) => i.key === sheet.detail) : null;
+  const ticked = (ev.safetyChecked && typeof ev.safetyChecked === 'object') ? ev.safetyChecked : {};
+  const note = wx && wx.arrival ? guestTravelMessage(ev, wx.arrival) : '';
+  const copyNote = async () => { try { await navigator.clipboard.writeText(note); setCopied(true); } catch { setCopied(false); } };
+  // THE DAY'S WEATHER: the line for any event, and what it asks of arrivals.
+  const weatherCard = wx && (
+    <div className="grp gap" data-day-weather={wx.arrival ? wx.arrival.kind : 'clear'}>
+      <div className="row"><span className="nm">{wx.line}{wx.arrival && <small>{wx.arrival.advice}</small>}</span></div>
+      {wx.arrival && wx.arrival.checks.map((c) => (
+        <CheckRow key={c.key} item={{ key: c.key, label: c.label, checked: !!ticked[c.key] }}
+          onTick={() => save(dayOfTickEdit(ev, c.key, c.label))} onDetail={() => save(dayOfTickEdit(ev, c.key, c.label))} />
+      ))}
+      {wx.arrival && <button className="row go" data-wx-note onClick={() => { setCopied(false); setSheet('note'); }}><span className="nm">Weather note to guests</span>{chev}</button>}
+    </div>
+  );
   const sheets = (<>
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
+    {sheet === 'note' && note && (
+      <Sheet title="Weather note to guests" onDone={() => setSheet(null)}>
+        <p className="qhelp" data-wx-note-text>{note}</p>
+        <button className="primary" onClick={copyNote}>{copied ? 'Copied' : 'Copy the note'}</button>
+        <p className="fine">Paste it into your group text, or post it to everyone’s invite from Updates.</p>
+      </Sheet>
+    )}
     {sheet === 'list' && list && (
       <Sheet title={'Before guests arrive · ' + list.done + ' of ' + list.items.length} onDone={() => setSheet(null)}>
         <div className="grp">{list.items.map((i) => <CheckRow key={i.key} item={i} onTick={() => tick(i)} onDetail={() => setSheet({ detail: i.key })} />)}</div>
@@ -156,13 +211,14 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <div className="grp"><a className="row go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
     </>);
   } else if (st.phase === 'before') {
-    body = (<>{runRow && <div className="grp">{runRow}</div>}{listSection}</>);
+    body = (<>{weatherCard}{runRow && <div className="grp gap">{runRow}</div>}{listSection}</>);
   } else if (st.phase === 'done-for-today') {
     body = (<><div className="nowcard" data-now><p className="what">That’s the day. {ros.length} of {ros.length} done.</p></div><div className="grp gap">{helpRow}</div></>);
   } else if (st.phase === 'morning') {
     const nextCheck = nextDayOfCheck(ev);
     body = (<>
       {nowCard}
+      {weatherCard}
       <div className="grp gap">{runRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
         ? <div className="grp gap"><button className="row go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
@@ -175,6 +231,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     body = (<>
       <div className="grp">{helpRow}</div>
       <div className="gap">{nowCard}</div>
+      {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}
       {st.earlierCues.length > 0 && (
         <div className="grp gap"><div className="row" data-earlier><span className="nm sub2">Earlier today · {st.earlierCues.length} step{st.earlierCues.length === 1 ? '' : 's'}</span><button className="link" onClick={markEarlier}>Mark them done</button></div></div>

@@ -74,7 +74,7 @@ import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, 
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, guestTravelMessage, arrivalWeather, dayWeather } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, greetingName } from '@app/lib/inviteBatch';
@@ -3787,7 +3787,8 @@ export default function HostShellV2() {
   const travelWx = useMemo(() => {
     if (!dayWx) return null;
     try { if (placeIsOutdoors(event)) return null; } catch { return null; }
-    try { return travelHazard(dayWx); } catch { return null; }
+    // Rain joins snow, ice and storms (owner, 11/26/2026): lib/weather arrivalWeather.
+    try { return arrivalWeather(dayWx); } catch { return null; }
   }, [event, dayWx]);
   const wxImpact = useMemo(() => {
     if (!wx) return null;
@@ -11686,6 +11687,34 @@ export default function HostShellV2() {
                 );
   };
 
+  // THE DAY'S WEATHER (owner, 11/26/2026: "Yes build the weather line and rain
+  // actions"). On the day, the forecast for any event: the plain line, and what
+  // it asks of arrivals (rain: a spot for wet coats, a note to guests; snow or
+  // ice: the path). lib/weather dayWeather, the one hostv4's The Day reads.
+  const dayWeatherCard = () => {
+    const w = (() => { try { return dayWeather(dayWx); } catch { return null; } })();
+    if (!w) return null;
+    const ticked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+    return (
+      <div className="card dayof-card" data-day-weather={w.arrival ? w.arrival.kind : 'clear'}>
+        <p className="f-name" data-day-weather-line><span className="wx-glyph" aria-hidden="true">{weatherGlyph(w.glyph, { mono: true })}</span> {w.line}</p>
+        {w.arrival && <p className="grounding">{w.arrival.advice}</p>}
+        {w.arrival && w.arrival.checks.map((c) => (
+          <button key={c.key} className={'frow' + (ticked[c.key] ? ' got' : '')} data-wx-check={c.key}
+            onClick={() => { const ed = dayOfTickEdit(event, c.key, c.label); patchEvent(ed.patch, ed.msg); }}>
+            <span className="fcheck" aria-hidden="true" />
+            <span className="f-main"><span className="f-name">{c.label}</span></span>
+          </button>
+        ))}
+        {w.arrival && (
+          <div className="actions-row">
+            <button className="cta" data-wx-day-note onClick={() => { try { openDraft('Weather note to guests', guestTravelMessage(event, w.arrival)); } catch { toast('Couldn’t draft the note.'); } }}>Weather note to guests</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const dayOfCard = (eyebrow) => {
                 // What is checked, and each tick, are lib/dayOfEdits (dayOfList,
                 // dayOfTickEdit): the same reads and writes as hostv4's The Day.
@@ -16350,6 +16379,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {/* Until the doors open: once the event is under way the timeline leads. */}
+              {dayWeatherCard()}
               {!doorsOpen && dayOfCard('Before guests arrive')}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
@@ -16584,6 +16614,7 @@ export default function HostShellV2() {
                   the borrowed playbook does: 32 of 39 playbooks author no
                   day-of list, and a generic safety floor presented as this
                   event's own would be a claim we have not earned. */}
+              {dayWeatherCard()}
               {dayOfCard('Before the big day')}
               {momentSuggestion()}
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>

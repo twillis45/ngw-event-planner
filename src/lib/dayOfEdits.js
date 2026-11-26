@@ -45,10 +45,11 @@ export function dayOfList(event) {
   return { items, done: items.filter((i) => i.checked).length, because: rc.because, isDefault: !!rc.isDefault };
 }
 
-/** Check or reopen one plain check (safetyChecked). */
-export function dayOfTickEdit(event, key) {
-  const l = dayOfList(event);
-  const item = l && l.items.find((i) => i.key === key);
+/** Check or reopen one plain check (safetyChecked). `label` names a check that
+ *  is not on the day-of list (the weather's: wet coats, a salted path). */
+export function dayOfTickEdit(event, key, label) {
+  const l = label ? null : dayOfList(event);
+  const item = label ? { label } : l && l.items.find((i) => i.key === key);
   const next = { ...((event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {}) };
   const on = !next[key];
   if (on) next[key] = true; else delete next[key];

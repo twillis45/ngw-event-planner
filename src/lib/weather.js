@@ -637,11 +637,57 @@ export function guestTravelMessage(event, hazard) {
   if (!hazard) return '';
   const name = String((event && event.name) || 'the party').trim();
   const day = (() => { try { return new Date(String((event && event.date) || '') + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }); } catch { return ''; } })() || 'the day';
-  const sky = { snow: 'snow', ice: 'sleet or freezing rain', storm: 'thunderstorms' }[hazard.kind];
+  const sky = { snow: 'snow', ice: 'sleet or freezing rain', storm: 'thunderstorms', rain: 'rain' }[hazard.kind];
   const tip = {
     snow: 'Leave a little extra time to get here and take it slow on the roads.',
     ice: 'Leave a little extra time, and watch your step on the roads and walks.',
     storm: 'Leave a little extra time to get here, and bring an umbrella.',
+    rain: 'Leave a little extra time to get here, and bring an umbrella.',
   }[hazard.kind];
   return `Heads-up for ${name} on ${day}: the forecast shows ${sky}. ${tip} If the weather changes our plans, I'll let you know. See you there!`;
+}
+
+// ─── THE DAY'S WEATHER, FOR ANY EVENT (owner, 11/26/2026: "Yes build the
+// weather line and rain actions"). Thanksgiving morning on live: moderate rain
+// at 100% in DC and an indoor plan said nothing anywhere. Rain needs no backup
+// plan indoors, but it still changes arrivals: wet coats at the door and a
+// slower drive. Live forecast only, like travelHazard.
+
+/** Rain at 30% or more, read the way travelHazard reads snow: the arrival kind. */
+function rainArrival(row) {
+  if (!row || row._sample) return null;
+  const pop = Number(row.precipitation);
+  if (!Number.isFinite(pop) || pop < 30) return null;
+  const sky = skyKind(row);
+  if (sky !== 'rain' && sky !== 'drizzle') return null;
+  const day = (() => { try { return new Date(String(row.date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }); } catch { return ''; } })();
+  const onDay = day ? `${day} (your event day)` : 'your event day';
+  return {
+    kind: 'rain', glyph: sky, pop,
+    headline: `Rain forecast for ${onDay}, ${pop}% chance — guests may need extra time to get there`,
+    advice: 'Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrellas.',
+  };
+}
+
+const ARRIVAL_CHECKS = {
+  rain: [{ key: 'wx-coats', label: 'A spot by the door for wet coats and umbrellas' }],
+  storm: [{ key: 'wx-coats', label: 'A spot by the door for wet coats and umbrellas' }],
+  snow: [{ key: 'wx-path', label: 'The path to the door is cleared and salted' }],
+  ice: [{ key: 'wx-path', label: 'The path to the door is cleared and salted' }],
+};
+
+/** What the weather asks of arrivals: snow, ice and storms (travelHazard), or
+ *  rain at 30%+, each with its checks (ticked on event.safetyChecked). null on
+ *  a day that asks nothing, and always on the sample. */
+export function arrivalWeather(row) {
+  const h = travelHazard(row) || rainArrival(row);
+  return h ? { ...h, checks: ARRIVAL_CHECKS[h.kind] || [] } : null;
+}
+
+/** The day's weather for The Day: the plain line, its glyph, and what it asks
+ *  of arrivals. null without a real forecast. */
+export function dayWeather(row) {
+  const line = forecastLine(row);
+  if (!line) return null;
+  return { line, glyph: skyKind(row), arrival: arrivalWeather(row) };
 }
