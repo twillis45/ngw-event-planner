@@ -16,7 +16,7 @@ import { isVendorBooked } from './workstreams';
 import { effectiveDone } from './taskEngine';
 import { showsReplyTracking } from './guestMode';
 import { isEventDay } from './dates';
-import { taskIsOverdue } from './taskLead';
+import { taskIsOpenPastWindow } from './taskLead';
 import { notRepliedYet } from './rsvp';
 
 // Time-string → minutes-since-midnight. Contract (exported so both shells and
@@ -68,7 +68,11 @@ const isToday = (date) => isEventDay(date);
 // matched NOTHING, on every event, forever: the "N things still open" alert could not
 // fire. The lead now comes from the one reader (lib/taskLead.js), off the stable
 // `leadDays` the playbook authors.
-const defaultOverdue = (event) => (task) => taskIsOverdue(task, event);
+// "Still open" (owner, 11/26/2026: "App is lying somewhere"): every step past its
+// window that is not done, handled or snoozed — including one due before the
+// plan was made, which taskIsOverdue rightly doesn't blame the host for but the
+// checklist still shows as due. The banner says "still open", not "late".
+const defaultOverdue = (event) => (task) => taskIsOpenPastWindow(task, event);
 
 export function computeDayAlerts(event, opts = {}) {
   const overdue = opts.isTaskOverdue || defaultOverdue(event);

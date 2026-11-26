@@ -87,7 +87,7 @@ import path from 'path';
 
 import { isOverdue } from '../ChecklistGenerator';
 import { deriveCommandCenterData } from '../../CommandCenter';
-import { taskIsOverdue, taskLeadDays } from '../../lib/taskLead';
+import { taskIsOverdue, taskIsOpenPastWindow, taskLeadDays } from '../../lib/taskLead';
 import { taskTimeStatus, daysUntil } from '../../lib/dates';
 import { computeDayAlerts } from '../../lib/dayAlerts';
 import { effectiveDone } from '../../lib/taskEngine';
@@ -414,7 +414,17 @@ describe('PART B — runtime parity sweep: every overdue reader agrees', () => {
       // (this equality is the W12-closed proof; a policy losing the
       // effectiveDone clause splits them again).
       expect(rawPolicyOverdueCount(ev)).toBe(policy);
-      expect({ case: c.label, dayAlerts: dayAlertsOverdueCount(ev) }).toEqual({ case: c.label, dayAlerts: policy });
+      // The day's banner says "still open", not "late" (owner, 11/26/2026: "App
+      // is lying somewhere"): it counts every step past its window that is not
+      // done, handled or snoozed — reachable or not. Where every step was
+      // reachable that IS the overdue count; on the unreachable fixture it keeps
+      // the pre-order the policy rightly doesn't blame the host for.
+      const openPast = ev.timeline.filter((t) => taskIsOpenPastWindow(t, ev)).length;
+      expect({ case: c.label, dayAlerts: dayAlertsOverdueCount(ev) }).toEqual({ case: c.label, dayAlerts: openPast });
+      if (c.label.startsWith('unreachable')) {
+        expect(openPast).toBeGreaterThan(policy);
+        expect(taskIsOpenPastWindow(preorderOf(ev), ev)).toBe(true);
+      } else expect(openPast).toBe(policy);
       expect({ case: c.label, commandCenter: commandCenterOverdueCount(ev) }).toEqual({ case: c.label, commandCenter: policy });
       expect({ case: c.label, calendar }).toEqual({ case: c.label, calendar: policy });
     }
