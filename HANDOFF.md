@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-11-26 (latest entry: hostv4 on the iPad, and Guests folded, #268–#272). Before that, 2026-11-03 (sixty-first entry:
+**Measured reality, not intentions.** Updated 2026-11-26 (latest entry: hostv4 on the iPad, and Guests folded, #268–#274). Before that, 2026-11-03 (sixty-first entry:
 **the Path-to-Production command itself ran, not a handoff about it.**
 - **Instruments.** All three stage 4 instruments ran as dispatched subagents on `b056e170`:
   - a measurement pass at 390/1440/1920 with iPhone 13 device emulation;
@@ -17,7 +17,7 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 26, 2026 (latest) — hostv4 on the iPad; Guests folded; owner fixes from his own iPad (#268–#272)
+## November 26, 2026 (latest) — hostv4 on the iPad; Guests folded; owner fixes from his own iPad (#268–#274)
 
 - **Live:** `f94fa7a` (#269) on hostv2 and hostv4, live-checked in WebKit at iPad size with every write aborted. #270 merged as `4060a48` and deploying; #271 and #272 open, green or in CI, merging one at a time after each live check.
 - **#268 (`b7f28bb`), iPad (UX_13):** three panes from 1024 (sidebar 260, list 400, detail), one pane with a menu button from 601 to 1023, the pane's action in its bar, keyboard shortcuts (never while typing). Live-checked at 1024x768, 1180x820, 820x1180.
@@ -25,6 +25,10 @@ Before that, 2026-11-02 (sixtieth entry:
 - **#270, questions and replies:** placeholders that read like answers (reply box "Street parking on Pine…", update box, the guest's "Is there parking nearby?") now say what to do or start "For example:" (`lib/guestUpdatesKit UPDATE_PLACEHOLDER`, `replyPlaceholder`); hostv4 hints faint and italic; the host's replies outlined in bone (owner chose option 2; fills had been 1.48:1 apart). Guard: `hostv4/test/aPlaceholderNeverLooksLikeAnAnswer` scans both shells.
 - **#271, diet and allergies:** `lib/dietOptions` (MEALS, ALLERGENS, DIET_RULES) is one list for the guest form (`InviteV2` imports it) and the host's sheet. The sheet: Meal, then Diet and Allergies as a row each that opens a checklist, picks shown as chips that remove them (owner's "A + B"), then "Anything else". Pescatarian added to the host's meals, the seating pill ('Pesc') and CSV import.
 - **#272, Guests folds away (owner chose option E):** headcount bar; "N guest questions waiting" only when there are some; Coming / Maybe / No reply yet folded, one open at a time; + (add names) and ⋯ (Your answers, invite, updates, share, download, alerts) beside the title; find only past 20 names. Measured on an iPhone 14 with 10 names: 2.3 screens and 25 controls before, 0.8 screens and 7 controls after.
+- **#272 also:** the open group is remembered per plan in this browser (`hostv4/src/viewMemory.js`, key `ngw-hostv4-open-group:<id>`; the plan is never written); "questions waiting" asks only for a plan in an account (`useGuestQuestions` skips a null id; the live-check session saw signed-out 401s).
+- **#273, 44px links:** a link inside a sentence (Undo, "Keep as written", "Open the current app") is `inline-flex` at 44px with a -12px margin, so the line doesn't move (measured Undo 46×44, was 38×21). Guard: `hostv4/test/everyLinkIsATarget`.
+- **#274, swipe does the rest (iOS Mail):** right reveals Coming and Maybe (full swipe: Coming); left reveals Can't make it, No reply, Remove (full swipe: Can't make it, owner's choice, so Remove always takes a tap). Buttons 84×52, labeled with action and name; one row open at a time; only the moving side shows; axis lock kept.
+- **Batched by the owner ("Batch them"):** #272, #274 and #273 merged back to back into one deploy after the combination passed locally (hostv4 79/79, full jest 958/958, renders clean).
 - **Glass (Apple's Liquid Glass): prototyped, parked by the owner ("Not now").** Measured: smoky, not glassy, on dark text lists; needs content to scroll under the bars (a layout change); with blur off (Reduce Transparency, and headless WebKit) a see-through sheet's text collides with the page under it; grey tab labels fall to 1.3:1 (55% opacity) or 3.4:1 (85%) if the bone button slides under the bar.
 - **Gates (measured):** hostv4 vitest 68/68 on #272's branch; full jest 958/958 suites; hostv2 e2e on a fresh build for the specs each PR touches (28/28, 7/7, 50/50); CI green on each head before merge.
 - 🔴 **Trap: CI "e2e failed" right after a push is usually a cancellation.** A newer push cancels the older run; the summary job then fails with "e2e shards were CANCELLED, not failed". Read the last lines before treating it as red.
