@@ -1,0 +1,512 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "v4-vendors",
+    "ok": true,
+    "rows": [
+     "v-cat: E2E_TEST_ Bay Catering 1:00 PM Call",
+     "v-rent: E2E_TEST_ Rentals 2:30 PM"
+    ],
+    "calls": [
+     "tel:2025550199"
+    ],
+    "alert": "Can’t wait E2E_TEST_ Bay Catering hasn't arrived 1 more",
+    "sideways": 0
+   },
+   {
+    "name": "v4-vendor-here-late",
+    "ok": true,
+    "briefHref": "../hostv2/",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": "delayed"
+    },
+    "rows": [
+     "✓ E2E_TEST_ Bay Catering 1:00 PM · Here",
+     "E2E_TEST_ Rentals 2:30 PM · Running late"
+    ],
+    "alertAfter": "",
+    "callLinksAfter": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-reminders",
+    "ok": true,
+    "button": "Add 16 reminders",
+    "firstRows": [
+     "9:00 AM Turkey prepped and into the oven on the map's schedule",
+     "10:30 AM Baste and rotate the bird",
+     "12:00 PM Grazing table out and drinks iced",
+     "1:00 PM Potatoes on to boil",
+     "1:00 PM E2E_TEST_ Bay Catering due"
+    ],
+    "events": 16,
+    "trig10": [
+     "TRIGGER:-PT10M"
+    ],
+    "trig0": [
+     "TRIGGER:PT0M"
+    ],
+    "firstStarts": [
+     "DTSTART:20261126T090000",
+     "DTSTART:20261126T103000",
+     "DTSTART:20261126T120000"
+    ],
+    "lastStart": "DTSTART:20261126T203000",
+    "summaries": [
+     "Turkey prepped and into the oven on the map's schedule",
+     "Baste and rotate the bird",
+     "Grazing table out and drinks iced",
+     "Potatoes on to boil",
+     "E2E_TEST_ Bay Catering due",
+     "Turkey out to rest under foil",
+     "Mash finished and held warm",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map",
+     "Dinner: everything to the table at once",
+     "Seconds round",
+     "Dessert and coffee",
+     "Leftovers packed into send-home containers",
+     "The long afternoon: games\\, the walk\\, the couch",
+     "Final reset"
+    ],
+    "inTimeOrder": true,
+    "filename": "E2E-TEST-Thanksgiving-reminders.ics",
+    "arrivals": [
+     "E2E_TEST_ Bay Catering due",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "v2-theyre-here",
+    "ok": true,
+    "buttons": 2,
+    "context": "CAN’T WAIT E2E_TEST_ Bay Catering hasn't arrived Call E2E_TEST_ Bay Catering now — they were due at 1:00 PM. They’re here",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": null
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "v4-vendors",
+    "ok": true,
+    "rows": [
+     "v-cat: E2E_TEST_ Bay Catering 1:00 PM Call",
+     "v-rent: E2E_TEST_ Rentals 2:30 PM"
+    ],
+    "calls": [
+     "tel:2025550199"
+    ],
+    "alert": "Can’t wait E2E_TEST_ Bay Catering hasn't arrived 1 more",
+    "sideways": 0
+   },
+   {
+    "name": "v4-vendor-here-late",
+    "ok": true,
+    "briefHref": "../hostv2/",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": "delayed"
+    },
+    "rows": [
+     "✓ E2E_TEST_ Bay Catering 1:00 PM · Here",
+     "E2E_TEST_ Rentals 2:30 PM · Running late"
+    ],
+    "alertAfter": "",
+    "callLinksAfter": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-reminders",
+    "ok": true,
+    "button": "Add 16 reminders",
+    "firstRows": [
+     "9:00 AM Turkey prepped and into the oven on the map's schedule",
+     "10:30 AM Baste and rotate the bird",
+     "12:00 PM Grazing table out and drinks iced",
+     "1:00 PM Potatoes on to boil",
+     "1:00 PM E2E_TEST_ Bay Catering due"
+    ],
+    "events": 16,
+    "trig10": [
+     "TRIGGER:-PT10M"
+    ],
+    "trig0": [
+     "TRIGGER:PT0M"
+    ],
+    "firstStarts": [
+     "DTSTART:20261126T090000",
+     "DTSTART:20261126T103000",
+     "DTSTART:20261126T120000"
+    ],
+    "lastStart": "DTSTART:20261126T203000",
+    "summaries": [
+     "Turkey prepped and into the oven on the map's schedule",
+     "Baste and rotate the bird",
+     "Grazing table out and drinks iced",
+     "Potatoes on to boil",
+     "E2E_TEST_ Bay Catering due",
+     "Turkey out to rest under foil",
+     "Mash finished and held warm",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map",
+     "Dinner: everything to the table at once",
+     "Seconds round",
+     "Dessert and coffee",
+     "Leftovers packed into send-home containers",
+     "The long afternoon: games\\, the walk\\, the couch",
+     "Final reset"
+    ],
+    "inTimeOrder": true,
+    "filename": "E2E-TEST-Thanksgiving-reminders.ics",
+    "arrivals": [
+     "E2E_TEST_ Bay Catering due",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "v2-theyre-here",
+    "ok": true,
+    "buttons": 2,
+    "context": "CAN’T WAIT E2E_TEST_ Bay Catering hasn't arrived Call E2E_TEST_ Bay Catering now — they were due at 1:00 PM. They’re here",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": null
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "v4-vendors",
+    "ok": true,
+    "rows": [
+     "v-cat: E2E_TEST_ Bay Catering 1:00 PM Call",
+     "v-rent: E2E_TEST_ Rentals 2:30 PM"
+    ],
+    "calls": [
+     "tel:2025550199"
+    ],
+    "alert": "Can’t wait E2E_TEST_ Bay Catering hasn't arrived 1 more",
+    "sideways": 0
+   },
+   {
+    "name": "v4-vendor-here-late",
+    "ok": true,
+    "briefHref": "../hostv2/",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": "delayed"
+    },
+    "rows": [
+     "✓ E2E_TEST_ Bay Catering 1:00 PM · Here",
+     "E2E_TEST_ Rentals 2:30 PM · Running late"
+    ],
+    "alertAfter": "",
+    "callLinksAfter": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-reminders",
+    "ok": true,
+    "button": "Add 16 reminders",
+    "firstRows": [
+     "9:00 AM Turkey prepped and into the oven on the map's schedule",
+     "10:30 AM Baste and rotate the bird",
+     "12:00 PM Grazing table out and drinks iced",
+     "1:00 PM Potatoes on to boil",
+     "1:00 PM E2E_TEST_ Bay Catering due"
+    ],
+    "events": 16,
+    "trig10": [
+     "TRIGGER:-PT10M"
+    ],
+    "trig0": [
+     "TRIGGER:PT0M"
+    ],
+    "firstStarts": [
+     "DTSTART:20261126T090000",
+     "DTSTART:20261126T103000",
+     "DTSTART:20261126T120000"
+    ],
+    "lastStart": "DTSTART:20261126T203000",
+    "summaries": [
+     "Turkey prepped and into the oven on the map's schedule",
+     "Baste and rotate the bird",
+     "Grazing table out and drinks iced",
+     "Potatoes on to boil",
+     "E2E_TEST_ Bay Catering due",
+     "Turkey out to rest under foil",
+     "Mash finished and held warm",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map",
+     "Dinner: everything to the table at once",
+     "Seconds round",
+     "Dessert and coffee",
+     "Leftovers packed into send-home containers",
+     "The long afternoon: games\\, the walk\\, the couch",
+     "Final reset"
+    ],
+    "inTimeOrder": true,
+    "filename": "E2E-TEST-Thanksgiving-reminders.ics",
+    "arrivals": [
+     "E2E_TEST_ Bay Catering due",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "v2-theyre-here",
+    "ok": true,
+    "buttons": 2,
+    "context": "CAN’T WAIT E2E_TEST_ Bay Catering hasn't arrived Call E2E_TEST_ Bay Catering now — they were due at 1:00 PM. They’re here",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": null
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "v4-vendors",
+    "ok": true,
+    "rows": [
+     "v-cat: E2E_TEST_ Bay Catering 1:00 PM Call",
+     "v-rent: E2E_TEST_ Rentals 2:30 PM"
+    ],
+    "calls": [
+     "tel:2025550199"
+    ],
+    "alert": "Can’t wait E2E_TEST_ Bay Catering hasn't arrived 1 more",
+    "sideways": 0
+   },
+   {
+    "name": "v4-vendor-here-late",
+    "ok": true,
+    "briefHref": "../hostv2/",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": "delayed"
+    },
+    "rows": [
+     "✓ E2E_TEST_ Bay Catering 1:00 PM · Here",
+     "E2E_TEST_ Rentals 2:30 PM · Running late"
+    ],
+    "alertAfter": "",
+    "callLinksAfter": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-reminders",
+    "ok": true,
+    "button": "Add 16 reminders",
+    "firstRows": [
+     "9:00 AM Turkey prepped and into the oven on the map's schedule",
+     "10:30 AM Baste and rotate the bird",
+     "12:00 PM Grazing table out and drinks iced",
+     "1:00 PM Potatoes on to boil",
+     "1:00 PM E2E_TEST_ Bay Catering due"
+    ],
+    "events": 16,
+    "trig10": [
+     "TRIGGER:-PT10M"
+    ],
+    "trig0": [
+     "TRIGGER:PT0M"
+    ],
+    "firstStarts": [
+     "DTSTART:20261126T090000",
+     "DTSTART:20261126T103000",
+     "DTSTART:20261126T120000"
+    ],
+    "lastStart": "DTSTART:20261126T203000",
+    "summaries": [
+     "Turkey prepped and into the oven on the map's schedule",
+     "Baste and rotate the bird",
+     "Grazing table out and drinks iced",
+     "Potatoes on to boil",
+     "E2E_TEST_ Bay Catering due",
+     "Turkey out to rest under foil",
+     "Mash finished and held warm",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map",
+     "Dinner: everything to the table at once",
+     "Seconds round",
+     "Dessert and coffee",
+     "Leftovers packed into send-home containers",
+     "The long afternoon: games\\, the walk\\, the couch",
+     "Final reset"
+    ],
+    "inTimeOrder": true,
+    "filename": "E2E-TEST-Thanksgiving-reminders.ics",
+    "arrivals": [
+     "E2E_TEST_ Bay Catering due",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "v2-theyre-here",
+    "ok": true,
+    "buttons": 2,
+    "context": "CAN’T WAIT E2E_TEST_ Bay Catering hasn't arrived Call E2E_TEST_ Bay Catering now — they were due at 1:00 PM. They’re here",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": null
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "v4-vendors",
+    "ok": true,
+    "rows": [
+     "v-cat: E2E_TEST_ Bay Catering 1:00 PM Call",
+     "v-rent: E2E_TEST_ Rentals 2:30 PM"
+    ],
+    "calls": [
+     "tel:2025550199"
+    ],
+    "alert": "Can’t wait E2E_TEST_ Bay Catering hasn't arrived 1 more",
+    "sideways": 0
+   },
+   {
+    "name": "v4-vendor-here-late",
+    "ok": true,
+    "briefHref": "../hostv2/",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": "delayed"
+    },
+    "rows": [
+     "✓ E2E_TEST_ Bay Catering 1:00 PM · Here",
+     "E2E_TEST_ Rentals 2:30 PM · Running late"
+    ],
+    "alertAfter": "",
+    "callLinksAfter": 0,
+    "sideways": 0
+   },
+   {
+    "name": "v4-reminders",
+    "ok": true,
+    "button": "Add 16 reminders",
+    "firstRows": [
+     "9:00 AM Turkey prepped and into the oven on the map's schedule",
+     "10:30 AM Baste and rotate the bird",
+     "12:00 PM Grazing table out and drinks iced",
+     "1:00 PM Potatoes on to boil",
+     "1:00 PM E2E_TEST_ Bay Catering due"
+    ],
+    "events": 16,
+    "trig10": [
+     "TRIGGER:-PT10M"
+    ],
+    "trig0": [
+     "TRIGGER:PT0M"
+    ],
+    "firstStarts": [
+     "DTSTART:20261126T090000",
+     "DTSTART:20261126T103000",
+     "DTSTART:20261126T120000"
+    ],
+    "lastStart": "DTSTART:20261126T203000",
+    "summaries": [
+     "Turkey prepped and into the oven on the map's schedule",
+     "Baste and rotate the bird",
+     "Grazing table out and drinks iced",
+     "Potatoes on to boil",
+     "E2E_TEST_ Bay Catering due",
+     "Turkey out to rest under foil",
+     "Mash finished and held warm",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map",
+     "Dinner: everything to the table at once",
+     "Seconds round",
+     "Dessert and coffee",
+     "Leftovers packed into send-home containers",
+     "The long afternoon: games\\, the walk\\, the couch",
+     "Final reset"
+    ],
+    "inTimeOrder": true,
+    "filename": "E2E-TEST-Thanksgiving-reminders.ics",
+    "arrivals": [
+     "E2E_TEST_ Bay Catering due",
+     "E2E_TEST_ Rentals due",
+     "Arrivals",
+     "Arriving dishes landed\\, labeled\\, and slotted into the oven map"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "v2-theyre-here",
+    "ok": true,
+    "buttons": 2,
+    "context": "CAN’T WAIT E2E_TEST_ Bay Catering hasn't arrived Call E2E_TEST_ Bay Catering now — they were due at 1:00 PM. They’re here",
+    "status": {
+     "v-cat": "arrived",
+     "v-rent": null
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]

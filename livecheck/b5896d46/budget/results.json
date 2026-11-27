@@ -1,0 +1,1044 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "budget-light",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 350,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 350,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 350,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 350,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 950,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-light",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-light",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 166,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 176,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "budget-dark",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 350,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 350,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 350,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 350,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 820,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-dark",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-dark",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 350,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 166,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 176,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "steel-ask-dark",
+    "ok": true,
+    "shadow": "color(srgb 0.694118 0.760784 0.796078 / 0.55) 0px 0px 0px 1px, rgb(63, 91, 106) 0px 3px 0px 0px, rgba(0, 0, 0, 0.6) 0px 9px 22px -9px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset",
+    "bg": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "color": "rgb(238, 240, 244)",
+    "border": "0px none rgb(238, 240, 244)",
+    "ctaGrad": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "onSteel": "rgb(238, 240, 244)",
+    "steelSoft": "rgb(177, 194, 203)",
+    "theme": "dark",
+    "contrastPerStop": [
+     4.57,
+     5.16,
+     5.85
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "budget-light",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 738,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 738,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 738,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 738,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 812,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-light",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-light",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 560,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "budget-dark",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 738,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 738,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 738,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 738,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 744,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-dark",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-dark",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 738,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 560,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "steel-ask-dark",
+    "ok": true,
+    "shadow": "color(srgb 0.694118 0.760784 0.796078 / 0.55) 0px 0px 0px 1px, rgb(63, 91, 106) 0px 3px 0px 0px, rgba(0, 0, 0, 0.6) 0px 9px 22px -9px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset",
+    "bg": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "color": "rgb(238, 240, 244)",
+    "border": "0px none rgb(238, 240, 244)",
+    "ctaGrad": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "onSteel": "rgb(238, 240, 244)",
+    "steelSoft": "rgb(177, 194, 203)",
+    "theme": "dark",
+    "contrastPerStop": [
+     4.57,
+     5.16,
+     5.85
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "budget-light",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 706,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 706,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 706,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 706,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 812,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-light",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-light",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 420,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "budget-dark",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 706,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 706,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 706,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 706,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 744,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-dark",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-dark",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 706,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 420,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "steel-ask-dark",
+    "ok": true,
+    "shadow": "color(srgb 0.694118 0.760784 0.796078 / 0.55) 0px 0px 0px 1px, rgb(63, 91, 106) 0px 3px 0px 0px, rgba(0, 0, 0, 0.6) 0px 9px 22px -9px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset",
+    "bg": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "color": "rgb(238, 240, 244)",
+    "border": "0px none rgb(238, 240, 244)",
+    "ctaGrad": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "onSteel": "rgb(238, 240, 244)",
+    "steelSoft": "rgb(177, 194, 203)",
+    "theme": "dark",
+    "contrastPerStop": [
+     4.57,
+     5.16,
+     5.85
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "budget-light",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 501,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 501,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 501,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 501,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 524,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-light",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-light",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 323,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "budget-dark",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 501,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 501,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 501,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 501,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 456,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-dark",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-dark",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 501,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 323,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "steel-ask-dark",
+    "ok": true,
+    "shadow": "color(srgb 0.694118 0.760784 0.796078 / 0.55) 0px 0px 0px 1px, rgb(63, 91, 106) 0px 3px 0px 0px, rgba(0, 0, 0, 0.6) 0px 9px 22px -9px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset",
+    "bg": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "color": "rgb(238, 240, 244)",
+    "border": "0px none rgb(238, 240, 244)",
+    "ctaGrad": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "onSteel": "rgb(238, 240, 244)",
+    "steelSoft": "rgb(177, 194, 203)",
+    "theme": "dark",
+    "contrastPerStop": [
+     4.57,
+     5.16,
+     5.85
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "budget-light",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 626,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 626,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 626,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 626,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 345,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-light",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-light",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 240,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "budget-dark",
+    "ok": true,
+    "headline": "$400",
+    "planText": "Plan with $400",
+    "rows": [
+     {
+      "t": "Lean $100 $8 a head",
+      "h": 54,
+      "w": 626,
+      "on": "false"
+     },
+     {
+      "t": "Mid‑range $300 $25 a head",
+      "h": 55,
+      "w": 626,
+      "on": "false"
+     },
+     {
+      "t": "All-out Covers your plan $400 $33 a head",
+      "h": 59,
+      "w": 626,
+      "on": "true"
+     },
+     {
+      "t": "A different amount",
+      "h": 46,
+      "w": 626,
+      "on": "false"
+     }
+    ],
+    "perHeads": [
+     "$8 a head",
+     "$25 a head",
+     "$33 a head",
+     null
+    ],
+    "fold": 1,
+    "roomBelowPlan": 311,
+    "sideways": 0
+   },
+   {
+    "name": "budget-pick-dark",
+    "ok": true,
+    "planText": "Plan with $100",
+    "headline": "$100",
+    "foldOpened": true,
+    "foldSnippet": "How we got these · 5 things not included Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300. Not included: Serveware, linens, or furniture you keep afterward · Alcoho",
+    "sideways": 0
+   },
+   {
+    "name": "budget-different-dark",
+    "ok": true,
+    "drawer": "Change your budget Pick a size, or type your own. Lean $100 Mid‑range · our pick $300 All-out $400 Use it For 12 at a Thanksgiving: lean runs about $100, all-out about $400.",
+    "controls": [
+     {
+      "t": "Lean $100",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "Mid‑range · our pick $300",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "All-out $400",
+      "w": 626,
+      "h": 48
+     },
+     {
+      "t": "Your own number",
+      "w": 170,
+      "h": 44
+     },
+     {
+      "t": "Use it",
+      "w": 240,
+      "h": 54
+     }
+    ],
+    "small": [],
+    "ownInputInView": true,
+    "totalBudgetSaved": null,
+    "drawerPerHead": false,
+    "drawerPick": "Mid‑range",
+    "sideways": 0
+   },
+   {
+    "name": "steel-ask-dark",
+    "ok": true,
+    "shadow": "color(srgb 0.694118 0.760784 0.796078 / 0.55) 0px 0px 0px 1px, rgb(63, 91, 106) 0px 3px 0px 0px, rgba(0, 0, 0, 0.6) 0px 9px 22px -9px, rgba(255, 255, 255, 0.14) 0px 1px 0px 0px inset",
+    "bg": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "color": "rgb(238, 240, 244)",
+    "border": "0px none rgb(238, 240, 244)",
+    "ctaGrad": "linear-gradient(rgb(87, 112, 126) 0%, rgb(78, 104, 119) 52%, rgb(68, 96, 111) 100%)",
+    "onSteel": "rgb(238, 240, 244)",
+    "steelSoft": "rgb(177, 194, 203)",
+    "theme": "dark",
+    "contrastPerStop": [
+     4.57,
+     5.16,
+     5.85
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]
