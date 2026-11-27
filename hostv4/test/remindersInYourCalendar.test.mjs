@@ -55,4 +55,15 @@ describe('reminders in your calendar', () => {
     expect(text).toContain('TRIGGER:PT0M');
     expect(saved).toEqual([]);
   });
+  it('what has already passed is left out (owner, 11/27/2026), on the sheet and in the file', async () => {
+    mount(at('10:00'));
+    act(() => q('[data-open-remind]').click());
+    const rows = qa('[data-remind-row]').map((r) => r.textContent);
+    expect(rows.some((t) => /Bay Catering due/.test(t))).toBe(false);
+    act(() => q('[data-remind-add]').click());
+    const text = await read(blobs[0]);
+    expect(text).not.toContain('Bay Catering due');
+    const n = Number(q('[data-remind-add]').textContent.match(/\d+/)[0]);
+    expect((text.match(/BEGIN:VEVENT/g) || []).length).toBe(n);
+  });
 });

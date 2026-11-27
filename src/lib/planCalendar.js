@@ -235,7 +235,13 @@ export function withCalendarFeed(data, now) {
 const hm = (mins) => `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
 
 /** @returns {Array<{id, date, time, label, detail?}>} in date and time order. label is the short title. */
-export function dayReminders(event) {
+/**
+ * @param {Date} [now] when given, reminders at or before it are left out (owner,
+ *   11/27/2026): a calendar entry for a step already done is noise. Compared in
+ *   the phone's own zone, like the times themselves (they float: the host travels
+ *   with the event).
+ */
+export function dayReminders(event, now) {
   const ev = event || {};
   const first = DAY(ev.date);
   if (!first) return [];
@@ -258,7 +264,12 @@ export function dayReminders(event) {
   if (at && !at.suggested && !out.some((x) => x.date === dayIso(1) && x.time === hm(at.mins) && /arriv|guest/i.test(x.label))) {
     out.push({ id: 'guests', date: dayIso(1), time: hm(at.mins), label: 'Guests arrive' });
   }
-  return out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const t = now instanceof Date && !Number.isNaN(now.getTime()) ? now.getTime() : null;
+  const ahead = t == null ? out : out.filter((x) => {
+    const [y, mo, d] = x.date.split('-').map(Number); const [h, mi] = x.time.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, mi).getTime() > t;
+  });
+  return ahead.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
 /** The reminders as one calendar file. lead: minutes before (10) or 0 for at the time. */
@@ -268,7 +279,7 @@ export function dayRemindersIcs(event, opts, now) {
   const name = String(ev.name || 'The event').trim();
   const stamp = new Date(now || Date.now()).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//No Guesswork//Day Reminders//EN', 'CALSCALE:GREGORIAN'];
-  for (const r of dayReminders(ev)) {
+  for (const r of dayReminders(ev, now ? new Date(now) : undefined)) {
     lines.push('BEGIN:VEVENT',
       'UID:' + icsText(`${ev.id || 'event'}-${r.id}-${r.date}@ngw-day`),
       'DTSTAMP:' + stamp,

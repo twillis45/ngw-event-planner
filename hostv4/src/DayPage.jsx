@@ -114,11 +114,12 @@ function Sheet({ title, onDone, children }) {
 // day's timed moments as one calendar file with an alarm each (lib/planCalendar
 // dayRemindersIcs), so her phone reminds her with this app closed. They keep the
 // times they had when added; the sheet says to add them again if the day moves.
-export function RemindSheet({ ev, onDone }) {
+export function RemindSheet({ ev, onDone, now }) {
   const [lead, setLead] = useState(10);
-  const all = dayReminders(ev);
+  // What has already passed is left out (owner, 11/27/2026).
+  const all = dayReminders(ev, now);
   const add = () => {
-    const blob = new Blob([dayRemindersIcs(ev, { lead })], { type: 'text/calendar;charset=utf-8' });
+    const blob = new Blob([dayRemindersIcs(ev, { lead }, now)], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -298,7 +299,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
     {tell && <TellSheet ev={ev} onDone={() => setTell(false)} onUpdates={onUpdates} />}
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
-    {sheet === 'remind' && <RemindSheet ev={ev} onDone={() => setSheet(null)} />}
+    {sheet === 'remind' && <RemindSheet ev={ev} now={now} onDone={() => setSheet(null)} />}
     {sheet === 'alerts' && (
       <Sheet title="Needs you today" onDone={() => setSheet(null)}>
         <div className="grp">{alerts.map((a) => (
@@ -341,7 +342,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <span className="nm">{st.eventDay ? 'Today’s run' : 'The day’s run'}<small>{ros.length} steps, {clock12(ros[0].time)} to {clock12(ros[ros.length - 1].time)}</small></span>{chev}
     </button>
   );
-  const reminders = (() => { try { return dayReminders(ev); } catch { return []; } })();
+  const reminders = (() => { try { return dayReminders(ev, now); } catch { return []; } })();
   const remindRow = reminders.length > 0 && (
     <button className="row go" data-open-remind onClick={() => setSheet('remind')}>
       <span className="nm">Reminders in your calendar<small>Each step and arrival, on your phone</small></span>{chev}
