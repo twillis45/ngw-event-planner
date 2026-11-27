@@ -18,8 +18,11 @@ which only the browser that made it holds (a shared computer where a second
 person signs in). Delete matches the caller's id in the WHERE clause, so nobody
 can remove another person's device. Before 033 is applied both answer 503.
 """
+import logging
 from typing import Optional
 from uuid import UUID
+
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -32,6 +35,8 @@ router = APIRouter(prefix="/api/push", tags=["push"])
 
 # The two statements, named so the real-PostgreSQL test runs these exact words.
 # $1 is always the CALLER's id from require_planner, never anything in the body.
+log = logging.getLogger("ngw.push")
+
 SUBSCRIBE_SQL = """insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
        values ($1::uuid, $2, $3, $4)
        on conflict (endpoint) do update
@@ -40,6 +45,22 @@ SUBSCRIBE_SQL = """insert into public.push_subscriptions (user_id, endpoint, p25
            or push_subscriptions.auth = excluded.auth
        returning user_id::text"""
 UNSUBSCRIBE_SQL = "delete from public.push_subscriptions where endpoint = $2 and user_id = $1::uuid"
+# Her phone's time zone, beside the device (migration 035): it decides which
+# day is the event day for alerts. A separate statement, so a server ahead of
+# 035 still turns the device on and only skips the zone.
+TZ_SQL = "update public.push_subscriptions set tz = $3 where endpoint = $2 and user_id = $1::uuid"
+
+
+def clean_tz(tz) -> str | None:
+    """Her phone's time zone, kept only when it is a real IANA zone (it decides
+    the event day for alerts). Anything else is dropped, never stored."""
+    if not isinstance(tz, str) or not tz or len(tz) > 64:
+        return None
+    try:
+        ZoneInfo(tz)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+    return tz
 
 
 class Keys(BaseModel):
@@ -50,6 +71,7 @@ class Keys(BaseModel):
 class Subscription(BaseModel):
     endpoint: str = Field(min_length=1, max_length=web_push.MAX_ENDPOINT)
     keys: Keys
+    tz: Optional[str] = Field(default=None, max_length=200)
 
 
 class Device(BaseModel):
@@ -90,6 +112,12 @@ async def subscribe(body: Subscription,
         if not await web_push.table_ready(conn):
             _off()
         owner = await conn.fetchval(SUBSCRIBE_SQL, uid, body.endpoint, body.keys.p256dh, body.keys.auth)
+        tz = clean_tz(body.tz)
+        if owner == uid and tz:
+            try:
+                await conn.execute(TZ_SQL, uid, body.endpoint, tz)
+            except Exception as e:  # noqa: BLE001 — before 035: the device is on, the zone waits
+                log.warning("push zone not saved: %s", type(e).__name__)
     if owner != uid:
         raise HTTPException(status_code=409, detail="This device is turned on for another account.")
     return {"ok": True}
