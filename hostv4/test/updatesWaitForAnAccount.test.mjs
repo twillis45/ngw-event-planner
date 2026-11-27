@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import UpdatesPage from '../src/UpdatesPage.jsx';
+import UpdatesPage from '@app/guestsKit/UpdatesPage.jsx';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,10 +22,10 @@ describe('updates wait for an account', () => {
     expect(html).not.toContain('Questions');
   });
   it('the page decides by the plan being on an account', () => {
-    expect(src('../src/UpdatesPage.jsx')).toMatch(/getLastSyncTime\(ev\.id\)/);
+    expect(src('../../src/guestsKit/UpdatesPage.jsx')).toMatch(/getLastSyncTime\(ev\.id\)/);
   });
   it('no caller passing no plan makes a request', () => {
     expect(src('../../src/lib/guestUpdatesKit.js')).toMatch(/isAnnouncementsApiConfigured\(\) && eventId\) load\(\)/);
-    expect(src('../src/UpdatesPage.jsx')).toMatch(/if \(!isGuestMessagesApiConfigured\(\) \|\| !eventId\) return undefined;/);
+    expect(src('../../src/guestsKit/UpdatesPage.jsx')).toMatch(/if \(!isGuestMessagesApiConfigured\(\) \|\| !eventId\) return undefined;/);
   });
 });

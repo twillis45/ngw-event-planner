@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import GuestsPage from '../src/GuestsPage.jsx';
+import GuestsPage from '@app/guestsKit/GuestsPage.jsx';
 
 const day = (n) => { const d = new Date(Date.now() + n * 864e5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const answered = { id: 'e1', name: 'Rosa’s 40th Birthday', type: 'Birthday', date: day(30), guestEstimate: 20, guestMode: 'list', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'adults_only' };

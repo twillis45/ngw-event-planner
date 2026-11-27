@@ -11,7 +11,7 @@ import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 const ready = vi.hoisted(() => ({ v: { acct: { state: 'out', email: '' }, link: { state: 'idle', url: '' }, ready: false, check: () => {} } }));
-vi.mock('../src/sendKit.jsx', async (orig) => ({ ...(await orig()), useSendReady: () => ready.v }));
+vi.mock('@app/guestsKit/sendKit.jsx', async (orig) => ({ ...(await orig()), useSendReady: () => ready.v }));
 const { default: DayPage } = await import('../src/DayPage.jsx');
 const { draftGuestBrief, draftParkingInstructions } = await import('@app/lib/doItForMe');
 

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QuestionCard, guestQuestions, answersLine } from '../src/GuestsPage.jsx';
+import { QuestionCard, guestQuestions, answersLine } from '@app/guestsKit/GuestsPage.jsx';
 import { replyByProblem } from '@app/lib/guestEdits';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
