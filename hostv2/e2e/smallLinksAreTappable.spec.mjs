@@ -68,8 +68,9 @@ test('the "Mid-range $…" tier and the Space rows are big enough to tap', async
   await settled(page);
   // The INLINE path to the band's middle. It was a "Use $300 and trim" link;
   // since the owner's 11/24/2026 copy ruling it is the "Mid-range $300" tier in
-  // the tier row, and it is held to the same 44px.
-  const use = page.locator('.sheet').last().locator('.tier-link', { hasText: /^Mid.range \$/ }).first();
+  // the tier row, and it is held to the same 44px. Since 11/26/2026 ("As
+  // rendered is fine") the tiers are the question's choice rows.
+  const use = page.locator('.sheet').last().locator('.optrow', { hasText: /^Mid.range/ }).first();
   await expect(use).toHaveCount(1);
   await use.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   expect(await hitHeight(use), 'Mid-range $… tier').toBeGreaterThanOrEqual(44);

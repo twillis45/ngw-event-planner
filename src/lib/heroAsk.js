@@ -32,7 +32,7 @@ const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographe
 // declaration and nothing else; a title is only ever spoken back as itself.
 // Pinned by heroAskReadsTheDeclaration.test.js over all 47 playbooks.
 export const ASK_KINDS = Object.freeze({
-  budget: 'Set your budget.',
+  budget: 'How much do you want to spend?',
   'budget-over': 'Bring the plan inside your budget.',
   guests: 'Add who’s coming.',
   rsvp: 'Nudge your RSVPs.',

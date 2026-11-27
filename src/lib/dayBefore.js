@@ -14,10 +14,11 @@
 import { notRepliedYet } from './rsvp';
 import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } from './playbooks';
 import { linesLeftToBuy } from './itemCounts';
-import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
+import { rainPlanStatus, RAIN_PLAN_TARGET, dayWeather, guestTravelMessage } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed, hiredVendors } from './workstreams';
-import { effectiveDone } from './taskEngine';
+import { openSteps } from './openSteps';
+import { mayBeOutdoors } from './placeIntelligence';
 import { daysUntil } from './dates';
 import { byGuestMode } from './guestMode';
 
@@ -29,7 +30,14 @@ const daysTo = (dateStr, now = new Date()) => {
 // The plan applies from two days out through the event day itself.
 export const DAY_BEFORE_WINDOW = { from: 0, to: 2 };
 
-export function buildDayBeforePlan(event, now = new Date()) {
+// THE DAY BEFORE HAS THE WEATHER (owner, 11/26/2026). One name for the day's
+// forecast row, read by hostv2's plan and hostv4's The Day alike.
+export const dayWeatherLabel = (daysOut) => (daysOut === 1 ? 'Tomorrow’s weather' : 'The day’s weather');
+
+// `forecast` is the LIVE forecast row for the event day (hostv2's dayWx); the
+// sample sky and a missing row add nothing. On the day itself The Day's own
+// weather card carries it, so the section runs 1–2 days out only.
+export function buildDayBeforePlan(event, now = new Date(), forecast = null) {
   const ev = event || {};
   const daysOut = daysTo(ev.date, now);
   const applicable = daysOut !== null && daysOut >= DAY_BEFORE_WINDOW.from && daysOut <= DAY_BEFORE_WINDOW.to;
@@ -42,10 +50,9 @@ export function buildDayBeforePlan(event, now = new Date()) {
   // disagree with every other checklist number on the screen. Known residual:
   // the V2 shell layers two local extras on top (arrivals-grid, buy/shop
   // resolution) that stay V2-side; this engine reads the shared predicate only.
-  const timeline = Array.isArray(ev.timeline) ? ev.timeline.filter(t => t && t.task) : [];
-  const openTasks = timeline.filter(t => {
-    try { return !effectiveDone(ev, t); } catch { return !t.done; }
-  });
+  // ONE COUNT (owner, 11/26/2026): lib/openSteps — `left` here, `past` the
+  // same number the day-of alert and the checklist row print.
+  const { left: openTasks, past: pastTasks } = openSteps(ev, now);
 
   // 2 · Still to get — unbought food lines + unchecked supplies (same single
   // sources the Plan tab checks off against).
@@ -116,17 +123,39 @@ export function buildDayBeforePlan(event, now = new Date()) {
       .map(r => ({ time: r.time || '', segment: r.segment }));
   } catch (e) { /* none */ }
 
+  // 4.5 · The day's weather — the line, what it asks of arrivals (the same
+  // safetyChecked keys The Day ticks), and the note to guests.
+  let weather = null;
+  if (daysOut >= 1) {
+    let w = null;
+    try { w = dayWeather(forecast); } catch { w = null; }
+    if (w) {
+      const ticked = (ev.safetyChecked && typeof ev.safetyChecked === 'object') ? ev.safetyChecked : {};
+      const checks = w.arrival ? w.arrival.checks.map((c) => ({ key: c.key, label: c.label, checked: !!ticked[c.key] })) : [];
+      let note = null;
+      if (w.arrival) { try { note = guestTravelMessage(ev, w.arrival); } catch { note = null; } }
+      weather = {
+        key: 'weather', label: dayWeatherLabel(daysOut), line: w.line, glyph: w.glyph,
+        kind: w.arrival ? w.arrival.kind : 'clear', checks, note,
+        open: checks.filter((c) => !c.checked).length,
+        detail: w.arrival ? `${w.line}. ${w.arrival.advice}` : `${w.line}.`,
+        route: null, cta: null,
+      };
+    }
+  }
+
   // Deep-link doctrine: every row lands on its first-undone element.
   const sections = [
     {
-      key: 'tasks', label: 'Open plan steps', open: openTasks.length,
+      key: 'tasks', label: 'Open plan steps', open: openTasks.length, past: pastTasks.length,
       detail: openTasks.length
-        ? `${openTasks.length} still open — knock out what matters, let the rest go.`
+        ? `${openTasks.length} left${pastTasks.length ? `, ${pastTasks.length} past their window` : ''}. Knock out what matters, let the rest go.`
         : 'Nothing open. Stop worrying about the plan.',
       items: openTasks.slice(0, 4).map(t => t.task),
       route: openTasks.length ? { tab: 'Planning Tasks', taskId: '__compressed__' } : null,
       cta: openTasks.length ? 'See what to do now' : null,
     },
+    ...(weather ? [weather] : []),
     // 1.5 · Final guest count — the number every quantity below scales from.
     // Decision-first ("count before quantity", the engine's own rule): pending
     // RSVPs or no count at all stay OPEN ahead of the store run — the day-before
@@ -178,12 +207,13 @@ export function buildDayBeforePlan(event, now = new Date()) {
       route: vendorGaps.length ? { tab: 'Vendors', vendorId: firstGapVendor.id } : null,
       cta: vendorGaps.length ? 'Follow up' : null,
     }] : []),
-    {
+    // Outdoors only (owner, 11/26/2026): an indoor plan has no rain backup to make.
+    ...(mayBeOutdoors(ev) ? [{
       key: 'rain', label: 'Weather backup', open: rain.hasPlan ? 0 : 1,
       detail: rain.hasPlan ? 'Rain plan saved — you know the move if the sky turns.' : 'No backup spot written down yet.',
       route: rain.hasPlan ? null : RAIN_PLAN_TARGET,
       cta: rain.hasPlan ? null : 'Add rain backup',
-    },
+    }] : []),
     ...(cues.length ? [{
       // "How TOMORROW starts" was printed on the day itself. The window runs
       // T-2 through T-0 and only the headline below was ever day-aware, so at

@@ -18,6 +18,11 @@ import { localISO, getToday } from './dates';
 import { taskLeadDays, taskIsOverdue } from './taskLead';
 import { inferPromisesFromVendor, promiseNeedsHost } from './vendorAccountability/derive';
 import { typicalDurationHours } from './startTime';
+import { effectiveRos } from './playbooks';
+import { parseMin } from './dayAlerts';
+import { isVendorBooked } from './workstreams';
+import { vendorDisplayName } from './vendorDisplayName';
+import { stepTitle } from './dayOfEdits';
 
 const DAY = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
@@ -216,4 +221,75 @@ export function withCalendarFeed(data, now) {
     return rest;
   }
   try { return { ...data, calendarFeed: calendarFeedItems(data, now) }; } catch { return data; }
+}
+
+// ─── THE DAY IN HER CALENDAR (owner, 11/26/2026: "Yes" to calendar reminders;
+// "As rendered is fine") ─────────────────────────────────────────────────────
+// Nothing reached her with the app closed on the day. These are the day's
+// timed moments as calendar entries, each with its own alarm, so the phone's
+// calendar reminds her: every timed step on the run, each booked vendor's
+// arrival, and the guests' arrival (her own start time, never a suggested one).
+// A reminder says what is DUE, never that it is late: the calendar cannot know
+// whether the caterer came. That stays the app's alert. A step with no time has
+// no reminder. Times are floating local, like the rest of this file.
+const hm = (mins) => `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
+
+/** @returns {Array<{id, date, time, label, detail?}>} in date and time order. label is the short title. */
+/**
+ * @param {Date} [now] when given, reminders at or before it are left out (owner,
+ *   11/27/2026): a calendar entry for a step already done is noise. Compared in
+ *   the phone's own zone, like the times themselves (they float: the host travels
+ *   with the event).
+ */
+export function dayReminders(event, now) {
+  const ev = event || {};
+  const first = DAY(ev.date);
+  if (!first) return [];
+  const dayIso = (n) => localISO(plus(first, Math.max(0, (Number(n) || 1) - 1)));
+  const out = [];
+  let ros = [];
+  try { ros = effectiveRos(ev) || []; } catch (_e) { ros = Array.isArray(ev.ros) ? ev.ros : []; }
+  ros.forEach((r, i) => {
+    const m = r && r.time ? parseMin(r.time) : null;
+    if (m == null || !String(r.segment || '').trim()) return;
+    out.push({ id: 'ros-' + (r.id || i), date: dayIso(r.day), time: hm(m), label: stepTitle(r) || String(r.segment).trim(), detail: String(r.segment).trim() });
+  });
+  (Array.isArray(ev.vendors) ? ev.vendors : []).forEach((v) => {
+    if (!v || !v.arrivalTime || !isVendorBooked(v)) return;
+    const m = parseMin(v.arrivalTime);
+    if (m == null) return;
+    out.push({ id: 'vendor-' + v.id, date: dayIso(v.day), time: hm(m), label: (vendorDisplayName(v) || 'A vendor') + ' due' });
+  });
+  const at = eventStart(ev);
+  if (at && !at.suggested && !out.some((x) => x.date === dayIso(1) && x.time === hm(at.mins) && /arriv|guest/i.test(x.label))) {
+    out.push({ id: 'guests', date: dayIso(1), time: hm(at.mins), label: 'Guests arrive' });
+  }
+  const t = now instanceof Date && !Number.isNaN(now.getTime()) ? now.getTime() : null;
+  const ahead = t == null ? out : out.filter((x) => {
+    const [y, mo, d] = x.date.split('-').map(Number); const [h, mi] = x.time.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, mi).getTime() > t;
+  });
+  return ahead.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
+/** The reminders as one calendar file. lead: minutes before (10) or 0 for at the time. */
+export function dayRemindersIcs(event, opts, now) {
+  const ev = event || {};
+  const lead = Math.max(0, Number(opts && opts.lead) || 0);
+  const name = String(ev.name || 'The event').trim();
+  const stamp = new Date(now || Date.now()).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//No Guesswork//Day Reminders//EN', 'CALSCALE:GREGORIAN'];
+  for (const r of dayReminders(ev, now ? new Date(now) : undefined)) {
+    lines.push('BEGIN:VEVENT',
+      'UID:' + icsText(`${ev.id || 'event'}-${r.id}-${r.date}@ngw-day`),
+      'DTSTAMP:' + stamp,
+      'DTSTART:' + compact(r.date) + 'T' + r.time.replace(':', '') + '00',
+      'SUMMARY:' + icsText(r.label),
+      'DESCRIPTION:' + icsText(r.detail && r.detail !== r.label ? r.detail + '\n' + name : name),
+      'TRANSP:TRANSPARENT',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsText(r.label), 'TRIGGER:' + (lead ? `-PT${lead}M` : 'PT0M'), 'END:VALARM',
+      'END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  return lines.map(fold).join('\r\n') + '\r\n';
 }

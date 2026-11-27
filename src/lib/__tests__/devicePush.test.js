@@ -138,7 +138,18 @@ describe('turning it on and off', () => {
     expect(calls.subscribe[0].userVisibleOnly).toBe(true);
     expect(Array.from(calls.subscribe[0].applicationServerKey)).toEqual(Array.from(d.keyBytes('BKey_x')));
     expect(log).toEqual([{ url: `${API}/api/push/subscribe`, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer t' },
-      body: { endpoint: 'https://fcm.googleapis.com/fcm/send/device-one', keys: { p256dh: 'BPub', auth: 'Sec' } } }]);
+      body: { endpoint: 'https://fcm.googleapis.com/fcm/send/device-one', keys: { p256dh: 'BPub', auth: 'Sec' }, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } }]);
+  });
+
+  // Owner, 11/27/2026: on the event day there is no hourly limit, and "the
+  // event day" is the host's own: the zone her phone reports, sent with the device.
+  test('on: sends her phone\'s time zone beside the device', async () => {
+    const d = load();
+    const { env } = makeEnv();
+    env.timeZone = () => 'America/Chicago';
+    const log = [];
+    expect(await d.turnOnPush('BKey_x', { env, fetchImpl: keyFetch(200, log) })).toEqual({ ok: true });
+    expect(log[0].body.tz).toBe('America/Chicago');
   });
 
   test('denied or dismissed: nothing is subscribed and the reason comes back', async () => {

@@ -40,6 +40,7 @@ jest.mock('@app/lib/artworkMarks', () => require('../artworkMarks'), { virtual: 
 jest.mock('@app/lib/welcomeGate', () => require('../welcomeGate'), { virtual: true });
 jest.mock('@app/lib/eventDates', () => require('../eventDates'), { virtual: true });
 jest.mock('@app/lib/customEventStore', () => require('../customEventStore'), { virtual: true });
+jest.mock('@app/lib/eventIds', () => require('../eventIds'), { virtual: true });
 jest.mock('@app/lib/inviteTone', () => require('../inviteTone'), { virtual: true });
 jest.mock('@app/theme/palette', () => require('../../theme/palette'), { virtual: true });
 jest.mock('@app/data/sampleEventsExtra', () => require('../../data/sampleEventsExtra'), { virtual: true });

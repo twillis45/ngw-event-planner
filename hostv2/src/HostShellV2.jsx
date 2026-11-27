@@ -74,7 +74,7 @@ import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, 
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, guestTravelMessage, arrivalWeather, dayWeather } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, greetingName } from '@app/lib/inviteBatch';
@@ -128,7 +128,9 @@ import ContactInput from './ContactInput.jsx';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
-import { dayOfHero, cueByTheClock } from '@app/lib/dayOfHero';
+import { dayOfHero } from '@app/lib/dayOfHero';
+import { dayState } from '@app/lib/dayState';
+import { todaysRos, dayOfList, dayOfTickEdit, addMomentEdit, vendorArrivalEdit } from '@app/lib/dayOfEdits';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -144,22 +146,20 @@ import { tweenNumber } from '@app/lib/tweenNumber';
 import { isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
 import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
-import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
+import { startTimeReading } from '@app/lib/startTimeFieldsToPersist';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld, KITCHEN_ANSWERS } from '@app/lib/lodgingIntel';
-import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
+import { lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld, KITCHEN_ANSWERS } from '@app/lib/lodgingIntel';
+import { accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents, vendorRolesLine } from '@app/lib/heardClauses';
-import { potluckPickFor, byobPickFor, adultsOnlyPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from '@app/lib/heardFacts';
 import { timeOfDayFor } from '@app/lib/knownFacts';
 import { kidsCountAfterRoster } from '@app/lib/kidsCountAfterRoster';
 import { hostNameFor } from '@app/lib/hostNameFor';
-import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
-import { heardGameStyle } from '@app/lib/heardGameStyle';
+import { similarPlanLine } from '@app/lib/heardFoods';
 import { addGame, removeGame, isGameLibrary, GAME_NAME_MAX } from '@app/lib/gameLineup';
 import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuestions';
 
@@ -180,7 +180,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -207,7 +207,6 @@ import CohostsSheet from './CohostsSheet.jsx';
 import MessagesSheet from './MessagesSheet.jsx';
 import DeviceNotificationsRow from './DeviceNotificationsRow.jsx';
 import { claimCohostInvites } from '@app/lib/api/cohosts';
-import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
@@ -243,7 +242,7 @@ import { typeLineFor } from '@app/lib/eventMasthead';
 import { confirmedCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -308,14 +307,14 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
-import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
+import { suggestableMoments } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
 import { signOutThisDevice } from '@app/lib/devicePush';
-import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
+import { lodgingBasisFor } from '@app/lib/knowledge/lodgingBasisLadder';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
@@ -328,7 +327,6 @@ import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, 
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
-import { helperAskTitle } from '@app/lib/messageTimeline';
 import { commApi, isCommApiConfigured, listSentMessages } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
@@ -350,8 +348,8 @@ import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsM
 import { summarizeWhoIsConfirmed, whoIsConfirmedLines, whoIsConfirmedGroups } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
+import { helperJobMessage, helperLinkPatch, helperHandoffPatch, helperMintWhy } from '@app/lib/helperJob';
 import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
-import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
 import { mergeGuestReplies, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
@@ -363,24 +361,25 @@ import { CATERED_COURSE_ID } from '@app/lib/playbooks/cateredCourse';
 import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState, nominatimToSuggestion } from '@app/lib/addressSuggest';
-import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
-import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
+import { aOccasion } from '@app/lib/occasionWords';
+import { stepToggleEdit } from '@app/lib/stepToggle';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
-import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
+import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor, actionRoute, upNextRoute } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
-import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
+import { riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { urgencyOf } from '@app/lib/urgency';
 import { COUNT_LABELS } from '@app/lib/itemCounts';
 import { perHead, perHeadRange, perHeadText } from '@app/lib/perHead';
+import { budgetChoices } from '@app/lib/budgetChoices';
 import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
 import { checklistPhases, upNextStep, stepWhen, stepDateText } from '@app/lib/checklistPhases';
@@ -388,8 +387,7 @@ import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
 import { outwardGaps, outwardPrompt, isPlaceholderName } from '@app/lib/outwardReady';
 import EventNameField from './EventNameField.jsx';
-import { eventNameFrom } from '@app/lib/eventName';
-import { timeAnchorFields } from '@app/lib/eventAnchor';
+import { effectiveAnswers, eventFromSentence } from '@app/lib/eventFromSentence';
 import { startTimeFieldWords } from '@app/lib/eventWhen';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
@@ -775,9 +773,13 @@ const fmt12h = (t) => {
 // so far" changes sentence and wrap, and everything below it shifts. Chromium
 // and current WebKit anchor the scroll and keep the card still; a browser that
 // does not (an older iPhone Safari) moves it, 16px in anOpenCardHoldsStill.
-// So note the card's top before the write and, on the next frame (after the
-// commit, before paint), scroll back by any drift. A browser that already
-// anchored leaves no drift, and this does nothing.
+// So note the card's top before the write and scroll back by any drift, every
+// frame through a short settle window, not only the next one: a reflow above
+// the card can land after that first frame (main red on WebKit phone,
+// 11/26/2026: 15px left over). Her own touch, wheel or key ends the hold at
+// once, so it never fights her scrolling. A browser that already anchored
+// leaves no drift, and this does nothing.
+const HOLD_MS = 700;
 function holdOpenCard() {
   try {
     const open = () => document.querySelector('.sheet .vcard.open');
@@ -785,15 +787,23 @@ function holdOpenCard() {
     if (!card) return;
     const id = card.id;
     const before = card.getBoundingClientRect().top;
-    requestAnimationFrame(() => {
+    const end = performance.now() + HOLD_MS;
+    let stopped = false;
+    const stop = () => { stopped = true; ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((t) => window.removeEventListener(t, stop, true)); };
+    ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((t) => window.addEventListener(t, stop, true));
+    const step = () => {
+      if (stopped) return;
       const now = (card.isConnected ? card : (id && document.getElementById(id))) || open();
-      if (!now) return;
+      if (!now) { stop(); return; }
       const delta = now.getBoundingClientRect().top - before;
-      if (Math.abs(delta) < 1) return;
-      let sc = now.parentElement;
-      while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
-      (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
-    });
+      if (Math.abs(delta) >= 1) {
+        let sc = now.parentElement;
+        while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
+        (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
+      }
+      if (performance.now() < end) requestAnimationFrame(step); else stop();
+    };
+    requestAnimationFrame(step);
   } catch (_e) { /* a hold is a nicety; the write itself already happened */ }
 }
 
@@ -2150,77 +2160,13 @@ export default function HostShellV2() {
   );
 
   // Effective values: manual correction wins, then the parse, then the
-  // playbook's own typical (host-shell defaulting — never a blank form).
-  const effType = fType || parsed.type || null;
-  const pbTypical = effType ? playbookTypicalGuests(effType) : null;
-  const effGuests = (fGuests ?? parsed.guests) ?? pbTypical;
-  const effDate = fDate || parsed.date || '';
-  // ── THE SPAN'S LAST DAY, AND WHY THE OLD RULE WAS A TRAPDOOR ─────────────
-  //
-  // R1 (span ruling, 2026-07-26) said the parsed end rides only while the
-  // start it was heard with still stands, because "a manually corrected start
-  // date can't keep a parsed end that no longer means anything". The reasoning
-  // is right and the implementation had no floor under it.
-  //
-  // DRIVEN 2026-09-27, host report. Type "family reunion July 10-13 in
-  // Charleston": the chip reads Jul 10 – Jul 13, correctly. Open the date
-  // editor — it offers ONE date, because there was no `fEndDate` anywhere in
-  // creation — and move the start to the 11th. The end date is gone, the chip
-  // reads "Jul 11", and there is no field in which to put it back. The host's
-  // own sentence still says July 10-13 on the screen above.
-  //
-  // TWO THINGS WERE WRONG.
-  //
-  //   1. `effDate === parsed.date` drops the end on ANY start edit, including
-  //      one that leaves the span perfectly coherent. Moving 10 -> 11 with an
-  //      end of the 13th is still a real three-day event. An end only stops
-  //      meaning anything when it is no longer AFTER the start, and that is
-  //      what this now tests.
-  //   2. R1 presupposed somewhere to re-enter it. There wasn't one. A rule
-  //      that discards a host's input is only safe if the host can give it
-  //      again, so the input below exists now and this reads it first.
-  const effEndDate = fEndDate || (parsed.endDate && parsed.endDate > effDate ? parsed.endDate : '');
-  const effName = fName || parsed.honoree || '';
-  // A real "in Santa Fe, New Mexico" match pre-fills the town field the same
-  // way a typical guest count pre-fills — visible, editable, never silently
-  // final until "Put my plan together."
-  const effCityText = fCity.trim() || (parsed.venueCity ? (parsed.venueState ? parsed.venueCity + ', ' + parsed.venueState : parsed.venueCity) : '');
-  const effBudget = fBudget ?? parsed.budget ?? null;
-  // ── A GUESS IS NOT AN ANSWER (2026-09-17) ────────────────────────────────
-  // With no home city on the profile, smartParseEvent fires isDestination for
-  // ANY bare resolved city — deliberately, because a miss silently deletes the
-  // whole travel stack. But "fire by default" also means a local party typed as
-  // "in Greenbelt, MD" arrived pre-committed to a destination plan (lodging,
-  // transport, a budget blended toward travel-led) that the host never asked
-  // for and was never asked about.
-  //
-  // basis 'place-named' is exactly and only that guess — 'travel-language' is
-  // the host's own words and 'place-differs-from-your-area' is grounded in her
-  // profile, so both still commit. The guess becomes the THIRD state the
-  // overnight chip already established: unanswered, which stays honest instead
-  // of defaulting. Nothing downstream changes for the two grounded cases.
-  const destinationIsGuess = parsed.destinationBasis === 'place-named';
-  const effIsDestination = fIsDestination ?? (destinationIsGuess ? null : !!parsed.isDestination);
-  // Host answer wins over the heard hint, which wins over nothing. Staying null
-  // is a real state — it means "we have not been told", and the decisions that
-  // depend on it stay out rather than being gated on a guess.
-  // ── AND THE OVERNIGHT CLAIM CANNOT OUTLIVE THE SPAN IT CITES ─────────────
-  //
-  // `parsed` is a pure function of the TEXT, so `parsed.overnight` stayed true
-  // after the span was dropped above — the text still said "July 10-13". The
-  // chip went on rendering "Staying overnight · from your dates" while the
-  // only date on screen was a single day: it cited dates it was no longer
-  // showing. Not cosmetic — overnight is what turns on the lodging and travel
-  // stack, so the plan was built for a multi-night stay on a one-day event.
-  //
-  // Said-so still beats derived, exactly as smartParseEvent decided on
-  // 2026-08-06: a host who wrote "hotel" or "3 nights" told us, and that does
-  // not depend on any date surviving. What is DERIVED from a span is now
-  // derived from the EFFECTIVE span, so it falls away with it and the chip
-  // honestly reverts to the unanswered "Staying over?".
-  const saidOvernight = parsed.overnightBasis === 'said-so';
-  const effOvernight = fOvernight ?? ((saidOvernight || !!effEndDate) ? true : null);
-  const effTravelMode = fTravelMode ?? parsed.travelMode ?? null;
+  // playbook's own typical. The rules, and the reports behind each, live in
+  // lib/eventFromSentence (effectiveAnswers), shared with hostv4's Create.
+  const createSaid = { fType, fGuests, fDate, fEndDate, fName, fCity, fBudget, fIsDestination, fOvernight, fTravelMode };
+  const {
+    effType, effGuests, effDate, effEndDate, effName, effCityText, effBudget,
+    effIsDestination, saidOvernight, effOvernight, effTravelMode,
+  } = effectiveAnswers(parsed, createSaid);
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
@@ -3778,6 +3724,15 @@ export default function HostShellV2() {
   // the plain forecast the Calendar and Date & time show. Live only — never
   // the sample, which describes no real sky.
   const [dayWx, setDayWx] = useState(null);
+  // FINISHED CHECKS FOLD AWAY (owner, 11/26/2026: "Collapse or remove checks
+  // as they finish" / "Allow collapsing of section"). `dayofDoneOpen` shows the
+  // folded checked rows; `dayofHidden` hides the whole list under its count and
+  // is remembered per event on this device (a convenience, never plan data).
+  const [dayofDoneOpen, setDayofDoneOpen] = useState(false);
+  const [dayofHiddenTick, setDayofHiddenTick] = useState(0);
+  const dayofFoldKey = 'ngw-dayof-hidden-' + (event && event.id);
+  const dayofHidden = (() => { void dayofHiddenTick; try { return localStorage.getItem(dayofFoldKey) === '1'; } catch { return false; } })();
+  const setDayofHidden = (v) => { try { if (v) localStorage.setItem(dayofFoldKey, '1'); else localStorage.removeItem(dayofFoldKey); } catch { /* not remembered */ } setDayofHiddenTick((n) => n + 1); };
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
@@ -3853,7 +3808,8 @@ export default function HostShellV2() {
   const travelWx = useMemo(() => {
     if (!dayWx) return null;
     try { if (placeIsOutdoors(event)) return null; } catch { return null; }
-    try { return travelHazard(dayWx); } catch { return null; }
+    // Rain joins snow, ice and storms (owner, 11/26/2026): lib/weather arrivalWeather.
+    try { return arrivalWeather(dayWx); } catch { return null; }
   }, [event, dayWx]);
   const wxImpact = useMemo(() => {
     if (!wx) return null;
@@ -7297,6 +7253,7 @@ export default function HostShellV2() {
   // BUDGET PROPOSE-DON'T-ASK: the editor leads with ONE grounded number (Typical) + agree/change;
   // "Change" opens the tiers+custom drawer. This flag = the host asked to change the number.
   const [budgetChanging, setBudgetChanging] = useState(false);
+  const [budgetPick, setBudgetPick] = useState(null); // the budget question's picked choice (null: the lit one)
 
   // Row-level landings inside the prototype — a route with a real destination
   // here opens the sheet on the exact row, instead of toasting.
@@ -7753,53 +7710,14 @@ export default function HostShellV2() {
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
   // catching up genuinely closes the "Catch up on overdue planning" card.
+  // ONE TICK FOR A STEP (B2, 11/26/2026): lib/stepToggle, the same tick
+  // hostv4's day-before "Tonight" calls. It flips the step, marks what a shop
+  // step names bought (raw feeds truth; unchecking never un-buys), records the
+  // fact a tick stands for (factsATickRecords), and says when a send step sent
+  // nothing; its message counts what is still open the way the checklist does.
   const toggleTask = (i) => {
-    const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
-    // Counted the way the checklist counts (single-source audit, 11/18/2026):
-    // a step the plan already proves is not "still open" in the toast either.
-    const open = tl.filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
-    // RAW FEEDS TRUTH, both directions: checking a buy/shop step is the host
-    // asserting the purchases happened — write the raw layer (foodGot) so
-    // "Still to get", totals, and the day-before brief all agree. Unchecking
-    // never un-buys (asymmetric on purpose).
-    let extra = {};
-    let boughtNote = '';
-    // ONLY WHAT IT NAMES (50-host run, 11/16/2026): "Buy the turkey" used to mark
-    // the whole list bought. lib/shopTaskItems decides: named items, the whole
-    // list for a general shopping step, or nothing.
-    const buys = tl[i].done ? itemsBoughtByTask(tl[i].task, foodPlan && foodPlan.list) : { scope: 'none', ids: [] };
-    if (buys.scope !== 'none') {
-      // UNGATED (matches toggleGot, 555e770): checking the shop step asserts
-      // every open food line was bought. Price stays optional — an unpriced line
-      // is marked bought at its honest estimate, never withheld. We surface how
-      // many landed firm (host-added or a real locked price) vs still an estimate
-      // — the same firm test hostSpending uses — so the host stays informed and
-      // "spent" carries its estimated portion openly rather than pretending.
-      const got = { ...(event.foodGot || {}) };
-      const real = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
-      let n = 0, firm = 0;
-      ((foodPlan && foodPlan.list) || []).forEach(it => {
-        if (!it || it.skipped || got[it.id] || !buys.ids.includes(it.id)) return;
-        got[it.id] = true; n += 1;
-        if (it.added || (it.locked != null && real[it.id])) firm += 1;
-      });
-      if (n > 0) extra = { foodGot: got };
-      if (n > 0) {
-        const est = n - firm;
-        boughtNote = ' ' + n + ' item' + (n === 1 ? '' : 's') + ' marked bought'
-          + (est > 0 ? ' (' + est + ' at an estimate — tap any to add the real price).' : '.');
-      }
-    }
-    // A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): "Send the invite"
-    // writes invitesSentAt and "Collect dietary needs" writes dietaryNoted, so
-    // the guest and food sheets agree with the checklist. taskEngine decides,
-    // from the same rule that ticks the step when the section is done first.
-    // Checking only; unchecking never un-sends (asymmetric, like the buys above).
-    if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
-    // A tick on a send step sends nothing and records no send — say so (cause 1).
-    const sentNothing = tl[i].done && stepIsASend(event, tl[i]) ? ' Nothing was sent from here.' : '';
-    patchEvent({ timeline: tl, ...extra },
-      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote + sentNothing);
+    const ed = stepToggleEdit(event, i, foodPlan && foodPlan.list);
+    if (ed) patchEvent(ed.patch, ed.msg);
   };
 
   // No timeline yet → draft one from the playbook's REAL task list, honoring
@@ -9783,42 +9701,26 @@ export default function HostShellV2() {
     catch { toast(`The public link address is missing, so ${first}'s link can't be made. Nothing was sent.`); return; }
     setHelperSend({ taskId, busy: true });
     const r = await mintHelperLinkResult(event.id, resp.helperName);
-    if (!r.ok) {
-      const why = r.kind === 'signed-out' ? `Sign in to make ${first}'s link.`
-        : r.kind === 'not-found' ? `${first}'s job hasn't saved to your plan yet. Give it a moment, then try again.`
-          : `Couldn't make ${first}'s link just now.`;
-      setHelperSend({ taskId, error: `${why} Nothing was sent.` });
-      return;
-    }
-    const url = appUrl + '?helper=' + encodeURIComponent(r.code);
-    const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
-    const body = buildHelperAsk({
-      event, hostName: hostNameFor(event, profile), helperName: resp.helperName,
-      jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
-    });
-    const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
-    const digits = String((guest && guest.phone) || '').replace(/[^+\d]/g, '');
-    // EMAIL GOES FROM THE APP NOW (owner, 11/20/2026: the helper ask gets the
-    // invite's branded envelope). A helper with an email has its own button,
-    // "Email <name> their job" (emailHelperFor); this one is the phone's text,
-    // or the share sheet when there is no number.
-    const hasEmail = !!String((guest && guest.email) || '').trim();
-    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body) : null;
-    setHelperSend({ taskId, href, first, body, hasEmail, channel: digits ? 'text' : 'share' });
+    if (!r.ok) { setHelperSend({ taskId, error: helperMintWhy(r.kind, first) }); return; }
+    // The message, text-or-share and email are lib/helperJob (B3, 11/26/2026),
+    // the same send hostv4's "Your day crew" makes. EMAIL GOES FROM THE APP
+    // (owner, 11/20/2026): a helper with an email has its own button, "Email
+    // <name> their job" (emailHelperFor); this one is the phone's text, or the
+    // share sheet when there is no number.
+    const m = helperJobMessage({ event, profile, helperId: resp.helperId, code: r.code, appUrl });
+    if (!m) return;
+    const { href, body, hasEmail } = m;
+    setHelperSend({ taskId, href, first, body, hasEmail, channel: m.channel });
     // THE HANDOFF IS RECORDED (Messages view, owner 11/20/2026): the send
     // ledger's host-attested `handed_off`, at the moment the host's own phone
     // takes the message — the composer opened, the share sheet completed, or
     // the clipboard took it. Never "Sent", and a cancelled share records
     // nothing. Before this, a helper ask left no record but helperLinkIds.
-    const handoff = (channel) => ({ sendLedger: recordHandoff(event.sendLedger, helperAskTitle(resp.helperName), channel,
-      new Date().toISOString(), { kind: 'helper', id: resp.helperId }) });
+    const handoff = (channel) => helperHandoffPatch(event, resp, channel);
     // The ledger: which helpers have a link. Silent, deduped, and true whether
     // or not the host goes on to send — a link exists either way.
     let linkPatch = {};
-    try {
-      const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
-      if (resp.helperId && !cur.includes(resp.helperId)) linkPatch = { helperLinkIds: [...cur, resp.helperId] };
-    } catch { /* best-effort; the link itself already exists */ }
+    try { linkPatch = helperLinkPatch(event, resp.helperId); } catch { /* best-effort; the link itself already exists */ }
     if (href) {
       try { patchEvent({ ...linkPatch, ...(resp.helperId ? handoff('sms') : {}) }); } catch { /* the record is best-effort */ }
       try { window.location.href = href; } catch { /* the visible link below still works */ }
@@ -10785,10 +10687,10 @@ export default function HostShellV2() {
     const _stayBasis = (() => {
       try { return lodgingBasisFor(event); } catch (_e) { return null; }
     })();
-    const _stayFloor = (() => {
-      try { return budgetComparableTotal(_stayBasis, spanNights(event)); } catch (_e) { return null; }
-    })();
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: timeOfDayFor(event), isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
+    // ONE BUDGET QUESTION (11/26/2026): the band, its tiers and the stay's floor
+    // come from lib/budgetChoices, the answer hostv4 reads too.
+    const _bc = (() => { try { return budgetChoices(event, foodPP); } catch (_e) { return null; } })();
+    const est = _bc ? _bc.est : null;
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -10797,9 +10699,7 @@ export default function HostShellV2() {
       try { return est && est.provenanceKeys ? moneyDisclosure(est.provenanceKeys) : null; }
       catch (_e) { return null; }
     })();
-    const opts = est
-      ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
-      : [];
+    const opts = _bc ? _bc.tiers.map((t) => t.amount) : [];
     // ── A MIDPOINT IS NOT A TYPICAL (host, 2026-10-06) ──────────────────
     // "is typical actually typical for budget or median because they are
     // different". They are, and this was the wrong one. `typical` below is
@@ -10816,9 +10716,7 @@ export default function HostShellV2() {
     // when it is all you have; calling it typical was not. The variable keeps
     // its name because renaming it would touch the engine for a copy fix.
     const OPT_LABELS = ['Lean', 'Mid‑range', 'All-out'];
-    const low = est ? est.lowTotal : 0;
-    const high = est ? est.highTotal : 0;
-    const typical = est ? Math.round(((low + high) / 2) / 100) * 100 : 0;
+    const typical = _bc ? _bc.typical : 0;
     // "Budget is set" = the host gave us a NUMBER (event.totalBudget), NOT money.planned
     // (which is spend.total — non-zero from line items even when the host set no budget).
     //
@@ -10886,190 +10784,56 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
-      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
-      // wordy"). budgetAskCopy: the headline is the figure the lit button
-      // offers, the per-head is that headline over the guests (rounded as the
-      // tiers round), and one line says where it comes from.
+      // ── THE BUDGET QUESTION IN THE NEW STRUCTURE (owner, 11/26/2026: "As
+      // rendered is fine"; UX_12 decisions A + T2, v4 paused) ──────────────
+      // One question, its choices, one button. The choices are the shared
+      // answer (lib/budgetChoices, the list hostv4 shows): Lean, Mid-range,
+      // All-out, and "Covers your plan" when the plan's lines cost more than
+      // any tier; the lit figure is picked. The picked figure is the big
+      // number with its per-head (T2), marked as an estimate where the
+      // disclosure says it must be (UX_08). "A different amount" opens the
+      // Change drawer. Why these figures and what they leave out are one tap
+      // down ("How we got these"); the rooms and shortfall notes stay in view.
       const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
-      // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
-      // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
+      const choices = _bc ? _bc.choices : [];
+      const lit = _bc ? _bc.cta.lit : ask.headline;
+      const picked = (budgetPick != null && choices.some((c) => c.amount === budgetPick)) ? budgetPick : lit;
+      // The per-head is the shared answer's own (lib/budgetChoices), one division read once.
+      const pickedPer = ((choices.find((c) => c.amount === picked) || {}).perHead) || '';
+      const mark = !!(estDisclosure && estDisclosure.mustMark);
+      const excl = (() => { try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; } })();
+      const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
       return (
         <AskColumn>
-          <Eyebrow>A number to plan around</Eyebrow>
-          {/* THE LEAST-GROUNDED NUMBER IN THE PRODUCT WAS THE ONE THAT BECOMES
-              THE BUDGET (2026-09-18). 532 of 622 priced food LINES pass a
-              registry-checked provenance predicate against 297 dated sources —
-              and the per-head bands that produce THIS figure had no provenance
-              field in their shape at all, while rendering as a bare big number
-              with a one-tap "Use $X". UX_08: never show an estimate without the
-              marker. `provenanceKeys` lists only the factors that actually moved
-              this figure, so the disclosure is specific rather than a blanket
-              disclaimer, and `sources` is empty for every budget figure — this
-              reads as an explanation, never as a citation. */}
-          {/* ── PER HEAD BELONGS IN THE HERO (host, 2026-10-06) ────────────
-              It first shipped as its own Grounding line under the paragraph,
-              which buried the only figure on this screen a host can actually
-              check. $13,200 is not checkable against anything they have lived
-              through; $440 a head is — it is the number they can hold against
-              a dinner they have paid for. It rides the locked suffix slot, so
-              the hero stays ONE object at 44/750 and the disclosure marker
-              keeps its place at the end. Pure arithmetic on two figures
-              already on screen: nothing to ground, nothing invented. */}
-          <BigValue suffix={(
-            <>
-              {guests > 0 && (
-                /* A FIGURE, NOT A FOOTNOTE (host, 2026-10-06). It first rode
-                   the suffix slot at 13px muted, which is the register this
-                   kit uses for units and disclosure markers — and a host read
-                   it as one. 22/700 in ink is unmistakably a number while
-                   staying half the hero's 44, so the total is still the one
-                   loud thing and the checkable figure is no longer a caption
-                   on it. */
-                <span style={{
-                  fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
-                  color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{ask.perHead}</span>
-              )}
-              {/* The separator binds FORWARD, not back: at 390px the suffix
-                  wraps after the per-head figure, and a trailing "·" left
-                  dangling at the end of the first line reads as a dropped
-                  word. Glued to what follows, the whole marker moves down
-                  together. */}
-              {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
-            </>
-          )}>{fmt(ask.headline)}</BigValue>
-          <Grounding>{ask.grounding}</Grounding>
-          {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
-              `belowRequiredVendors` has been on the estimate result since
-              2026-09-19 with no reader. Surprise Proposal's own roster needs a
-              photographer and a ring — a $1,750 floor — under a $100-300
-              estimate. The open call was "refuse the headline or floor it";
-              the decision was neither. Refusing costs the host the number they
-              came for; flooring builds their primary figure out of 224 vendor
-              ranges carrying zero provenance. They get both, and are told
-              which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
-          {(() => {
-            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
-            return short ? <Grounding>{short}</Grounding> : null;
-          })()}
-          {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
-              `belowLodgingFloor` has sat on the estimate result since
-              2026-09-22 with zero UI readers — computed, asserted seven times
-              in test, shown to nobody. The Market Realist seat scored the
-              product down for it three sittings running: the app computes the
-              contradiction between a vendor's published price and its own
-              invented band, and tells the host nothing.
-              The exclusions fold below already says lodging is excluded, as a
-              CATEGORY. The host is at the same time looking at a real price
-              for it on their own shortlist, and nothing put the two numbers in
-              one sentence. See lib/budgetCopy.js#stayOnTopOfTheRangeNote for
-              why this does not cry "contradiction" and why it mints no new
-              band. */}
+          <BigValue suffix={(pickedPer || mark) ? <span data-budget-per>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
+          {short ? <Grounding>{short}</Grounding> : null}
           {roomsNote}
-          {/* The plan's lines above the band's middle (issue #100) are said in
-              the one line above, and the band's middle is "Mid-range" in the tier
-              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
-          {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
-              The old line here said "travel-scale costs are part of the
-              numbers", which a host reads as "the flights are in this". The
-              estimator means the opposite: `notIncludedFor` has named the
-              exclusions since the family-aware intake work, and grepped
-              2026-10-06 its only reader in the tree was the CRA-side
-              BudgetEstimateHint — so the one screen that turns this estimate
-              into a committed budget with a single tap was the one screen that
-              never said what it leaves out.
-              WIRED TO THE FUNCTION, NOT THE CONSTANT — and the first cut of
-              this was not. It imported the raw 3-line
-              TRAVEL_LOGISTICS_NOT_INCLUDED while its own comment claimed the
-              exclusions were wired "in the engine's own words", and the 2026-
-              10-06 review board opened it: for a destination Birthday
-              `notIncludedFor` answers with EIGHT lines and the host was shown
-              three. The five it dropped were gifts and favors, outfits for the
-              guest of honor, tips beyond service charge, pre- or post-event
-              gatherings — and cake, which on an 80th birthday is the one that
-              bites. Calling the function is the whole fix; the raw constant
-              was never the engine's answer, only one third of it.
-              AND IT IS NO LONGER GATED ON TRAVEL. The old condition was
-              `est.destinationAdjusted`, so a church-hall lunch got no
-              disclosure at all and src/App.js — the FROZEN donor — stayed the
-              only surface in the product that had ever rendered the full list.
-              `notIncludedFor` already scopes itself: it prepends the three
-              travel lines only when `isDestination`, so a local event is told
-              about its cake and its tips and never about visas. */}
-          {/* ── AND THEN IT WAS TOO MUCH PROSE (host, 2026-10-06) ──────────
-              The eight lines shipped as one run-on sentence and buried the
-              ask. Measured by the re-score board at 390px: 136px of grey
-              text, 31% of a 433px column, a 167% increase — and on a LOCAL
-              event it went from nothing at all to 85px. Both the reduction
-              seat and the data-ink seat predicted it before it shipped; the
-              host said it within the hour.
-              None of the honesty is dropped. A count is the summary a host
-              can act on — knowing there ARE eight is most of the value — and
-              the fold carries the engine's own words for anyone who wants
-              them. The summary names the ones with real money behind them so
-              the line is useful closed as well as open. `<details>` is the
-              house pattern for this and the food tab already ships one
-              ("What's in the estimate"); this reaches for it rather than
-              inventing a second shape. */}
-          {(() => {
-            const excl = (() => {
-              try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
-            })();
-            if (!excl.length) return null;
-            // Named from THIS list (lib notIncludedSummary, 11/20/2026) — it
-            // said "gifts and the cake" on a Board Meeting and a Thanksgiving.
-            return (
-              <details className="excl-fold" style={{ marginTop: 8 }}>
-                <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedLine(excl)}
-                </summary>
-                <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
-              </details>
-            );
-          })()}
-          {/* ONE LIT NUMBER, THE ONE THE SENTENCE RECOMMENDS (audit A P1-7).
-              It lit "Use $1,000" under "your plan's own lines already add up
-              to about $1,360 — more than this $1,000". budgetProposalCta picks
-              the plan's figure when the plan costs more than the middle. */}
-          {(() => {
-            const cta = (() => { try { return budgetProposalCta(spend && spend.expected, typical); } catch (_e) { return { lit: typical, alt: null }; } })();
-            return (
-              <CtaRow>
-                <button className="cta" onClick={() => setB(cta.lit)}>Use {fmt(cta.lit)}</button>
-                <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
-              </CtaRow>
-            );
-          })()}
-          {/* ── THE OTHER TWO NUMBERS ARE AS UNCHECKABLE AS THE FIRST ──────
-              Tufte's objection at the 2026-10-06 board, and it lands: the
-              entire argument for showing a per-head is that $13,200 is not a
-              figure a host can hold against anything they have lived through
-              and $440 is. By that argument $6,600 and $19,800 are equally
-              opaque, and the honesty had been granted to exactly one of the
-              three. It costs a few characters to give it to all of them, and
-              a host choosing between tiers is now comparing per-person
-              numbers rather than totals — which is the comparison they can
-              actually reason about. */}
-          {ask.covers ? (
-            // The plan costs more than the mid-range: the mid-range is a tier,
-            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
-            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
-            <Grounding gap={16}>
-              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
-                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
-                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
-              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
-            </Grounding>
-          ) : (low || high) ? (
-            <Grounding gap={16}>
-              or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
-              {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
-              {low && high ? ' · ' : ''}
-              {high ? <button className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
-              {high && guests > 0 ? ` (${perHeadText(perHeadRange(high, high, guests), fmt)})` : ''}
-            </Grounding>
-          ) : null}
+          <OptionList ariaLabel="Budget" value={picked}
+            onPick={(v) => { if (v === 'other') setBudgetChanging(true); else setBudgetPick(v); }}
+            options={[
+              ...choices.map((c) => ({
+                value: c.amount,
+                label: (c.key === 'covers' || (ask.covers && c.lit)) ? <>{c.label}<small className="optnote">Covers your plan</small></> : c.label,
+                // Owner, 11/26/2026: "Per head for each". The shared answer's own per-head.
+                sub: <>{fmt(c.amount)}{c.perHead ? <small className="optper">{c.perHead}</small> : null}</>,
+              })),
+              { value: 'other', label: 'A different amount' },
+            ]} />
+          <details className="excl-fold" data-budget-why>
+            <summary className="grounding">How we got these{excl.length ? ' · ' + notIncludedLine(excl) : ''}</summary>
+            <p className="grounding">{ask.grounding}</p>
+            {excl.length > 0 && <p className="grounding">Not included: {excl.join(' · ')}</p>}
+          </details>
+          {/* The button is the last thing in `.editor-slot`, which clips vertically
+              (its height animates). The attention cue's pulse reaches 15px below the
+              button (outline-offset 12px + 3px width, styles.css "THE ATTENTION CUE"),
+              and overflow-clip-margin does not reach iOS Safari (owner's phone,
+              11/26/2026: the ring cut off under "Plan with $400"). 16px of real room
+              keeps the whole ring inside the slot (styles.css, "THE BUDGET QUESTION").
+              Pinned: theBudgetAskSaysItInFewWords. */}
+          <CtaRow>
+            <button className="cta" data-budget-plan onClick={() => setB(picked)}>Plan with {fmt(picked)}</button>
+          </CtaRow>
         </AskColumn>
       );
     }
@@ -11087,15 +10851,20 @@ export default function HostShellV2() {
         <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>Pick a size, or type your own.</GuideLine>
         {opts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            {opts.map((n, idx) => (
+            {opts.map((n, idx) => {
+              // The same tier the question lights is "our pick", and each tier says
+              // its per-head (live check 11/27/2026; owner: "Per head for each").
+              const tier = (_bc && _bc.tiers[idx]) || {};
+              return (
               <TierRow key={n}
                 label={opts.length === 3 ? OPT_LABELS[idx] : fmt(n)}
-                amount={opts.length === 3 ? fmt(n) : null}
+                amount={opts.length === 3 ? <>{fmt(n)}{tier.perHead ? <small className="tier-per">{tier.perHead}</small> : null}</> : null}
                 selected={Number(event.totalBudget) === n}
-                pick={opts.length === 3 && idx === 1}
+                pick={!!_bc && n === _bc.cta.lit}
                 onClick={() => setB(n)}
-                ariaLabel={(opts.length === 3 ? OPT_LABELS[idx] + ' ' : '') + fmt(n)} />
-            ))}
+                ariaLabel={(opts.length === 3 ? OPT_LABELS[idx] + ' ' : '') + fmt(n) + (tier.perHead ? ', ' + tier.perHead : '')} />
+              );
+            })}
           </div>
         )}
         <CtaRow gap={ASK_COMPACT.whyToCta}>
@@ -11128,8 +10897,9 @@ export default function HostShellV2() {
   // Day-before plan — lib/dayBefore, date-gated (0–2 days out). Pure and real:
   // set an event's date to tomorrow and this materializes.
   const dayBefore = useMemo(() => {
-    try { return buildDayBeforePlan(event); } catch { return { applicable: false }; }
-  }, [event]);
+    // dayWx: the live forecast row, so tomorrow's weather rides in the plan.
+    try { return buildDayBeforePlan(event, new Date(), dayWx); } catch { return { applicable: false }; }
+  }, [event, dayWx]);
 
   // ── Create: build a REAL event object and hand it to the engine ──
   const assemble = () => {
@@ -11138,17 +10908,6 @@ export default function HostShellV2() {
     // detection, universal playbook tasks drafted immediately, guestMode
     // 'count' (a headcount event until a roster starts), budget left to the
     // engine's own domino.
-    const short = occasionShortName(effType);   // "Cookout", "Watch Party" — not "The Cookout", "Watch"
-    // A recognized milestone ("50th birthday") rides into the name — but it modifies the
-    // OCCASION it belongs to (birthday/anniversary), NOT blindly the primary type (host
-    // report: "50th ... retirement" was naming a "50th Retirement"). A DUAL event names
-    // BOTH occasions ("Retirement & 50th Birthday") instead of dropping half.
-    const secShort = parsed.secondaryType ? occasionShortName(parsed.secondaryType) : null;
-    const occasions = [short, secShort].filter(Boolean);
-    const cap = parsed.milestone ? parsed.milestone[0].toUpperCase() + parsed.milestone.slice(1) : null;
-    const milestoneName = (cap
-      ? occasions.map((o) => (/birthday|anniversary/i.test(o) ? cap + ' ' + o : o))
-      : occasions).join(' & ');
     // Every created event gets its own id (and invite code) — creating another
     // one appends to the store, it never overwrites what came before. The one
     // exception: "Change an answer" corrections keep the id they're fixing.
@@ -11162,263 +10921,13 @@ export default function HostShellV2() {
     // Where this host came from (lib/acquisition), carried by the first event
     // they create after arriving from an invite or a vendor brief, then spent.
     const arrivedFrom = !redoId ? arrival : null;
-    const ev = {
-      id: newId, rsvpCode: priorCode || mintRsvpToken(),
-      // "Match my event" for NEW events only (owner, 11/24/2026): the invite's
-      // colors follow the occasion and month (lib/inviteTone autoInvitePalette).
-      // Events made before this keep a blank inviteStyle and today's stock.
-      inviteStyle: 'auto',
-      ...(arrivedFrom ? { acquisitionSource: { from: arrivedFrom.from, ...(arrivedFrom.kind ? { kind: arrivedFrom.kind } : {}), at: arrivedFrom.at } } : {}),
-      createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
-      // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
-      // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
-      // Night". The honoree still wins when there is one; the host is kept on
-      // `hostName`, never promoted to honoree — nobody is being celebrated.
-      // NAMED FROM HER OWN WORDS (lib/eventName, six root causes cause 6): her
-      // honoree or her own name when she gave one, else the occasion phrase
-      // her sentence opens with — never "My <Type>". A bare occasion is a
-      // placeholder that lib/outwardReady asks her to replace before a send.
-      name: eventNameFrom({ sentence: smartText, honoree: effName, hostName: parsed.hostName, milestoneName }).name,
-      honoree: effName || '',
-      // …and when she did not name herself, the invitation is from the name
-      // her profile already holds (hostNameFor), not a blank she is asked to fill.
-      ...(hostNameFor({ hostName: parsed.hostName }, profile) ? { hostName: hostNameFor({ hostName: parsed.hostName }, profile) } : {}),
-      // THE DATES, THROUGH THE ONE SETTER (lib/eventDates) the Date & time
-      // editor and the date poll use, so creation stores the same shape.
-      type: effType, date: '', ...(() => { const d = eventDatesPatch({}, { date: effDate, endDate: effEndDate }); return d ? (d.endDate ? d : { date: d.date }) : {}; })(),
-      // HER SENTENCE MEANT MORE THAN ONE DAY AND DID NOT SAY WHICH (owner
-      // report 11/21/2026): "a long weekend", "July 4th weekend", a trip with
-      // only a start. Not a span and not a guess — the question the reveal and
-      // Date & time ask ("Which dates?"), cleared by the first range she gives.
-      ...(parsed.datesToConfirm && !effEndDate ? { datesToConfirm: true } : {}),
-      venue: parsed.venue || '', venueKind: parsed.venueKind || '',
-      // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
-      // "next month", "this fall"). It was heard at intake — the chip said
-      // "Jun 2028 · pick a day" — and then dropped here, so the board answered
-      // "No date" to someone who had just given one, the countdown had nothing to
-      // stand on, and the date picker opened BLANK on a month already chosen.
-      // Honest to persist: `monthYear` is null unless the host actually said it
-      // (smartParseEvent ~229-260), and it is never a day — the day stays unset
-      // until they pick one. Written only when there is no exact date.
-      ...(!effDate && parsed.monthYear ? { targetMonth: parsed.monthYear } : {}),
-      // "No kids." typed at create carries straight to the invite policy the
-      // invite + DIFM copy already consume (parser 2026-07-27; never invented).
-      ...(parsed.kidsPolicy ? { kidsPolicy: parsed.kidsPolicy } : {}),
-      // ── A TIME SHE TYPED IS A TIME SHE OWNS (2026-09-17) ──────────────────
-      // The parser now reads a spoken clock ("Sunday at 1pm"), which until now
-      // was dropped so the app could propose an hour back to her on the very
-      // next screen. startTimeSource:'host' is the whole point — startTimeIsConfirmed
-      // gates the invite, the vendor brief and the ROS clock on NOT being
-      // 'derived', and this hour is hers, not ours. The 15:00 bug was the app
-      // inventing a time; writing down the one she gave is the opposite of it.
-      // 2026-09-19: …FOR THE TWO GRADES WHERE SHE ACTUALLY SAID IT. This line
-      // wrote startTimeSource:'host' for all THREE parser grades and dropped
-      // `startTimeBasis` entirely — so "cookout at 5", which the parser marks
-      // `said-hour-only` because IT chose the PM, was sent to her guests and
-      // her caterer as a confirmed 5:00 PM. The rule now lives in
-      // lib/startTimeFieldsToPersist.js where jest can run it.
-      ...startTimeFieldsToPersist(parsed),
-      // The street line she already typed, instead of asking for it again in a
-      // separate field. venueAddress already feeds the invite and the rain note.
-      ...(parsed.venueAddress ? { venueAddress: parsed.venueAddress } : {}),
-      ...((() => {
-        // Same strict city/state-or-ZIP gate as the other venueCity writers —
-        // this is event CREATION, so a bare city typed here would otherwise
-        // slip past every later check (needsCity only fires on an EMPTY city).
-        //
-        // THE GATE IS RIGHT; THE SILENCE WAS NOT (2026-09-18). The parser now
-        // resolves a bare town against a curated whitelist, so "Reunion in
-        // Asheville" pre-fills this field — and then this line ran it through the
-        // commit gate, wrote `venueCity: ''` and said NOTHING. The host watched
-        // their own word disappear. The manual path has always been honest about
-        // this (~:1228 toasts "Add the state or ZIP too — a city name alone could
-        // be in any state"); creation was the one door that swallowed it.
-        // `_cityDropped` is read just after the write to say the same sentence.
-        // The town the host typed is KEPT as heard (round 2, 11/16/2026), so the
-        // lodging step proposes "Asheville" instead of asking from scratch. It is
-        // never treated as a confirmed location. The rule, and the state she said
-        // with no town ("Sandy Point State Park, MD", batch 11), live in
-        // lib/townFieldsToPersist.js where jest runs them.
-        return townFieldsToPersist(fCity, parsed);
-      })()),
-      guestMode: 'count',
-      guestEstimate: effGuests || '',
-      // WHOSE NUMBER IS THIS (2026-09-18). `effGuests` is
-      // `(fGuests ?? parsed.guests) ?? pbTypical` (~:1370) — so when BOTH host
-      // sources are null the app is substituting the playbook's typical, and the
-      // chip a few lines up already says so out loud ("~40 · typical"). That fact
-      // was on screen at creation and thrown away one line later at persist, which
-      // is how an invented 40 reached a caterer as "for about 40 guests".
-      // Same shape as startTimeSource directly above; lib/guestCountFor.js gates
-      // the outward drafts on it, exactly as startTimeIsConfirmed does.
-      ...(effGuests ? { guestCountSource: (fGuests ?? parsed.guests) != null ? 'host' : 'playbook-typical' } : {}),
-      // THE PAIRING, NOT JUST THE HEADCOUNT (2026-10-03). "8 couples" became
-      // `guests: 16` and nothing else, so lodgingIntel.bedroomsNeeded had to
-      // ASSUME double occupancy to answer "how many bedrooms" — guessing, on
-      // screen, exactly what the host had already said out loud. This is the
-      // same class as guestCountSource directly above and isDestination below:
-      // a fact that was on screen at creation and thrown away one line later.
-      // Written only when heard; no pairing stays absent rather than a zero.
-      ...(parsed.guestPairs ? { guestPairs: parsed.guestPairs } : {}),
-      // ── AND THE THING THE HOST SAID ABOUT SOMEONE'S HEALTH ───────────────
-      // Same class as guestPairs above, and the most expensive instance of it.
-      // "the altitude is hard on her" was heard by the parse, printed back
-      // under DIDN'T MAKE IT INTO THE PLAN, and dropped — while `dest_health`,
-      // the question authored for exactly that and carrying a pacing task,
-      // sat three taps away at its default. The fact existed on screen at
-      // creation and was thrown away one line later, which is the shape this
-      // file keeps finding.
-      // Written only when heard. It carries the host's WORDS because the
-      // recommendation quotes them back rather than asserting a health fact in
-      // the app's own voice — and it PROPOSES, so the question stays theirs.
-      ...(parsed.healthNoted ? { healthNoted: parsed.healthNoted } : {}),
-      totalBudget: effBudget || '',
-      // ── WHAT WE MAY WRITE DOWN ABOUT TRAVEL ─────────────────────────────
-      // Four spreads lived here and encoded a rule jest could never run — which
-      // is how `isDestination: false` survived on every event where the parser
-      // simply heard NOTHING. The parser has no affirmative "this is local"
-      // detector (smartParseEvent ~:524), so a derived false only ever meant "no
-      // travel signal found", and persisting it deleted the travel, lodging and
-      // transport stack on a claim the host never made.
-      // The rule, its decision table and its reasoning now live in
-      // lib/travelFieldsToPersist.js, where they are executed by real tests.
-      ...travelFieldsToPersist({
-        effIsDestination, manualIsDestination: fIsDestination,
-        effOvernight, manualOvernight: fOvernight,
-        destinationBasis: parsed.destinationBasis, overnightBasis: parsed.overnightBasis,
-        travelMode: effTravelMode,
-      }),
-      // The coarse time-of-day the host said ("cookout in the afternoon"). Persisted so the
-      // grounded start-time default below has a bucket to propose from — without this it was
-      // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
-      ...(parsed.timeOfDay ? { timeOfDay: parsed.timeOfDay } : {}),
-      // HOW LONG, WHEN THE DATES CANNOT SAY IT (host report 2026-09-29).
-      // The parser has carried `nights` since 2026-09-25 and nothing wrote it
-      // down. On the owner's own Disneyland seed — "nov 2027 … 5 nights" — the
-      // month resolves and the day does not, so date→endDate has no start to
-      // count from and the host's five nights were dropped on the floor at
-      // persist. The reveal then said "Not picked yet." where the Santa Fe 80th,
-      // one sentence away in the same drive, said "3 nights to cover."
-      //
-      // ONLY when `effEndDate` is empty. With real dates the span IS the
-      // answer, and storing a second copy of it beside them is how two numbers
-      // for one fact start to drift. Named `statedNights` so no reader can
-      // mistake the host's own word for a derived span; lib/eventSpan ranks it
-      // below the dates for the same reason.
-      ...(!effEndDate && parsed.nights > 0 ? { statedNights: parsed.nights } : {}),
-      // DUAL / compound event + theme (host report — parsed then dropped at build). secondaryType
-      // makes it a real compound event; theme seeds the look. Only ever what the host actually said.
-      ...(parsed.secondaryType ? { secondaryType: parsed.secondaryType } : {}),
-      ...(parsed.theme ? { theme: parsed.theme } : {}),
-      // WHAT SHE ASKED FOR IN THE PLACE ITSELF (host 2026-08-05: "did we add
-      // that the 80th birthday was for resort spa?"). She typed "Santa Fe, NM
-      // resort spa"; the town was kept and the rest dropped, so the lodging
-      // requirement list proposed six things she never said and missed the one
-      // she did — with a hot-tub filter sitting VERIFIED in lodgingIntel the
-      // whole time. Matched against that file's own vocabulary, never invented,
-      // and written only when her words actually matched something.
-      ...(() => { const w = heardMustHaves(smartText); return w.length ? { lodgingWants: w } : {}; })(),
-      // The KIND of place she named ("resort spa"), kept verbatim. It leads the
-      // hotel search rather than being mapped onto an amenity filter we could
-      // not honour — searching "hotels in Santa Fe" for a host who asked for a
-      // resort spa hands back the wrong results.
-      ...(() => { const st = heardStayStyle(smartText); return st ? { lodgingStyle: st } : {}; })(),
-      // ── AN OPERATIONAL NEED SHE STATED (2026-10-18, Sprint 0 P1-2) ──────
-      // The measured case this whole surface's "Didn't make it into the plan"
-      // list was built for: "…sit-down lunch, she uses a walker" — both halves
-      // vanished, and :9455 already records why mobility mattered for that
-      // 80th. The need now has somewhere to live, matched against
-      // accessNeeds.js's own vocabulary and written only when her words
-      // actually matched — the same seam and the same rule as lodgingWants
-      // directly above. NO DIAGNOSIS is derived, and "she" is never resolved
-      // to a guest.
-      ...(() => { const an = heardAccessNeeds(smartText); return an.length ? { accessNeeds: an } : {}; })(),
-      // ── HER SENTENCE SURVIVES CREATION (2026-10-18, Sprint 0 P1-3) ──────
-      // "Didn't make it into the plan" was computed live from the box and the
-      // text was never kept, so the list vanished the instant the event
-      // existed — shown once, while she was still typing the thing into
-      // being, and never again. Keeping the sentence means the question stays
-      // answerable, and means a clause leaves the list on its own the day a
-      // consumer starts reading it, on every existing event, with nothing to
-      // backfill. The LIST is deliberately not stored; see heardClauses.js.
-      createdFromText: smartText,
-      // WHAT SHE SAID, WRITTEN DOWN (owner, 11/21/2026: "Don't keep asking host
-      // for the same information"). "including 8 kids", "one guest has a nut
-      // allergy" and "3 staying overnight" were heard, listed as dropped, and
-      // asked for again. lib/heardFacts.js reads them; only what she said.
-      ...(() => { const n = heardKidsCount(smartText); return n ? { kidsCount: Math.min(n, Number(effGuests) || n) } : {}; })(),
-      ...(() => { const dc = heardAllergyCounts(smartText); return dc ? { dietCounts: dc } : {}; })(),
-      ...(() => { const n = heardOvernightCount(smartText); return n ? { overnightCount: n } : {}; })(),
-      budget: [],
-      guests: [], vendors: heardVendorIntents(smartText).map((v, i) => ({ ...v, id: 'v-' + newId + '-' + i })), timeline: [],
-    };
-    // HER CLOCK OUTRANKS HER WORD (owner, 11/21/2026). "Dinner at 4pm" stored
-    // timeOfDay 'evening' (from "dinner") beside 4:00 PM, and the budget's
-    // time-of-day factor read the bucket. A clock she said decides it.
-    { const tod = timeOfDayFor(ev); if (tod) ev.timeOfDay = tod; }
-    // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
-    // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
-    // from a host decision. This one is DERIVED (a real sunset + the playbook's own run-length,
-    // or failing that the host's own time-of-day word) and it carries its provenance:
-    // startTimeSource:'derived' plus the sentence that justifies it. So the day runs on a real
-    // clock from the first second, the host is told plainly that we picked it and why, and
-    // nothing OUTWARD — a guest's invitation, a vendor's brief — states the hour until they
-    // have confirmed it. An unconfirmed hour is ours, not theirs.
-    const _hadTime = !!String(ev.startTime || '').trim();
-    try { Object.assign(ev, defaultStartTime(ev, null) || {}); } catch (_e) { /* no grounding — the list asks */ }
-    // WHAT HER TIME MEANS, stamped once (lib/eventAnchor, cause 5): for a
-    // meal-centered playbook the time she typed is when dinner hits the table.
-    try { Object.assign(ev, timeAnchorFields(ev, { defaultApplied: !_hadTime && !!String(ev.startTime || '').trim() })); } catch (_e) { /* an unstamped event keeps the arrival meaning */ }
-    // Canonical checklist over the real event object (date-relative offsets,
-    // choice/caterer gates). No date yet → honestly empty; drafts later.
-    // THE GAMES SHE ASKED FOR ARE HER PICK (run 2, R2-15): "team-oriented games"
-    // had no option. When the playbook offers the style she named, it is recorded
-    // as answered BY HER (choiceSource 'host') — before the checklist is drawn, so
-    // the team-split task is on it from the start.
-    try {
-      const style = heardGameStyle(smartText);
-      const d = style && ((getPlaybook(ev.type) || {}).decisions || []).find((x) => x && x.id === 'game_type' && (x.options || []).includes(style));
-      if (d) { ev.foodChoices = { ...(ev.foodChoices || {}), game_type: style }; ev.choiceSource = { ...(ev.choiceSource || {}), game_type: 'host' }; }
-    } catch (_e) { /* the decision asks later */ }
-    // "POTLUCK" AND "BYOB" ARE HER ANSWERS (owner, 11/21/2026). "Potluck
-    // Thanksgiving" stored nothing, so who-cooks proposed host-cooks; "BYOB" was
-    // listed as dropped while the drinks call proposed its default. Recorded the
-    // way her game style is, before the checklist is drawn. "no kids" is her
-    // audience answer the same way (audit lane B, 11/22/2026).
-    try {
-      const decs = (getPlaybook(ev.type) || {}).decisions || [];
-      [potluckPickFor(decs, smartText), byobPickFor(decs, smartText), adultsOnlyPickFor(decs, ev.kidsPolicy)].filter(Boolean).forEach(({ id, pick }) => {
-        ev.foodChoices = { ...(ev.foodChoices || {}), [id]: pick };
-        ev.choiceSource = { ...(ev.choiceSource || {}), [id]: 'host' };
-      });
-    } catch (_e) { /* the decision asks later */ }
-    // THE DINNER INSIDE THE TRIP (owner, 11/21/2026). "dinner at an adobe
-    // courtyard" survived only in the sentence; it is now the celebration's
-    // place (the kind of place, not a booked venue), shown on the dinner sheet
-    // and never re-asked. A type with a celebration gets the record even with
-    // no place said, so the invite knows the dinner is its own moment.
-    // A night she named by its holiday ("New Year's Eve trip … Dec 30 – Jan 2",
-    // owner 11/22/2026: "trip wins") is her pick, and it is what gives a Group
-    // Trip its dinner — so it is read before asking whether one applies.
-    try {
-      const said = celebrationFieldsToPersist(smartText, parsed).celebration || {};
-      if (celebrationApplies({ ...ev, celebration: said })) ev.celebration = said;
-    } catch (_e) { /* the dinner sheet asks what it must */ }
-    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
-    // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
-    // already carries stays as it is; any other becomes a host-named line.
-    try {
-      const extra = uncoveredFoods(heardFoods(smartText), (playbookFoodPlan(ev) || {}).list);
-      if (extra.length) ev.foodAdd = extra.map((f, i) => ({ id: 'add-heard-' + newId + '-' + i, name: f.name, cost: 0, group: 'Food', cat: 'other' }));
-    } catch (_e) { /* no food plan — the menu asks later */ }
-    // MODEL D — THE ONE STAMPING MOMENT (grandfather rule, board 2026-08-18):
-    // the pass verdict is computed here, against the events that existed
-    // before this one, and stored on the event forever. lib/passGate.js is
-    // the ruling made executable; nothing downstream ever recomputes this.
-    // Stamped even while billing is dormant, so pre-launch events carry an
-    // honest verdict rather than getting a surprise one later — though note
-    // passGate treats an UNSTAMPED event as grandfathered free regardless.
-    try { Object.assign(ev, passVerdictAtCreation(ev, customs), { briefSharedVendorIds: [] }); } catch { /* engine absent — event stays unstamped, i.e. free */ }
+    // THE EVENT, FROM HER SENTENCE (owner, 11/26/2026: "start Create"). Built by
+    // lib/eventFromSentence, the same builder hostv4's Create uses, so the same
+    // words make the same plan in both apps. What it keeps, and why, is there.
+    const ev = eventFromSentence({
+      text: smartText, parsed, said: createSaid, profile, customs,
+      id: newId, rsvpCode: priorCode || mintRsvpToken(), arrivedFrom,
+    });
     if (holdAsDraft) {
       draftRef.current = ev; setDraftEvent(ev); setRevealed(true);
       // The signed-out funnel's missing step (owner, 11/20/2026): a plan built
@@ -11635,14 +11144,11 @@ export default function HostShellV2() {
   // time of day), a stored ros only when the host has taken ownership.
   const rosBasis = useMemo(() => { try { return rosBasisNote(event); } catch (_e) { return null; } }, [event]);
   const ros = useMemo(() => {
-    try {
-      const all = effectiveRos(event) || [];
-      // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
-      // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
-      // Pre-event and single-day: the full program, day labels riding `rel`.
-      const k = dayIndexOf(event);
-      return (k && spanNights(event) > 0) ? all.filter(r => (r.day || 1) === k) : all;
-    } catch { return Array.isArray(event.ros) ? event.ros : []; }
+    // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
+    // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
+    // Pre-event and single-day: the full program. lib/dayOfEdits todaysRos, the
+    // reader hostv4's The Day uses too (11/26/2026).
+    try { return todaysRos(event, new Date()); } catch { return Array.isArray(event.ros) ? event.ros : []; }
   }, [event]);
   // Day-of ruling state 3: solemn events drop the count, soften verbs, lean the serif.
   const solemn = useMemo(() => isSolemnEvent(event), [event]);
@@ -11806,35 +11312,42 @@ export default function HostShellV2() {
   // to find their place; marking done simply re-derives the next NOW.
   // ONE CLOCK (audit 2 lane C P0-1): the board's day-of hero and this card read
   // the same `dayClock`, which ticks every 30s while the event is live.
-  const nowMin = (() => { const d = new Date(dayClock); return d.getHours() * 60 + d.getMinutes(); })();
+  // WHERE THE DAY IS — lib/dayState, the one reader both shells use (phase,
+  // the clock's minute, the cue the clock is on, open cues, doors open).
+  const dayNow = useMemo(() => dayState(event, ros, new Date(dayClock)), [event, ros, dayClock]);
+  const nowMin = dayNow.nowMin;
   // Cue-time math honoring BOTH stored forms — 24h "14:00" and 12h "2:00 PM"
   // (the original's toMins; parsing 12h as 24h creates the 3 AM-cookout bug).
   const cueMins = (t) => parseMin(t); // lib/dayAlerts — one time parser (12h+24h)
   const rosState = useMemo(() => { try { return classifyRos(ros); } catch { return ros.length ? 'timed' : 'empty'; } }, [ros]);
   // Any day of the event is live, a trip's day 3 as much as its day 1 (P1-5).
   const liveDay = stage === 'day' && (days === 0 || eventLive) && rosState === 'timed';
-  const openCues = useMemo(() => ros.filter(r => r && !r.done), [ros]);
-  // THE CUE THE CLOCK IS ON — lib/dayOfHero, the same reader as the board's hero:
-  // the latest cue that has started while it is still open, else the next one.
-  const clockCue = liveDay ? cueByTheClock(ros, nowMin) : null;
-  const nowCue = clockCue ? clockCue.cue : null;
-  const nowActive = !!(clockCue && clockCue.state === 'now');
+  const openCues = dayNow.openCues;
+  // THE CUE THE CLOCK IS ON — lib/dayOfHero via lib/dayState, the same reader as
+  // the board's hero: the latest cue that has started while it is still open,
+  // else the next one.
+  const nowCue = liveDay ? dayNow.nowCue : null;
+  const nowActive = liveDay && dayNow.nowActive;
   // EVERY open cue stays visible (original renders the full timeline): the
   // list is chronological and includes behind-schedule cues, marked honestly.
   const cuesAfterNow = nowCue ? openCues.filter(c => c !== nowCue) : [];
-  const dayAllDone = liveDay && ros.length > 0 && openCues.length === 0;
-  const dayStarted = ros.some(r => r && (r.done || (() => { const m = cueMins(r.time); return m !== null && m <= nowMin; })()));
+  const dayAllDone = liveDay && dayNow.allDone;
+  const dayStarted = dayNow.started;
   // GUESTS ARE DUE once her start time has passed (fix for #281, 11/26/2026:
   // the list was gated on eventLive, which is true all day, so it never showed).
   // The day's prep cues (the turkey at 9) come before the doors; with no start
   // time, the first cue stands in.
-  const doorsOpen = (() => { const m = cueMins(event && event.startTime); return m !== null ? nowMin >= m : dayStarted; })();
+  const doorsOpen = dayNow.doorsOpen;
   // The alert stack — the SAME engine the production app reads (lib/dayAlerts,
   // extracted from App.js so both shells agree). nowMin keeps it current.
+  // Any day of the event (isDuringEvent), not only the first: `days` counts from
+  // event.date, so a trip's day 2 and 3 had no alerts at all (e2e
+  // dayTwoOfATripHasItsAlerts). eventLive reads the real clock; dayClock stops
+  // ticking once the event is over.
   const dayAlerts = useMemo(() => {
-    if (days !== 0) return [];
+    if (!eventLive) return [];
     try { return computeDayAlerts(event) || []; } catch { return []; }
-  }, [event, days, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event, eventLive, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
   // WAVE-5: the raise ledger, read ONCE. Every qidx attention tint and count
   // badge derives from this — never from a hand-wired local boolean (see
   // surfaceRegistry's header: hand-wiring is the "bug FACTORY" the registry
@@ -11994,23 +11507,54 @@ export default function HostShellV2() {
                     </span>
                     <button className="mini" onClick={() => {
                       try {
-                        const seg = buildMomentSegment(m);
-                        if (!seg) return;
-                        // WAVE-B fix: append to the EFFECTIVE schedule + rosEdited
-                        // (legacy's setRos shape). The old write appended to the
-                        // stored ros without the ownership flag, so on a playbook
-                        // event effectiveRos kept returning the derived schedule
-                        // and the added moment never appeared anywhere.
-                        const rosNext = [...ros, { ...seg, id: 'm-' + Math.random().toString(36).slice(2, 9) }];
-                        patchEvent({ ros: rosNext, rosEdited: true }, (m.label || 'The moment') + ' is on the schedule — give it a time when you know it.');
+                        // lib/dayOfEdits addMomentEdit (B7, 11/26/2026), the add
+                        // hostv4's The Day makes: the WHOLE effective run plus the
+                        // moment, rosEdited (WAVE-B's ownership rule). It used to
+                        // append to today's rows, which on a trip saved over the
+                        // other days.
+                        const ed = addMomentEdit(event, m);
+                        if (ed) patchEvent(ed.patch, ed.msg);
                       } catch { toast('Couldn’t add it.'); }
                     }}>Add it</button>
                   </div>
                 );
   };
 
+  // THE DAY'S WEATHER (owner, 11/26/2026: "Yes build the weather line and rain
+  // actions"). On the day, the forecast for any event: the plain line, and what
+  // it asks of arrivals (rain: a spot for wet coats, a note to guests; snow or
+  // ice: the path). lib/weather dayWeather, the one hostv4's The Day reads.
+  // `title` names the day when the card rides in the day-before plan
+  // (lib/dayBefore dayWeatherLabel: "Tomorrow’s weather").
+  const dayWeatherCard = (title) => {
+    const w = (() => { try { return dayWeather(dayWx); } catch { return null; } })();
+    if (!w) return null;
+    const ticked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+    return (
+      <div className="card dayof-card" data-day-weather={w.arrival ? w.arrival.kind : 'clear'}>
+        {title && <p className="eyebrow" data-day-weather-title>{title}</p>}
+        <p className="f-name" data-day-weather-line><span className="wx-glyph" aria-hidden="true">{weatherGlyph(w.glyph, { mono: true })}</span> {w.line}</p>
+        {w.arrival && <p className="grounding">{w.arrival.advice}</p>}
+        {w.arrival && w.arrival.checks.map((c) => (
+          <button key={c.key} className={'frow' + (ticked[c.key] ? ' got' : '')} data-wx-check={c.key}
+            onClick={() => { const ed = dayOfTickEdit(event, c.key, c.label); patchEvent(ed.patch, ed.msg); }}>
+            <span className="fcheck" aria-hidden="true" />
+            <span className="f-main"><span className="f-name">{c.label}</span></span>
+          </button>
+        ))}
+        {w.arrival && (
+          <div className="actions-row">
+            <button className="cta" data-wx-day-note onClick={() => { try { openDraft('Weather note to guests', guestTravelMessage(event, w.arrival)); } catch { toast('Couldn’t draft the note.'); } }}>Weather note to guests</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const dayOfCard = (eyebrow) => {
-                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+                // What is checked, and each tick, are lib/dayOfEdits (dayOfList,
+                // dayOfTickEdit): the same reads and writes as hostv4's The Day.
+                const rc = (() => { try { return dayOfList(event); } catch { return null; } })();
                 if (!rc || !rc.items || !rc.items.length) return null;
                 const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
                 // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
@@ -12019,20 +11563,17 @@ export default function HostShellV2() {
                 // beside an unconfirmed "Rain / heat plan". The row now reads the
                 // saved plan, and with none saved a tap opens the rain editor —
                 // where the answer lives — instead of storing a second one.
-                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const rainHas = rc.items.some((p) => p.via === 'rain' && p.checked);
                 const isRainRow = (p) => p.key === 'weather';
                 // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
                 // own day-of step IS that step, so it reads and writes the step.
-                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
-                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
-                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
-                const done = rc.items.filter(isChecked).length;
+                const isChecked = (p) => p.checked;
+                const done = rc.done;
                 const toggle = (key) => {
-                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
-                  const next = { ...checked };
-                  if (next[key]) delete next[key]; else next[key] = true;
-                  patchEvent({ safetyChecked: next },
-                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
+                  const it = rc.items.find((p) => p.key === key);
+                  if (it && it.via === 'step' && !checked[key]) { toggleTask(it.stepIndex); return; }
+                  const ed = dayOfTickEdit(event, key);
+                  patchEvent(ed.patch, ed.msg);
                 };
                 return (
                   <div className="card dayof-card">
@@ -12050,17 +11591,36 @@ export default function HostShellV2() {
                         so these are the safety basics every event shares. Add anything this one needs.
                       </p>
                     )}
-                    {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
-                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
-                        <span className="fcheck" aria-hidden="true" />
-                        <span className="f-main">
-                          <span className="f-name">{p.label}</span>
-                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
-                        </span>
-                      </button>
-                    ))}
+                    <div className="actions-row">
+                      <button className="vd-link dayof-fold" data-dayof-fold aria-expanded={!dayofHidden}
+                        onClick={() => setDayofHidden(!dayofHidden)}>{dayofHidden ? 'Show the list' : 'Hide the list'}</button>
+                    </div>
+                    {!dayofHidden && (() => {
+                      const row = (p, i) => (
+                        <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                          style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                          onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
+                          <span className="fcheck" aria-hidden="true" />
+                          <span className="f-main">
+                            <span className="f-name">{p.label}</span>
+                            {p.detail ? <span className="f-sub">{p.detail}</span> : null}
+                          </span>
+                        </button>
+                      );
+                      // Open rows in full; finished ones fold into one "N done" row.
+                      const open = rc.items.filter((p) => !isChecked(p));
+                      const fin = rc.items.filter(isChecked);
+                      return (<>
+                        {open.map(row)}
+                        {fin.length > 0 && (
+                          <button className="vd-link dayof-done" data-dayof-done aria-expanded={dayofDoneOpen}
+                            onClick={() => setDayofDoneOpen(!dayofDoneOpen)}>
+                            {fin.length} done{dayofDoneOpen ? ' · hide' : ' · show'}
+                          </button>
+                        )}
+                        {dayofDoneOpen && fin.map(row)}
+                      </>);
+                    })()}
                   </div>
                 );
   };
@@ -15061,6 +14621,9 @@ export default function HostShellV2() {
                   {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
                   <div className="db-rows">
                   {(dayBefore.sections || []).slice(0, 5).map(sec => {
+                    // Tomorrow's weather: the same card The Day shows (line,
+                    // arrival checks, note to guests), named for the day.
+                    if (sec.key === 'weather') return <Fragment key="weather">{dayWeatherCard(sec.label)}</Fragment>;
                     // Modernized rows (2026-07-11): each engine section reads as a
                     // full-width stacked row — a bold plain-language lead carrying
                     // the COUNT, the engine's own honest sentence beneath. The lead
@@ -15069,7 +14632,9 @@ export default function HostShellV2() {
                     const n = Number(sec.open) || 0;
                     const lead = (() => {
                       switch (sec.key) {
-                        case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
+                        // One count (lib/openSteps): "left", with the past-window part
+                        // named in the same words as the alert and the checklist row.
+                        case 'tasks': { const p = Number(sec.past) || 0; return n ? `${n} plan step${n === 1 ? '' : 's'} left${p ? ` · ${p} past their window` : ''}` : 'Plan steps — nothing open'; }
                         // Rule 12: n is the list's remainder; rentals are their own fact,
                         // so "all in hand" only when none of them is open either.
                         case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
@@ -15107,6 +14672,8 @@ export default function HostShellV2() {
                         const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
                         if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
+                      // The lead already carries both numbers; the line under it is the advice.
+                      if (sec.key === 'tasks' && n > 0) return 'Knock out what matters, let the rest go.';
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
                       if (!cueList.length) return sec.detail;
@@ -16674,6 +16241,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {/* Until the doors open: once the event is under way the timeline leads. */}
+              {dayWeatherCard()}
               {!doorsOpen && dayOfCard('Before guests arrive')}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
@@ -16686,11 +16254,19 @@ export default function HostShellV2() {
               )}
               {nudgeFor('program')}
               {momentSuggestion()}
-              {dayAlerts.map(a => (
-                <button key={a.id} onClick={() => alertSheet(a)}
+              {dayAlerts.map(a => {
+                // THEY'RE HERE (owner, 11/26/2026: "Yes add They're here to hostv2").
+                // A vendor's late or arrival alert carries the one tap that ends it:
+                // lib/dayOfEdits vendorArrivalEdit, the arrivalStatus the alert reads
+                // (hostv4's Vendors today writes the same). No screen here wrote it,
+                // so "X hasn't arrived" could not be cleared.
+                const arrivalOf = /^(?:ov|confirm)-(.+)$/.exec(String(a.id || ''));
+                return (
+                <div key={a.id} data-day-alert={a.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 'var(--sp-2)' }}>
+                <button onClick={() => alertSheet(a)}
                   style={{
-                    display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
-                    borderRadius: 'var(--r-row)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-2)', font: 'inherit',
+                    display: 'block', flex: 1, minWidth: 0, textAlign: 'left', border: 'none', cursor: 'pointer',
+                    borderRadius: 'var(--r-row)', padding: 'var(--sp-3) 14px', font: 'inherit',
                     background: a.tier === 'critical' ? 'var(--danger-tint)' : a.tier === 'warning' ? 'var(--warn-tint)' : 'var(--steel-tint)',
                     color: 'var(--carbon-text)',
                   }}>
@@ -16715,7 +16291,13 @@ export default function HostShellV2() {
                   </span>
                   {a.move && <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', marginTop: 2, color: 'var(--carbon-muted)' }}>{a.move}</span>}
                 </button>
-              ))}
+                {arrivalOf && (
+                  <button className="mini" data-vendor-here style={{ flexShrink: 0, alignSelf: 'center', minHeight: 44 }}
+                    onClick={() => { const ed = vendorArrivalEdit(event, arrivalOf[1], 'arrived'); if (ed) patchEvent(ed.patch, ed.msg); }}>They’re here</button>
+                )}
+                </div>
+                );
+              })}
               {dayAllDone ? (
                 // Shared DAY_COMPLETE_COPY (lib/dayOfCopy.js) — same words
                 // legacy renders, not a separately-authored version.
@@ -16908,6 +16490,7 @@ export default function HostShellV2() {
                   the borrowed playbook does: 32 of 39 playbooks author no
                   day-of list, and a generic safety floor presented as this
                   event's own would be a claim we have not earned. */}
+              {dayWeatherCard()}
               {dayOfCard('Before the big day')}
               {momentSuggestion()}
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>

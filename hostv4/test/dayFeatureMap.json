@@ -1,0 +1,362 @@
+{
+  "about": "Every day-of feature in hostv2 (the live view, the day before and Afterward), with where it lives in hostv4’s The Day. dayEveryFeatureHasAHome.test.mjs checks each anchor still exists in hostv2, that built and linked features are on hostv4’s DayPage, and that planned ones name their batch. Nothing hostv2 does on the day may drop without this file saying so.",
+  "places": {
+    "built": "On hostv4’s The Day (or Today’s run, or counter mode)",
+    "linked": "A link from The Day to the current app, until it is rebuilt",
+    "planned": "Not yet in hostv4; the named batch builds it"
+  },
+  "features": [
+    {
+      "id": "day-before-plan",
+      "feature": "“Event tomorrow · your day-before plan”",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "buildDayBeforePlan"
+      },
+      "home": "built",
+      "where": "The Day, 1–2 days out: Tomorrow’s weather, Tonight, Before tomorrow",
+      "selector": "data-before-tomorrow"
+    },
+    {
+      "id": "reconfirm-vendors",
+      "feature": "Reconfirm your vendors (0–3 days out)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "isReconfirmable"
+      },
+      "home": "linked",
+      "where": "The Day, Before tomorrow · Reconfirm your vendors (the notes are drafted in the current app)",
+      "selector": "Reconfirm your vendors"
+    },
+    {
+      "id": "whos-confirmed",
+      "feature": "Who’s confirmed (vendors and helpers who answered)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Who’s confirmed"
+      },
+      "home": "built",
+      "where": "Vendors’ own answers on Vendors today; helpers’ on Your day crew",
+      "selector": "data-vendors-today"
+    },
+    {
+      "id": "helper-links",
+      "feature": "Send each helper their job by link or email",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "mintHelperLinkResult"
+      },
+      "home": "built",
+      "where": "The Day · Your day crew: Send (a text or a copy), and Email when they have an address",
+      "selector": "data-crew-send"
+    },
+    {
+      "id": "crew-brief",
+      "feature": "Draft everyone’s part today",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "draftHelperBrief"
+      },
+      "home": "built",
+      "where": "Your day crew · Everyone’s part today",
+      "selector": "data-crew-brief"
+    },
+    {
+      "id": "day-sheet",
+      "feature": "Print the day sheet",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "window.print"
+      },
+      "home": "linked",
+      "where": "Your day crew · Print the day sheet (in the current app for now)",
+      "selector": "data-crew-print"
+    },
+    {
+      "id": "parking-note",
+      "feature": "Parking note to guests",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "draftParkingInstructions"
+      },
+      "home": "built",
+      "where": "The Day · Tell your guests · Parking note",
+      "selector": "data-tell-parking"
+    },
+    {
+      "id": "guest-brief",
+      "feature": "Send the details (to guests)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "draftGuestBrief"
+      },
+      "home": "built",
+      "where": "The Day · Tell your guests · Send the details (with the reply link)",
+      "selector": "data-tell-brief"
+    },
+    {
+      "id": "vendor-brief",
+      "feature": "Send a vendor the details",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "shareVendorBrief"
+      },
+      "home": "linked",
+      "where": "The Day · Vendors today · a vendor’s sheet · Send the details (in the current app, with its pass)",
+      "selector": "data-vendor-brief"
+    },
+    {
+      "id": "rain-plan",
+      "feature": "Rain backup and the rain note to guests",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "suggestRainPlan"
+      },
+      "home": "linked",
+      "where": "A rain check without a plan links to the current app",
+      "selector": "Your rain plan is set in the current app"
+    },
+    {
+      "id": "weather",
+      "feature": "Weather for the day (outdoor events)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "weatherImpactByEventPhase"
+      },
+      "home": "built",
+      "where": "The Day’s weather card: the impact line for an outdoor event, and Set your rain plan",
+      "selector": "data-wx-impact"
+    },
+    {
+      "id": "day-alerts",
+      "feature": "Day alerts: “Can’t wait” and “Watch”",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "computeDayAlerts"
+      },
+      "home": "built",
+      "where": "The Day, one line above Now (Can’t wait, Watch); all of them one tap away",
+      "selector": "data-alert"
+    },
+    {
+      "id": "covers-pills",
+      "feature": "“N confirmed”, “rain backup set” pills",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "coversWithWord"
+      },
+      "home": "planned",
+      "where": "Who’s here, from 3:00 PM",
+      "batch": "B6 who’s here and at the table (pills: move hostv2’s dayWhispers into a lib first, so there is one source)"
+    },
+    {
+      "id": "day-hero",
+      "feature": "Board hero “It’s today” and the now cue",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "dayOfHero("
+      },
+      "home": "built",
+      "where": "The Day · the Now card",
+      "selector": "data-now"
+    },
+    {
+      "id": "day-of-list",
+      "feature": "The day-of checks (Before guests arrive)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "dayOfList(event)"
+      },
+      "home": "built",
+      "where": "The Day · the short list, then one row while a step runs",
+      "selector": "data-dayof"
+    },
+    {
+      "id": "done-next",
+      "feature": "Happening now · Done, what’s next",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Done — what’s next"
+      },
+      "home": "built",
+      "where": "The Day’s bottom button",
+      "selector": "Done, what’s next"
+    },
+    {
+      "id": "then-list",
+      "feature": "Then · N more moments",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "The rest, in their time"
+      },
+      "home": "built",
+      "where": "Today’s run",
+      "selector": "data-run"
+    },
+    {
+      "id": "incidents",
+      "feature": "If something goes wrong",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "incidentPlanFor"
+      },
+      "home": "built",
+      "where": "The Day · first row once guests are due",
+      "selector": "data-help"
+    },
+    {
+      "id": "rides",
+      "feature": "Everyone has a sober way home (when drinks are served)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "dayOfList(event)"
+      },
+      "home": "built",
+      "where": "The Day · comes back two hours before the last step",
+      "selector": "data-rides"
+    },
+    {
+      "id": "wake-lock",
+      "feature": "The screen stays on",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "wakeLock"
+      },
+      "home": "built",
+      "where": "Counter mode",
+      "selector": "wakeLock"
+    },
+    {
+      "id": "moments",
+      "feature": "Worth a spot on the schedule (photo moments)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "momentSuggestion"
+      },
+      "home": "built",
+      "where": "The Day, a row under Now: Worth a spot, with its time picked before it joins the run",
+      "selector": "data-moment"
+    },
+    {
+      "id": "overlap",
+      "feature": "Schedule overlap warning",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "rosOverlapCount"
+      },
+      "home": "planned",
+      "where": "Today’s run",
+      "batch": "B8 edit the run"
+    },
+    {
+      "id": "ros-edit",
+      "feature": "Add, move and time steps; playbook suggestions",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "moveRosRow"
+      },
+      "home": "linked",
+      "where": "Today’s run · “Change the run in the current app”",
+      "selector": "data-edit-run"
+    },
+    {
+      "id": "start-time",
+      "feature": "Set the start time",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "writeStartTime"
+      },
+      "home": "linked",
+      "where": "Today’s run · “Change the run in the current app”",
+      "selector": "data-edit-run"
+    },
+    {
+      "id": "during-cues",
+      "feature": "All through the day (ongoing duties)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "playbookDuringCues"
+      },
+      "home": "planned",
+      "where": "Today’s run, at the top",
+      "batch": "B8 edit the run"
+    },
+    {
+      "id": "phase-spine",
+      "feature": "Phase spine (prep, guests, meal, wind-down)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "dayPhases("
+      },
+      "home": "built",
+      "where": "Today’s run replaces it: one line a step",
+      "selector": "data-run"
+    },
+    {
+      "id": "how-many-came",
+      "feature": "How many came?",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "applyReconciliation"
+      },
+      "home": "linked",
+      "where": "Afterward, in the current app for now",
+      "selector": "data-after"
+    },
+    {
+      "id": "thank-yous",
+      "feature": "Thank-yous and gifts",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "draftThankYou"
+      },
+      "home": "linked",
+      "where": "Afterward, in the current app for now",
+      "selector": "data-after"
+    },
+    {
+      "id": "recap",
+      "feature": "The recap for guests",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "draftRecap"
+      },
+      "home": "linked",
+      "where": "Afterward, in the current app for now",
+      "selector": "data-after"
+    },
+    {
+      "id": "lessons",
+      "feature": "For next time",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "setLesson"
+      },
+      "home": "linked",
+      "where": "Afterward, in the current app for now",
+      "selector": "data-after"
+    },
+    {
+      "id": "guest-photos",
+      "feature": "Guest photos after the event",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "HostGuestPhotos"
+      },
+      "home": "linked",
+      "where": "Afterward, in the current app for now",
+      "selector": "data-after"
+    },
+    {
+      "id": "mark-asked",
+      "feature": "Mark asked / chase a vendor on the day",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Mark asked"
+      },
+      "home": "built",
+      "where": "The Day · Vendors today: Call, They’re here, Running late; a “hasn’t arrived” alert opens the list",
+      "selector": "data-vendor-call"
+    }
+  ]
+}

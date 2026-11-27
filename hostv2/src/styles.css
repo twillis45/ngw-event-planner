@@ -905,15 +905,30 @@ button{font-family:inherit}
    sheets' primary (--cta-grad, --on-steel label). The keycap stays (3px edge,
    4 on hover, 0 on press) but the edge is --steel-dark and the cast is the
    light --panel-shadow: --key-edge and --shadow-60 read as a near-black slab
-   on the warm canvas. Dark keeps the soft tier above untouched. Soft and ghost
-   are secondaries and stay as they are. Pinned by the parity gate and by
-   e2e/theBoardAskIsSteelInLight.spec.mjs. */
-:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost){ background:var(--cta-grad); color:var(--on-steel);
+   on the warm canvas. Soft and ghost are secondaries and stay as they are.
+   DARK TOO since 11/26/2026 (owner: "C"): the soft tier read as one more dark
+   slab on the dark card, and the attention cue could not lift it ("the cue
+   wasn't noticeable enough"). Rulings 29 and 31's dark soft ask is retired for
+   the elegant board; the steel clears 3:1 against the dark ground, measured.
+   Pinned by the parity gate and by e2e/theBoardAskIsSteelInLight.spec.mjs. */
+.hero.elegant .cta:not(.soft):not(.ghost){ background:var(--cta-grad); color:var(--on-steel);
   box-shadow:0 3px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
-:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):hover:not(:disabled){
+.hero.elegant .cta:not(.soft):not(.ghost):hover:not(:disabled){
   box-shadow:0 4px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
-:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):active{
+.hero.elegant .cta:not(.soft):not(.ghost):active{
   box-shadow:0 0 0 var(--steel-dark), inset 0 1px 0 var(--hair-07); }
+/* THE DARK EDGE (owner condition in UX_12: the steel clears 3:1 against the
+   background). On the dark ground (#141518) the gradient's deep stop measures
+   2.74:1, so the button's boundary is drawn: a 1px edge of the cue's own steel
+   at 55%, 3.82:1 on that ground (measured). Light needs none. The cast is
+   dark's own (--shadow-60): dark's --panel-shadow is `none`, and a `none`
+   inside a shadow list voids the whole declaration. */
+:root[data-theme="dark"] .hero.elegant .cta:not(.soft):not(.ghost){
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--steel-soft) 55%, transparent), 0 3px 0 var(--steel-dark), 0 9px 22px -9px var(--shadow-60), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="dark"] .hero.elegant .cta:not(.soft):not(.ghost):hover:not(:disabled){
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--steel-soft) 55%, transparent), 0 4px 0 var(--steel-dark), 0 13px 26px -10px var(--shadow-60), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="dark"] .hero.elegant .cta:not(.soft):not(.ghost):active{
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--steel-soft) 55%, transparent), 0 0 0 var(--steel-dark), inset 0 1px 0 var(--hair-07); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
@@ -3333,6 +3348,29 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .optlabel{font-size:var(--t-row); color:var(--ink-soft)}
 .optrow.on .optlabel{color:var(--sel-ink); font-weight:650}
 .optsub{margin-left:auto; font-size:var(--t-meta); color:var(--muted)}
+/* A choice's note under its label ("Covers your plan", the budget question, 11/26/2026). Muted, not green: UX_12 keeps green for done. */
+.optnote{display:block; font-size:var(--t-row-sub); color:var(--muted); font-weight:500}
+/* THE BUDGET QUESTION (owner, 11/26/2026: "As rendered is fine"). Spacing for the
+   one question, its choices and its button, keyed on the block's own hooks. The
+   per-head stays with its figure as a unit. The button's row keeps 16px below it:
+   the attention cue's pulse reaches 15px past the button (outline-offset 12 + 3px
+   width, "THE ATTENTION CUE"), `.editor-slot` clips vertically, and iOS Safari
+   ignores overflow-clip-margin (owner's screenshot of the cut ring). */
+[data-budget-per]{ white-space:nowrap; }
+/* Every choice's per-head under its amount (owner, 11/26/2026: "Per head for
+   each"). Its own line, so "$400" and "$29 a head" never run together. */
+.optsub .optper{ display:block; text-align:right; white-space:nowrap; font-size:.875em; }
+/* The Change drawer's tiers say their per-head too, under the amount. */
+.tier-per{ display:block; text-align:right; white-space:nowrap; font-weight:500; font-size:.875em; color:var(--muted); }
+.optlist[aria-label="Budget"]{ margin-top:var(--sp-4); }
+/* Its rows sit on the board, under the 44x44 floor's sweep: a one-line row
+   measured 43 at tablet-tall in CI (the 1px row rule inside a 44 border box).
+   The house tap minimum, so no row rides the edge. */
+.optlist[aria-label="Budget"] .optrow{ min-height:var(--tap-min); }
+[data-budget-why]{ margin-top:var(--sp-3); }
+[data-budget-why] > summary{ cursor:pointer; }
+[data-budget-why] > p{ margin:var(--sp-2) 0 0; }
+:has(> [data-budget-plan]){ padding-bottom:var(--sp-4); }
 
 
 
@@ -3626,6 +3664,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    (.panel: var(--sp-4)); without it the text sat 1px inside the edge in both
    themes (audit 2 lane F P2-5, 11/22/2026; lightSectionsSitOnPanels pins it). */
 .dayof-card{ margin:0 0 var(--sp-5); padding:var(--sp-4); }
+/* Finished checks fold away (owner, 11/26/2026): the list's hide toggle and
+   the "N done" fold are the vd-link text button, flush with the rows. */
+.dayof-card .dayof-fold{ padding-left:0; }
+.dayof-card .dayof-done{ display:flex; width:100%; justify-content:flex-start; padding-left:0; }
 /* The decisions queue's FLIP container. It exists to give `playReorder`
    something to measure inside -- `.map` returns siblings with no shared parent
    -- so it deliberately adds no box of its own: `display:contents` would remove

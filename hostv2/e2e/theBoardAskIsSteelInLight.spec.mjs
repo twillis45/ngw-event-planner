@@ -75,6 +75,19 @@ const look = (el) => {
     sheen: resolve('backgroundColor', 'var(--sheen)'),
     keyEdge: resolve('color', 'var(--key-edge)'),
     stopRatios: stops.map((s) => Math.round(ratio(label, s) * 100) / 100),
+    // The button against what it sits on (UX_12 condition: the steel clears 3:1).
+    groundRatios: (() => {
+      let n = el.parentElement; let g = null;
+      while (n && !g) { const c = rgba(getComputedStyle(n).backgroundColor); if (c[3] === 1) g = c; n = n.parentElement; }
+      if (!g) g = rgba(getComputedStyle(document.body).backgroundColor);
+      // The edge is a color-mix, which Chromium reports as color(srgb r g b / a) in 0–1.
+      const edgeM = cs.boxShadow.match(/(rgba?\([^)]+\)|color\(srgb [^)]+\)) 0px 0px 0px 1px/);
+      const e = !edgeM ? null : edgeM[1].startsWith('color(')
+        ? (() => { const m = edgeM[1].match(/[\d.]+/g).map(Number); return [m[0] * 255, m[1] * 255, m[2] * 255, m[3] === undefined ? 1 : m[3]]; })()
+        : rgba(edgeM[1]);
+      const edge = e ? [0, 1, 2].map((i) => e[i] * e[3] + g[i] * (1 - e[3])) : null;
+      return { stops: stops.map((s) => Math.round(ratio(s, g) * 100) / 100), edge: edge ? Math.round(ratio(edge, g) * 100) / 100 : null };
+    })(),
     nearBlack,
   };
 };
@@ -118,13 +131,23 @@ for (const size of [[390, 844], [1024, 1366]]) {
     }
   });
 
-  test(`dark: the board's ask keeps the soft tier — ${size.join('x')}`, async ({ page }) => {
+  // OWNER, 11/26/2026: "C". Rulings 29 and 31 kept the dark board's ask soft, and
+  // on the dark card it read as one more dark slab: the attention cue could not
+  // make it noticeable ("the cue wasn't noticeable enough"). Dark now wears the
+  // same steel primary as light; still one lit control on the board.
+  test(`dark: the board's ask wears the steel primary too — ${size.join('x')}`, async ({ page }) => {
     const cta = await boot(page, 'dark', size);
     const r = await cta.evaluate(look);
-    expect(r.image, 'no gradient in dark').toBe('none');
-    expect(r.bgColor, 'ground is --sheen').toBe(r.sheen);
-    expect(r.color, 'label is --ink').toBe(r.ink);
-    expect(r.shadow.startsWith(`${r.keyEdge} 0px 3px 0px`), `keycap on --key-edge: ${r.shadow}`).toBe(true);
-    expect(await page.evaluate(litOnBoard), 'nothing lit on the dark board').toEqual([]);
+    test.info().annotations.push({ type: 'dark', description: JSON.stringify({ shadow: r.shadow, stopRatios: r.stopRatios, groundRatios: r.groundRatios }) });
+    expect(r.image, 'background is the cta gradient').toBe(r.lit);
+    expect(r.color, 'label is --on-steel').toBe(r.onSteel);
+    expect(r.stopRatios.length, 'premise: three gradient stops measured').toBe(3);
+    for (const x of r.stopRatios) expect(x, 'label on every gradient stop').toBeGreaterThanOrEqual(4.5);
+    // The boundary clears 3:1 (UX_12): the gradient's deep stop alone measures
+    // 2.74 on the dark ground, so the button draws a 1px steel edge.
+    expect(Math.max(r.groundRatios.edge || 0, ...r.groundRatios.stops), 'the button\'s boundary against the dark ground').toBeGreaterThanOrEqual(3);
+    expect(r.groundRatios.edge, 'the dark edge itself clears 3:1').toBeGreaterThanOrEqual(3);
+    expect(r.shadow, 'the keycap edge stays').toMatch(/0px 3px 0px/);
+    expect(await page.evaluate(litOnBoard)).toEqual(['Save what worked']);
   });
 }

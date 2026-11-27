@@ -77,6 +77,7 @@ import { labelFor, labelsOn } from './lib/presentationLabels'; // Sprint 57C Pha
 // Stage C (single-source task convergence): readiness counts engine-satisfied work
 // even when the host never ticks a box. effectiveDone = task.done || taskSatisfied.
 import { effectiveDone, taskSatisfied } from './lib/taskEngine';
+import { openStepCounts } from './lib/openSteps';
 // POP-1/WOW-1: read-only Workstream composition — groups existing vendor data
 // by workstream (Venue/Photography/Food/...) instead of eventPlan/Vendors each
 // computing their own flat vendor tally. See src/lib/workstreams.js header +
@@ -1030,7 +1031,8 @@ export function getEventReadiness(event) {
   // Stage C: read effectiveDone (engine-satisfied OR manually ticked), not raw t.done,
   // so rich event state (guests/budget/venue/vendor/food) counts as work handled and a
   // satisfied task is never flagged overdue.
-  const overdueCount   = timeline.filter(t => !effectiveDone(event, t) && taskIsOverdue(t, event)).length;
+  // ONE COUNT (owner, 11/26/2026): lib/openSteps — late and past from one reader.
+  const { late: overdueCount, past: pastCount } = openStepCounts(event);
   const tasksDone      = timeline.filter(t => effectiveDone(event, t)).length;
   const tasksTotal     = timeline.length;
   // RECON-I1 (POP-1C): the canonical booked predicate — see lib/workstreams.
@@ -1083,8 +1085,13 @@ export function getEventReadiness(event) {
   // let a REAL at-risk row be downgraded whenever its note happened to start with "No".
   // UNKNOWN is the honest status for an empty ledger, and now the whole chain can be honest.
   if      (tasksTotal === 0)                   timelineR = { status: 'UNKNOWN',  label: 'Not started', note: 'No tasks yet' };
-  else if (overdueCount > 2)                   timelineR = { status: 'AT_RISK',  label: 'At risk', note: `${overdueCount} overdue` };
-  else if (overdueCount > 0)                   timelineR = { status: 'ATTENTION', label: 'Attention', note: `${overdueCount} overdue` };
+  // ONE COUNT (owner, 11/26/2026: "App is lying somewhere"): the note prints
+  // openSteps' `past`, the number the day-of alert and the run-through card
+  // print; the color still weighs only `late` (overdueCount: due after the plan
+  // was made). `overdue` and `past` ride as fields so readers stop parsing words.
+  else if (overdueCount > 2)                   timelineR = { status: 'AT_RISK',  label: 'At risk', note: `${pastCount} past their window` };
+  else if (overdueCount > 0)                   timelineR = { status: 'ATTENTION', label: 'Attention', note: `${pastCount} past their window` };
+  else if (pastCount > 0)                      timelineR = { status: 'ATTENTION', label: 'Attention', note: `${pastCount} past their window` };
   else if (taskPct >= 0.8)                     timelineR = { status: 'ON_TRACK', label: 'On track', note: `${Math.round(taskPct*100)}%` };
   else if (taskPct >= 0.5)                     timelineR = { status: 'ATTENTION', label: 'Attention', note: `${Math.round(taskPct*100)}%` };
   else                                          timelineR = { status: 'ATTENTION', label: 'Attention', note: `${Math.round(taskPct*100)}%` };
@@ -1092,6 +1099,7 @@ export function getEventReadiness(event) {
   // Sprint 49: real documents readiness (was previously placeholder)
   const documents = getDocumentsReadiness(event);
 
+  if (timelineR) timelineR = { ...timelineR, overdue: overdueCount, past: pastCount };
   return { decision, vendor, timeline: timelineR, document: documents };
 }
 

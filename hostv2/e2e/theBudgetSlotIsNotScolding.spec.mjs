@@ -28,7 +28,7 @@ const toPlan = async (page) => {
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
 };
 
 test('THE SLOT PROPOSES instead of scolding, when the app already has a number', async ({ page }) => {
@@ -37,7 +37,7 @@ test('THE SLOT PROPOSES instead of scolding, when the app already has a number',
 
   // (premise) the app really does hold an estimate on this screen — without
   // this the assertion below could pass on a plan that has nothing to offer.
-  expect(txt).toMatch(/A number to plan around/i);
+  expect(txt).toMatch(/How much do you want to spend\?/i);
   expect(txt).toMatch(/\$[\d,]+/);
 
   // The reprimand is gone…

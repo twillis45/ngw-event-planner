@@ -41,5 +41,6 @@ test('with no budget, the owner\'s exact line leads with the budget, still not t
   await createAndOpen(page, `Friendsgiving on ${md(dateIn(3))} at 4 pm at Vida's for 15`);
   const top = page.locator('h2').first();
   await expect(top).not.toHaveText(/Get the food/i);
-  await expect(top).toHaveText(/budget/i);
+  // The budget question since 11/26/2026 ("As rendered is fine").
+  await expect(top).toHaveText(/How much do you want to spend\?/);
 });

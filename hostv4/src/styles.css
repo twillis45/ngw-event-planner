@@ -246,3 +246,71 @@ kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(-
 .swb .sw { width: 40px; height: 29px; flex: none; }
 .swauto { width: 29px; text-align: center; color: var(--accent); }
 .sh span[data-message-count] { color: var(--ink-3); font-weight: 400; font-size: .875rem; }
+/* THE DAY (owner, 11/26/2026: "Start building the day-of screens"). */
+.nowcard { background: var(--raised); border-radius: 12px; padding: 16px; }
+.nowcard .t { color: var(--ink-3); font-size: .9375rem; margin: 0 0 6px; }
+.nowcard .what { font-size: 1.1875rem; font-weight: 600; line-height: 1.3; margin: 0; }
+.nowcard .nx { color: var(--ink-2); font-size: .9375rem; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--hair); }
+.gap { margin-top: 12px; }
+.sub2 { color: var(--ink-2); }
+.row .nm small { display: block; color: var(--ink-3); font-size: .875rem; margin-top: 2px; line-height: 1.35; }
+.row.check { padding-left: 6px; gap: 4px; }
+.tickbtn { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; cursor: pointer; padding: 0; }
+.tickbtn .box { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: inline-flex; align-items: center; justify-content: center; color: var(--btn-ink); font-size: .8125rem; font-weight: 700; }
+.row.check.got .tickbtn .box { background: var(--ok); border-color: var(--ok); }
+.row.check.got .checknm { color: var(--ink-3); }
+.checknm { flex: 1; min-height: 44px; background: none; border: 0; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; padding: 0; }
+.helptext { margin: 0; padding: 4px 14px 14px; color: var(--ink-2); font-size: .9375rem; line-height: 1.5; }
+.run .row { min-height: 44px; padding: 6px 14px; font-size: 1rem; }
+.run .tm { flex: 0 0 74px; color: var(--ink-3); font-size: .875rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.run .row.s-done .nm, .run .row.s-done .tm, .run .row.s-past .nm, .run .row.s-past .tm { color: var(--ink-3); }
+.run .row.s-now { background: rgba(241, 237, 230, .07); }
+.run .row.s-now .nm { font-weight: 600; }
+.run .mk { flex: 0 0 14px; text-align: center; color: var(--ok); font-size: .875rem; }
+.run .mk.s-now::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.counter { position: fixed; inset: 0; background: #000; color: var(--ink); display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top, 0px)) 22px max(24px, env(safe-area-inset-bottom, 0px)); z-index: 50; }
+.counter .ctop { display: flex; justify-content: space-between; align-items: center; color: var(--ink-3); font-size: 1rem; }
+.counter .cclock { font-size: 1.25rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.counter .clbl { color: var(--ink-3); font-size: 1.0625rem; margin: 34px 0 10px; }
+.counter .cbig { font-size: 2.125rem; font-weight: 700; line-height: 1.18; margin: 0; letter-spacing: -.01em; }
+.counter .cnext { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--hair); }
+.counter .cin { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.counter .cwhat { font-size: 1.125rem; color: var(--ink-2); margin-top: 6px; line-height: 1.35; }
+.counter .cdone { margin-top: auto; min-height: 76px; font-size: 1.375rem; border-radius: 18px; }
+.counter .cfoot { display: flex; justify-content: center; margin-top: 18px; }
+.counter .cfoot .link { font-size: 1.0625rem; }
+@media (prefers-reduced-motion: reduce) { .counter .cdone:active { transform: none; } }
+
+/* A row that leaves for the current app is a link, but it reads as a row: no
+   underline, the row's own ink (The Day's Before tomorrow and After). */
+a.row { color: inherit; text-decoration: none; }
+/* A row's own action (Your day crew · Send): the link button, at the row's end,
+   after its status when it has one. */
+.row .act { margin-left: auto; padding-left: 12px; white-space: nowrap; }
+.nm small b.ok { color: var(--ok); font-weight: 500; }
+.nm small b.warn { color: var(--warn); font-weight: 500; }
+
+/* Day alerts (B5): the tier is a word, colored to agree with it. */
+.alert .tier { font-weight: 600; margin-right: 4px; }
+.alert.critical .tier { color: var(--danger, #ff6961); }
+.alert.warning .tier { color: var(--warn); }
+.alertgrp { margin-bottom: 12px; }
+/* A row's action never gives up its width to the text beside it, and a link
+   that is a button reads as one (no underline). */
+.row .act { flex-shrink: 0; }
+a.link { text-decoration: none; }
+/* Who's here: a checklist row's action sits level with the name. */
+.row.check .act { align-self: center; }
+
+/* A main button that waits on something (a draft with blanks) reads as waiting. */
+.primary:disabled { opacity: .45; cursor: default; }
+
+/* A choice's per-head sits under its amount (budget question, 11/26/2026). */
+.val small { display: block; font-size: .8125rem; color: var(--ink-3); text-align: right; }
+
+/* A row's action is a 44px target with its word centered in it (measured: the
+   box was centered but the text sat at its top). */
+.row .act { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Reminders in your calendar: the lead switch sits above the list. */
+.sheet .seg { margin: 0 0 14px; }

@@ -117,7 +117,10 @@ export function decisionConfidence(event, readiness) {
   // ── 4 · TIMELINE — reuse getEventReadiness().timeline (overdue from note) ────
   if (r.timeline) {
     const s = r.timeline.status, note = r.timeline.note || '';
-    const state = s === 'ON_TRACK' ? 'ready_to_lock' : /overdue/i.test(note) ? 'overdue' : 'gathering';
+    // The readiness row carries its late count as a field (openSteps); the note
+    // regex stays for rows built before it did.
+    const late = typeof r.timeline.overdue === 'number' ? r.timeline.overdue > 0 : /overdue/i.test(note);
+    const state = s === 'ON_TRACK' ? 'ready_to_lock' : late ? 'overdue' : 'gathering';
     items.push({
       key: 'timeline', label: 'Timeline', state,
       confidence: state === 'ready_to_lock' ? c.ready : '',

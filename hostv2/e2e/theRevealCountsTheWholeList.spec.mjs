@@ -34,7 +34,7 @@ test('THE REVEAL COUNTS THE WHOLE LIST, not just the food', async ({ page }) => 
   // against each other rather than against a pinned number, because the
   // playbook's contents are allowed to change and their agreement is not.
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
   const opened = await page.evaluate(() => {
     const el = [...document.querySelectorAll('button,[role="button"],a,.frow,.tab')]
       .find((x) => /^(food|shop)/i.test((x.innerText || '').trim()));

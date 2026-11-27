@@ -92,16 +92,18 @@ const CSS_RULES = [
   { sel: /^\.hero\.elegant \.cta\{/, block: true,
     must: /background:var\(--sheen\);\s*color:var\(--ink\)[\s\S]*0 3px 0 var\(--key-edge\)/,
     label: 'the elegant hero .cta base (dark) rule lost the soft tier — it must read background:var(--sheen); color:var(--ink) on a 0 3px 0 var(--key-edge) keycap (host ruling 2026-07-31)' },
-  // Steel in light (owner ruling 29): the sheets' primary, keycap on a steel edge.
-  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\)\{/, block: true,
+  // Steel in light (owner ruling 29), and in dark too since 11/26/2026 (owner:
+  // "C"): the sheets' primary, keycap on a steel edge, for every theme. The base
+  // rule's soft tier above stays for secondaries the `:not(.soft)` leaves out.
+  { sel: /^\.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\)\{/, block: true,
     must: /background:var\(--cta-grad\);\s*color:var\(--on-steel\)[\s\S]*0 3px 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d/,
-    label: 'the LIGHT elegant hero .cta must wear the steel primary — background:var(--cta-grad); color:var(--on-steel) on a 0 3px 0 var(--steel-dark) keycap, never --key-edge or the dark --shadow-* cast (owner ruling 29, 11/21/2026)' },
-  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):hover:not\(:disabled\)\{/, block: true,
+    label: 'the elegant hero .cta (both themes) must wear the steel primary — background:var(--cta-grad); color:var(--on-steel) on a 0 3px 0 var(--steel-dark) keycap, never --key-edge or the dark --shadow-* cast (owner ruling 29, 11/21/2026; dark too, owner "C", 11/26/2026)' },
+  { sel: /^\.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):hover:not\(:disabled\)\{/, block: true,
     must: /0 4px 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d|rgba\(0,\s*0,\s*0/,
-    label: 'the LIGHT elegant hero .cta:hover must lift on a 0 4px 0 var(--steel-dark) edge, never --key-edge or a black cast (owner ruling 29)' },
-  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):active\{/, block: true,
+    label: 'the elegant hero .cta:hover must lift on a 0 4px 0 var(--steel-dark) edge, never --key-edge or a black cast (owner ruling 29)' },
+  { sel: /^\.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):active\{/, block: true,
     must: /0 0 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d/,
-    label: 'the LIGHT elegant hero .cta:active must press onto a 0 0 0 var(--steel-dark) edge, never --key-edge or a dark cast (owner ruling 29)' },
+    label: 'the elegant hero .cta:active must press onto a 0 0 0 var(--steel-dark) edge, never --key-edge or a dark cast (owner ruling 29)' },
 ];
 // The whole rule, from its selector line to the first line that closes it.
 const blockFor = (re) => {

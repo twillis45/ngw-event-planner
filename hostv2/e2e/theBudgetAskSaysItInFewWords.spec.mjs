@@ -13,6 +13,16 @@
 // a planning band" paragraph are gone. ("Mid-range", not the approved
 // "Typical": the host's 10/06/2026 ruling, pinned in theBudgetAskSaysWhoseMoney,
 // waits on the owner.) Made-up names and places only.
+//
+// THE NEW STRUCTURE (owner, 11/26/2026: "As rendered is fine"; UX_12 A + T2):
+//   How much do you want to spend?
+//   $400  $33 a head · est.
+//   ( ) Lean $100  ( ) Mid-range $300  (•) All-out — Covers your plan — $400
+//   ( ) A different amount
+//   How we got these · 5 things not included ▸
+//   [Plan with $400]
+// The same rules hold: the big figure is the lit button's, the mid-range is a
+// choice tappable at 44px, and the plan's lines sentence is one tap down.
 import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const EVENT = {
@@ -34,29 +44,54 @@ test(`the budget ask is short, and its numbers agree — ${w}x${h}`, async ({ pa
   await page.goto('?elegant=1');
   await settled(page);
   const hero = page.locator('.hero').first();
-  await expect(hero).toContainText('A number to plan around');
+  await expect(hero).toContainText('How much do you want to spend?');
   const text = (await hero.innerText()).replace(/\s+/g, ' ');
 
   // The headline is the lit button's figure.
-  const lit = (await hero.locator('.cta:not(.soft):not(.ghost)').first().innerText()).trim();
-  const litFig = /^Use (\$[\d,]+)$/.exec(lit);
+  const lit = (await hero.locator('[data-budget-plan]').innerText()).trim();
+  const litFig = /^Plan with (\$[\d,]+)$/.exec(lit);
   expect(litFig, `premise: the lit button offers a figure (${lit})`).not.toBeNull();
-  const headline = /A number to plan around (\$[\d,]+)/.exec(text);
+  const headline = /How much do you want to spend\?.*?(\$[\d,]+)/.exec(text);
   expect(headline && headline[1]).toBe(litFig[1]);
   expect(litFig[1]).toBe('$400');
   expect(text).toContain('$33 a head');
-  expect(text).toContain('covers your plan');
-  expect(text).toContain('Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300.');
+  // "Covers your plan" marks the picked choice; it is the row's, not the figure's.
+  await expect(hero.locator('.optrow[aria-checked="true"]')).toContainText('Covers your plan');
   expect(text).toMatch(/\d+ things? not included/);
+  // The plan's lines sentence is one tap down, in "How we got these".
+  await hero.locator('[data-budget-why] summary').click();
+  await expect(hero.locator('[data-budget-why]')).toContainText('Your plan’s lines come to about $334. The mid-range for 12 at a Thanksgiving is $300.');
 
-  // The mid-range joins the tier row, tappable at 44px.
-  const typical = hero.locator('.tier-link', { hasText: /Mid.range \$300/ });
+  // The mid-range is a choice, tappable at 44px.
+  const typical = hero.locator('.optrow', { hasText: /Mid.range\s*\$300/ });
   await expect(typical).toBeVisible();
   const box = await typical.boundingBox();
   expect(box.height).toBeGreaterThanOrEqual(44);
+
+  // The button's attention ring is whole (owner, 11/26/2026, a screenshot of it
+  // cut off below "Plan with $400"). The cue's pulse reaches 15px past the button
+  // (outline-offset 12 + width 3), and the editor slot clips vertically; iOS Safari
+  // ignores overflow-clip-margin, so the room has to be real.
+  const room = await hero.locator('[data-budget-plan]').evaluate((b) => {
+    const slot = b.closest('.editor-slot');
+    return slot.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom;
+  });
+  expect(room, 'room below the button for its 15px cue ring').toBeGreaterThanOrEqual(15);
+
+  // The Change drawer agrees with the question (live check, 11/27/2026): its
+  // "our pick" is the tier the question lights, and each tier shows its
+  // per-head (owner, 11/26/2026: "Per head for each").
+  await hero.locator('.optrow', { hasText: 'A different amount' }).click();
+  const tiers = hero.locator('button[aria-pressed]');
+  await expect(tiers.filter({ hasText: 'our pick' })).toHaveCount(1);
+  await expect(tiers.filter({ hasText: 'our pick' })).toContainText('All-out');
+  for (const [rx, per] of [[/^Lean/, '$8 a head'], [/^Mid.range/, '$25 a head'], [/^All-out/, '$33 a head']]) {
+    await expect(tiers.filter({ hasText: rx }).first()).toContainText(per);
+  }
 
   // What went.
   expect(text).not.toContain('midpoint of a planning band');
   expect(text).not.toContain('Use $300 and trim');
   expect(text).not.toContain('the middle of the range is');
+  expect(text).not.toContain('A number to plan around');
 });
