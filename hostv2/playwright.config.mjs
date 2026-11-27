@@ -118,6 +118,8 @@ const SELF_PINNED = [
   // screenshots into one dated folder.
   '**/_thresholdDemo.spec.mjs',
   '**/yourWordsStayWithTheirEvent.spec.mjs',
+  // Pins 390x844 and 1440x900 (the header wears T2, 11/27/2026).
+  '**/theHeaderWearsT2.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
