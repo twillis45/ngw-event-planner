@@ -36,7 +36,9 @@ describe('a moment worth a spot', () => {
     const t = q('[data-moment-time]');
     expect(t.value).toBe('12:00');
     act(() => q('[data-moment-add]').click());
-    const want = addMomentEdit(TG, first, '12:00');
+    // The same clock the screen ran on: the message says "today's run" only on
+    // the day, so the real clock made this pass on 11/26/2026 alone.
+    const want = addMomentEdit(TG, first, '12:00', at('10:40'));
     expect(saved[0]).toEqual(want);
   });
   it('once every moment is on the run, nothing is offered', () => {
