@@ -8958,12 +8958,28 @@ button.vc-pill::after{
    what rides on it (the Sample tag, the weather). The 21px name beside
    "Name it" keeps its room. Desktop and tablet headers are unchanged. */
 .stagewrap[data-bp="mobile"] .tt-head{ display:flex; flex-direction:column; }
-.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row{ order:-1; }
+/* The title row's own pieces join the header's column, so the name can come
+   first and the date line straight under it while "✎ Rename" (touch only) and
+   "Name it" follow the date (live check of ea22a08c, 11/27/2026: with touch,
+   Rename wrapped between them and put the date 58px down). */
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row:not(.has-nameit){ display:contents; }
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row > .tt-title,
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row.has-nameit,
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row.tt-renaming > *{ order:-2; }
+/* "Name it" (a placeholder name) stays on the title's line, as ruled; the name
+   shrinks to make room for it (theBoardPackage test 4). */
+.stagewrap[data-bp="mobile"] .tt-head > .tt-r1{ order:-1; }
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row:not(.has-nameit) > .tt-nameit{ align-self:flex-start; margin-top:0 !important; }
 .stagewrap[data-bp="mobile"] .tt-r1{ font-size:15px; font-weight:500; letter-spacing:0; text-transform:none; }
 .stagewrap[data-bp="mobile"] .tt-title-row:not(.has-nameit) .tt-name{ font-size:28px; letter-spacing:-.02em; }
 .stagewrap[data-bp="mobile"] .tt-title{ margin-top:0 !important; }
 /* The rename field opens where the name was, so it loses the same margin. */
 .stagewrap[data-bp="mobile"] .tt-renaming{ margin-top:0; }
+/* A long forecast on the date line ends on the screen, with the ellipsis its
+   line was built with (live check of ea22a08c: 656px wide on a 390px phone,
+   cut mid-word). The tap still opens the whole line in place. */
+.tt-r1 .wxpill, .tt-r1 .wxpill-head{ min-width:0; max-width:100%; }
+.tt-r1 .wx-line{ min-width:0; }
 
 /* THE RIBBON — done fills with the progress green, open is outlined, NOW is
    the part the question is about. */
