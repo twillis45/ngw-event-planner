@@ -9,6 +9,7 @@
 import { proposeReplyBy } from './replyBy';
 import { nudgeRecipients, nudgeCount, wasInvited } from './replyNudge';
 import { rsvpState } from './rsvp';
+import { guestCountFor } from './guestCountFor';
 
 const STEPS = ['answers', 'names', 'invite', 'replies', 'count'];
 const day = (iso) => { try { return new Date(String(iso).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return ''; } };
@@ -62,10 +63,10 @@ export function guestQuestions(ev) {
   return q;
 }
 
-// The count is the host's estimate, else the planned count; with neither the
-// clause is left out (the approved render read "about —", 11/27/2026).
+// The count is the plan's own number (guestCountFor, the canonical reader); with
+// none the clause is left out (the approved render read "about —", 11/27/2026).
 const ANSWER = {
-  count: (ev) => { const n = Number(ev.guestEstimate) || Number(ev.guestCount) || 0; return n > 0 ? 'about ' + n : ''; },
+  count: (ev) => { const c = guestCountFor(ev); return c.known ? 'about ' + c.count : ''; },
   mode: (ev) => (ev.guestMode === 'count' ? 'by headcount' : 'by name'),
   plus: (ev) => (ev.plusOnePolicy === 'plus_one_ok' ? '+1s welcome' : 'no +1s'),
   kids: (ev) => (ev.kidsPolicy === 'kids_welcome' ? 'kids welcome' : 'adults only'),

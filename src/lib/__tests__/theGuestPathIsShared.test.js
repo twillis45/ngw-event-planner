@@ -5,8 +5,8 @@
 // that sums up the answers) live in one place both shells read, never two.
 //
 // And the answers line no longer says "about —" (the approved render, a plan by
-// name for 14): the count comes from the host's estimate, else the planned count,
-// and with neither the clause is left out rather than printed as a dash.
+// name for 14): the count is guestCountFor's, the canonical reader, and with no
+// number at all the clause is left out rather than printed as a dash.
 import { guestPath, guestQuestions, answersLine, guestPathState } from '../guestPath';
 
 const BASE = {
@@ -21,11 +21,11 @@ describe('the answers line says what was answered, never a dash', () => {
     expect(line).toMatch(/^about 14 · by name · \+1s welcome · kids welcome · replies by Dec 7$/);
     expect(line).not.toContain('—');
   });
-  test('the host’s estimate wins over the planned count', () => {
-    expect(answersLine({ ...BASE, guestEstimate: 20 })).toMatch(/^about 20 · /);
+  test('the count is the canonical reader’s: an estimate alone reads as itself', () => {
+    expect(answersLine({ ...BASE, guestCount: undefined, guestEstimate: 20 })).toMatch(/^about 20 · /);
   });
   test('with no number at all, the count clause is left out', () => {
-    const line = answersLine({ ...BASE, guestCount: undefined, guestCountSource: undefined });
+    const line = answersLine({ ...BASE, guestCount: undefined, guestCountSource: undefined, guests: [] });
     expect(line).not.toMatch(/about/);
     expect(line).not.toContain('—');
     expect(line).toMatch(/^by name · /);
