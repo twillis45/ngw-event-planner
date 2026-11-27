@@ -70,3 +70,59 @@ test('the desktop header is not part of this decision — 1440x900', async ({ pa
   });
   expect(r.d.bottom).toBeLessThanOrEqual(r.t.top + 1);
 });
+
+// ─── ON A REAL PHONE (live check of ea22a08c, 11/27/2026) ─────────────────────
+// With touch, "✎ Rename" rode in the title row and wrapped under the name,
+// pushing the date line 58px down: T2's "date close under the name" held only
+// without touch, which is what the first test measured. And a rain forecast on
+// the date line ran 656px wide, off a 390px screen, cut mid-word ("…100% chanc")
+// with no ellipsis.
+const touchPhone = async (browser, ev) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
+  const page = await ctx.newPage();
+  const noon = new Date(ev.date + 'T12:00:00');
+  await page.route('**/api/weather/geocode**', (r) => r.fulfill({ json: { result: { lat: 47.6, lon: -122.3 } } }));
+  await page.route('**/api/weather/onecall**', (r) => r.fulfill({ json: { timezone_offset: -noon.getTimezoneOffset() * 60, hourly: [],
+    daily: [{ dt: Math.floor(noon.getTime() / 1000), pop: 1, weather: [{ main: 'Rain', description: 'rain', icon: '10d' }], temp: { min: 41, max: 48 } }] } }));
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, ev);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await expect(page.locator('[data-tt-head]')).toBeVisible();
+  return { ctx, page };
+};
+
+test('a touch phone keeps the date close under the name; Rename moves below the date line', async ({ browser }) => {
+  const { ctx, page } = await touchPhone(browser, { ...EVENT, id: 't2-touch' });
+  const rename = page.locator('[data-tt-head] [data-rename-btn]');
+  await expect(rename, 'premise: a touch screen shows ✎ Rename').toBeVisible();
+  const r = await page.evaluate(() => {
+    const b = (s) => document.querySelector(s).getBoundingClientRect();
+    return { t: b('[data-tt-title]'), d: b('[data-tt-head] .tt-r1'), n: b('[data-tt-head] [data-rename-btn]') };
+  });
+  expect(r.d.top - r.t.bottom, 'the date sits close under the name').toBeLessThanOrEqual(8);
+  expect(r.d.top).toBeGreaterThanOrEqual(r.t.bottom - 1);
+  expect(r.n.top, 'Rename comes after the date line').toBeGreaterThanOrEqual(r.d.bottom - 1);
+  expect(r.n.height).toBeGreaterThanOrEqual(44);
+  await ctx.close();
+});
+
+test('a long forecast on the phone’s date line stays on the screen, with an ellipsis', async ({ browser }) => {
+  const { ctx, page } = await touchPhone(browser, { ...EVENT, id: 't2-wx', date: dateIn(3), venueCity: 'Seattle, WA' });
+  const wx = page.locator('[data-tt-head] .wxpill');
+  await expect(wx, 'premise: the forecast is on the date line').toBeVisible();
+  await expect(wx).toContainText(/Rain forecast/);
+  const m = await page.evaluate(() => {
+    const p = document.querySelector('[data-tt-head] .wxpill').getBoundingClientRect();
+    const l = document.querySelector('[data-tt-head] .wx-line');
+    return { right: p.right, vw: innerWidth, clipped: l.scrollWidth > l.clientWidth, to: getComputedStyle(l).textOverflow, page: document.documentElement.scrollWidth };
+  });
+  expect(m.right, 'the pill ends on the screen').toBeLessThanOrEqual(m.vw);
+  expect(m.page).toBeLessThanOrEqual(m.vw);
+  // When it is cut, it says so: an ellipsis, and the tap opens the whole line.
+  if (m.clipped) expect(m.to).toBe('ellipsis');
+  await ctx.close();
+});
