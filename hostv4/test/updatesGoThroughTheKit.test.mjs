@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'UpdatesPage.jsx'), 'utf8');
+const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'guestsKit', 'UpdatesPage.jsx'), 'utf8');
 const imports = [...src.matchAll(/import\s+\{([^}]*)\}\s+from\s+'([^']+)'/g)].map((m) => ({ names: m[1].split(',').map((x) => x.trim()).filter(Boolean), from: m[2] }));
 
 describe('updates go through the kit', () => {

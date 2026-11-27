@@ -9,8 +9,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
-import InviteDesignPage from '../src/InviteDesignPage.jsx';
-import InvitePage from '../src/InvitePage.jsx';
+import InviteDesignPage from '@app/guestsKit/InviteDesignPage.jsx';
+import InvitePage from '@app/guestsKit/InvitePage.jsx';
 import { suggestedInviteLine } from '@app/lib/inviteDeck';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;

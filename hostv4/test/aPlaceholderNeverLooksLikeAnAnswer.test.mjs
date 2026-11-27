@@ -16,7 +16,8 @@ const files = (dir) => readdirSync(dir).flatMap((f) => {
   const p = path.join(dir, f);
   return statSync(p).isDirectory() ? files(p) : /\.(jsx|js)$/.test(f) ? [p] : [];
 });
-const SHELLS = [path.resolve(here, '../src'), path.resolve(here, '../../hostv2/src')];
+// The Guests screens live in the shared kit since 11/27/2026 (src/guestsKit), read by hostv4 and hostv2.
+const SHELLS = [path.resolve(here, '../src'), path.resolve(here, '../../src/guestsKit'), path.resolve(here, '../../hostv2/src')];
 
 describe('a placeholder never looks like an answer', () => {
   it('a sentence placeholder in either shell starts "For example:"', () => {

@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
-import InvitePage from '../src/InvitePage.jsx';
+import InvitePage from '@app/guestsKit/InvitePage.jsx';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const ev = { id: 'cust-abc 1', name: 'Harvest Supper', type: 'Dinner Party', date: '2099-12-31', startTime: '18:30', startTimeSource: 'host', venue: 'Home', address: '1 Main St', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'adults_only', guests: [] };

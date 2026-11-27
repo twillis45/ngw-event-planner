@@ -10,9 +10,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import InvitePage from '../src/InvitePage.jsx';
+import InvitePage from '@app/guestsKit/InvitePage.jsx';
 
-const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+// The Guests screens live in the shared kit since 11/27/2026 (src/guestsKit), read by hostv4 and hostv2.
+const dir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'guestsKit');
 const read = (f) => readFileSync(join(dir, f), 'utf8');
 const imports = (src) => [...src.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
 const page = read('InvitePage.jsx');

@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
-import GuestsPage from '../src/GuestsPage.jsx';
+import GuestsPage from '@app/guestsKit/GuestsPage.jsx';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const ev = { id: 'sw', eventType: 'dinner_party', date: '2099-12-31', guestEstimate: 12, guestMode: 'list', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'adults_only', rsvpDeadline: '2099-12-20',

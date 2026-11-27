@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MEALS, ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
 import { MEAL_CHOICES, listToggleEdit } from '@app/lib/guestEdits';
-import { GuestDetail } from '../src/GuestsPage.jsx';
+import { GuestDetail } from '@app/guestsKit/GuestsPage.jsx';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -8,8 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import GuestsPage from '../src/GuestsPage.jsx';
-import { layoutFor, typingIn } from '../src/layout.js';
+import GuestsPage from '@app/guestsKit/GuestsPage.jsx';
+import { layoutFor, typingIn } from '@app/guestsKit/layout.js';
 
 const ev = { id: 'e1', name: 'Rosa’s 40th Birthday', type: 'Birthday', date: '2027-01-04', guestEstimate: 25, guestMode: 'list', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'adults_only', rsvpDeadline: '2026-12-20',
   guests: [{ id: 'g1', name: 'Ada Pine', rsvp: 'Yes' }, { id: 'g2', name: 'Bo Lee', rsvp: '' }] };

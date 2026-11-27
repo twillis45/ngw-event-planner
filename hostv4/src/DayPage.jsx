@@ -35,7 +35,7 @@ import { venueFor } from '@app/lib/venueFor';
 import { checkInEdit } from '@app/lib/guestEdits';
 import { tableNeeds } from '@app/lib/dietRows';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
-import { readProfile, useSendReady, NotReady } from './sendKit.jsx';
+import { readProfile, useSendReady, NotReady } from '@app/guestsKit/sendKit.jsx';
 
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());

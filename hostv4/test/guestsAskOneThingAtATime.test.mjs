@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import GuestsPage, { guestQuestions } from '../src/GuestsPage.jsx';
+import GuestsPage, { guestQuestions } from '@app/guestsKit/GuestsPage.jsx';
 
 const base = { id: 'e1', name: 'Rosa’s 40th Birthday', type: 'Birthday', date: '2027-01-04', guests: [] };
 const ANSWERS = [['count', { guestEstimate: 25 }], ['mode', { guestMode: 'list' }], ['plus', { plusOnePolicy: 'plus_one_ok' }], ['kids', { kidsPolicy: 'adults_only' }], ['replyBy', { rsvpDeadline: '2026-12-20' }]];
@@ -20,7 +20,7 @@ const nav = createElement('div', null, createElement('button', null, 'Your plan'
 const render = (ev) => renderToStaticMarkup(createElement(GuestsPage, { ev, save: () => true, sample: false, nav, status: null }));
 const text = (h) => h.replace(/<svg[\s\S]*?<\/svg>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, "'");
 const words = (h) => text(h).split(/\s+/).filter((w) => /[A-Za-z0-9$—]/.test(w));
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'GuestsPage.jsx'), 'utf8');
+const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'guestsKit', 'GuestsPage.jsx'), 'utf8');
 
 describe('guests ask one thing at a time', () => {
   it('asks in the prototype’s order, and each answer takes its question away', () => {

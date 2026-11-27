@@ -6,15 +6,15 @@
 // the two shells never disagree. Where v4 cannot act yet, it says so and opens
 // the plan in the current app; it never pretends.
 import { useEffect, useMemo, useState } from 'react';
-import GuestsPage from './GuestsPage.jsx';
+import GuestsPage from '@app/guestsKit/GuestsPage.jsx';
 import Sidebar from './Sidebar.jsx';
-import { useLayout } from './layout.js';
-import InvitePage from './InvitePage.jsx';
-import InviteDesignPage from './InviteDesignPage.jsx';
+import { useLayout } from '@app/guestsKit/layout.js';
+import InvitePage from '@app/guestsKit/InvitePage.jsx';
+import InviteDesignPage from '@app/guestsKit/InviteDesignPage.jsx';
 
 // Pushed pages, by id: their title and the name of the link back to them.
 const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page', run: 'Today’s run', crew: 'Your day crew' };
-import UpdatesPage from './UpdatesPage.jsx';
+import UpdatesPage from '@app/guestsKit/UpdatesPage.jsx';
 import DayPage, { RunPage, CounterMode, CrewPage } from './DayPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { budgetChoices } from '@app/lib/budgetChoices';

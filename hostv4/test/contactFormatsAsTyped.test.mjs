@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { GuestDetail } from '../src/GuestsPage.jsx';
+import { GuestDetail } from '@app/guestsKit/GuestsPage.jsx';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const ev = { id: 'e1', guests: [{ id: 'g1', name: 'Ana Pine', rsvp: 'Yes' }] };
