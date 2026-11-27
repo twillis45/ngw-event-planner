@@ -3357,6 +3357,9 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    width, "THE ATTENTION CUE"), `.editor-slot` clips vertically, and iOS Safari
    ignores overflow-clip-margin (owner's screenshot of the cut ring). */
 [data-budget-per]{ white-space:nowrap; }
+/* Every choice's per-head under its amount (owner, 11/26/2026: "Per head for
+   each"). Its own line, so "$400" and "$29 a head" never run together. */
+.optsub .optper{ display:block; text-align:right; white-space:nowrap; font-size:.875em; }
 .optlist[aria-label="Budget"]{ margin-top:var(--sp-4); }
 [data-budget-why]{ margin-top:var(--sp-3); }
 [data-budget-why] > summary{ cursor:pointer; }

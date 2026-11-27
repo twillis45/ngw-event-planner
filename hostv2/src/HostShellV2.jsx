@@ -10814,7 +10814,8 @@ export default function HostShellV2() {
               ...choices.map((c) => ({
                 value: c.amount,
                 label: (c.key === 'covers' || (ask.covers && c.lit)) ? <>{c.label}<small className="optnote">Covers your plan</small></> : c.label,
-                sub: fmt(c.amount),
+                // Owner, 11/26/2026: "Per head for each". The shared answer's own per-head.
+                sub: <>{fmt(c.amount)}{c.perHead ? <small className="optper">{c.perHead}</small> : null}</>,
               })),
               { value: 'other', label: 'A different amount' },
             ]} />
