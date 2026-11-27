@@ -113,7 +113,8 @@ const openSettings = async (page) => {
 const row = (page) => page.locator('[data-device-notifications]');
 
 test.describe('desktop Chrome', () => {
-  test.use({ userAgent: CHROME_MAC });
+  // A set zone, so the body's tz below is checked, not just present.
+  test.use({ userAgent: CHROME_MAC, timezoneId: 'America/Chicago' });
 
   test('the row is offered, nothing asks on load, and the tap asks once and saves this device', async ({ page }) => {
     const api = await boot(page);
@@ -128,7 +129,9 @@ test.describe('desktop Chrome', () => {
     expect(await page.evaluate(() => window.__askedPermission)).toBe(1);
     expect(api.filter((c) => c.method === 'POST')).toEqual([{
       method: 'POST', path: '/api/push/subscribe',
-      body: { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-device', keys: { p256dh: 'BPubE2e', auth: 'SecE2e' } },
+      // Her phone's zone rides with the device: it decides the event day for
+      // alerts (owner, 11/27/2026: no hourly limit on the event day).
+      body: { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-device', keys: { p256dh: 'BPubE2e', auth: 'SecE2e' }, tz: 'America/Chicago' },
     }]);
 
     await row(page).getByRole('button', { name: 'On', exact: true }).click();

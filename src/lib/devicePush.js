@@ -112,6 +112,16 @@ async function headers() {
  * The host tapped the row on. The ONLY place permission is requested.
  * `{ ok: true }` or `{ ok: false, reason: 'denied' | 'dismissed' | 'no-worker' | 'failed' }`.
  */
+/** The phone's IANA time zone, or undefined when the browser will not say. */
+export function phoneZone(env) {
+  try {
+    if (env && typeof env.timeZone === 'function') return env.timeZone() || undefined;
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function turnOnPush(key, { env = defaultEnv(), fetchImpl = defaultFetch, timeoutMs = 10000 } = {}) {
   let permission;
   try {
@@ -138,7 +148,9 @@ export async function turnOnPush(key, { env = defaultEnv(), fetchImpl = defaultF
     const r = await fetchImpl(`${apiBase()}/api/push/subscribe`, {
       method: 'POST',
       headers: await headers(),
-      body: JSON.stringify({ endpoint: json.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }),
+      // Her phone's time zone decides which day is the event day for alerts
+      // (owner, 11/27/2026); the server keeps it only if it is a real zone.
+      body: JSON.stringify({ endpoint: json.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth }, tz: phoneZone(env) }),
     });
     if (!r || !r.ok) throw new Error('refused');
   } catch {
