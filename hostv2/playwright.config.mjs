@@ -118,6 +118,8 @@ const SELF_PINNED = [
   // screenshots into one dated folder.
   '**/_thresholdDemo.spec.mjs',
   '**/yourWordsStayWithTheirEvent.spec.mjs',
+  // Pins 390x844 in both themes (the budget question wears T2, 11/27/2026).
+  '**/theBudgetQuestionWearsT2.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

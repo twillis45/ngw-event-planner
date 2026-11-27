@@ -3348,7 +3348,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .optlabel{font-size:var(--t-row); color:var(--ink-soft)}
 .optrow.on .optlabel{color:var(--sel-ink); font-weight:650}
 .optsub{margin-left:auto; font-size:var(--t-meta); color:var(--muted)}
-/* A choice's note under its label ("Covers your plan", the budget question, 11/26/2026). Muted, not green: UX_12 keeps green for done. */
+/* A choice's note under its label ("Covers your plan", the budget question, 11/26/2026). */
 .optnote{display:block; font-size:var(--t-row-sub); color:var(--muted); font-weight:500}
 /* THE BUDGET QUESTION (owner, 11/26/2026: "As rendered is fine"). Spacing for the
    one question, its choices and its button, keyed on the block's own hooks. The
@@ -3371,6 +3371,34 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 [data-budget-why] > summary{ cursor:pointer; }
 [data-budget-why] > p{ margin:var(--sp-2) 0 0; }
 :has(> [data-budget-plan]){ padding-bottom:var(--sp-4); }
+/* THE BUDGET QUESTION WEARS T2 (owner, 11/27/2026: "T2 applied version is
+   fine"). The T2 mockup's own sizes, pinned in theBudgetQuestionWearsT2:
+   the question 28 / 800 on the phone, wrapping plainly (balance split it
+   "How much do you / want to spend?"); the picked figure 52 / 800 with its
+   per-head at 17 / 600; the choices one grouped card with 22px radios, ink
+   labels at 17 and amounts at 16; "Covers your plan" green (owner: "why is
+   green gone"). Tracking stays at the −0.02em floor (UX_12, condition 2).
+   BigValue sets its scale inline (the parity kit), so the figure's override
+   needs !important; it is keyed on this block's own hook and nowhere else. */
+.stagewrap[data-bp="mobile"] .hero.elegant:has([data-budget-plan]) .ask{ font-size:28px; font-weight:800; letter-spacing:-.02em; line-height:1.12; text-wrap:wrap; margin-bottom:0; }
+/* With the card's title gone, its spacing goes too: the figure sits under the
+   question as the mockup draws it, not 60px down where the title used to be. */
+.hero.elegant .hero-card:has([data-budget-plan]){ margin-top:0; }
+.hero.elegant .hero-card:has([data-budget-plan]) > .card-head > .card-top:empty{ display:none; }
+[data-budget-fig]{ font-size:52px !important; font-weight:800 !important; letter-spacing:-.02em !important; }
+.hero [data-budget-per]{ font-size:17px; font-weight:600; }
+.optlist[aria-label="Budget"]{ background:var(--card); border-radius:var(--r-lg); padding:0 var(--sp-1); overflow:hidden; }
+:root[data-theme="light"] .optlist[aria-label="Budget"]{ box-shadow:0 0 0 1px var(--line); }
+.optlist[aria-label="Budget"] .optrow{ min-height:52px; padding:var(--sp-3); border-radius:var(--r-md); }
+.optlist[aria-label="Budget"] .optdot{ position:relative; width:22px; height:22px; box-sizing:border-box; border:1.5px solid var(--muted); background:transparent; }
+.optlist[aria-label="Budget"] .optrow.on .optdot{ border-color:var(--ink); background:transparent; }
+/* The picked dot is an 11px ink disc drawn as a ring that fills itself: it is a
+   mark, not a surface, so the white-surface gate (check-parity) is not its rule. */
+.optlist[aria-label="Budget"] .optrow.on .optdot::after{ content:""; position:absolute; inset:4px; box-sizing:border-box; border-radius:50%; border:6px solid var(--ink); }
+.optlist[aria-label="Budget"] .optlabel{ font-size:17px; color:var(--ink); }
+.optlist[aria-label="Budget"] .optrow.on .optlabel{ color:var(--ink); font-weight:600; }
+.optlist[aria-label="Budget"] .optsub{ font-size:16px; }
+.optlist[aria-label="Budget"] .optnote{ font-size:12px; font-weight:600; color:var(--ok); }
 
 
 
