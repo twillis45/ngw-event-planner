@@ -78,6 +78,17 @@ test(`the budget ask is short, and its numbers agree — ${w}x${h}`, async ({ pa
   });
   expect(room, 'room below the button for its 15px cue ring').toBeGreaterThanOrEqual(15);
 
+  // The Change drawer agrees with the question (live check, 11/27/2026): its
+  // "our pick" is the tier the question lights, and each tier shows its
+  // per-head (owner, 11/26/2026: "Per head for each").
+  await hero.locator('.optrow', { hasText: 'A different amount' }).click();
+  const tiers = hero.locator('button[aria-pressed]');
+  await expect(tiers.filter({ hasText: 'our pick' })).toHaveCount(1);
+  await expect(tiers.filter({ hasText: 'our pick' })).toContainText('All-out');
+  for (const [rx, per] of [[/^Lean/, '$8 a head'], [/^Mid.range/, '$25 a head'], [/^All-out/, '$33 a head']]) {
+    await expect(tiers.filter({ hasText: rx }).first()).toContainText(per);
+  }
+
   // What went.
   expect(text).not.toContain('midpoint of a planning band');
   expect(text).not.toContain('Use $300 and trim');

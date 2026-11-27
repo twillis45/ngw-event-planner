@@ -10851,15 +10851,20 @@ export default function HostShellV2() {
         <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>Pick a size, or type your own.</GuideLine>
         {opts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            {opts.map((n, idx) => (
+            {opts.map((n, idx) => {
+              // The same tier the question lights is "our pick", and each tier says
+              // its per-head (live check 11/27/2026; owner: "Per head for each").
+              const tier = (_bc && _bc.tiers[idx]) || {};
+              return (
               <TierRow key={n}
                 label={opts.length === 3 ? OPT_LABELS[idx] : fmt(n)}
-                amount={opts.length === 3 ? fmt(n) : null}
+                amount={opts.length === 3 ? <>{fmt(n)}{tier.perHead ? <small className="tier-per">{tier.perHead}</small> : null}</> : null}
                 selected={Number(event.totalBudget) === n}
-                pick={opts.length === 3 && idx === 1}
+                pick={!!_bc && n === _bc.cta.lit}
                 onClick={() => setB(n)}
-                ariaLabel={(opts.length === 3 ? OPT_LABELS[idx] + ' ' : '') + fmt(n)} />
-            ))}
+                ariaLabel={(opts.length === 3 ? OPT_LABELS[idx] + ' ' : '') + fmt(n) + (tier.perHead ? ', ' + tier.perHead : '')} />
+              );
+            })}
           </div>
         )}
         <CtaRow gap={ASK_COMPACT.whyToCta}>

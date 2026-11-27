@@ -3360,6 +3360,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* Every choice's per-head under its amount (owner, 11/26/2026: "Per head for
    each"). Its own line, so "$400" and "$29 a head" never run together. */
 .optsub .optper{ display:block; text-align:right; white-space:nowrap; font-size:.875em; }
+/* The Change drawer's tiers say their per-head too, under the amount. */
+.tier-per{ display:block; text-align:right; white-space:nowrap; font-weight:500; font-size:.875em; color:var(--muted); }
 .optlist[aria-label="Budget"]{ margin-top:var(--sp-4); }
 /* Its rows sit on the board, under the 44x44 floor's sweep: a one-line row
    measured 43 at tablet-tall in CI (the 1px row rule inside a 44 border box).
