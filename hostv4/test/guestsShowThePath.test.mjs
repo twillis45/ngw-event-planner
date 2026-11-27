@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import GuestsPage from '../src/GuestsPage.jsx';
-import { guestPath } from '../src/guestPath.js';
+import { guestPath } from '@app/lib/guestPath';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const base = { qs: [], byName: true, named: 10, sent: false, replyByPassed: false, locked: 0, toNudge: 0, replied: 0, invited: 0, waiting: 0, deadline: '2099-12-20' };
