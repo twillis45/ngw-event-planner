@@ -69,6 +69,24 @@ def test_the_payload_says_who_and_what_kind_never_the_words():
     assert ha.push_payload("vendor", "Oak Smoke BBQ", "Friendsgiving")["title"] == "Oak Smoke BBQ answered your vendor brief"
 
 
+def test_a_reply_says_how_many_have_said_yes():
+    # Owner, 11/27/2026: "include the count". A number, never a name.
+    p = ha.push_payload("rsvp", "Dana", "Thanksgiving at ours", "No", "ev1", going=13)
+    assert p["title"] == "Dana replied No"
+    assert p["body"] == "Thanksgiving at ours · 13 said yes"
+    assert ha.push_payload("rsvp", "Dana", "Thanksgiving", "Yes", "ev1", going=1)["body"] == "Thanksgiving · 1 said yes"
+    # No count known (or a question/vendor): the event name alone, as before.
+    assert ha.push_payload("rsvp", "Dana", "Thanksgiving", "Yes", "ev1")["body"] == "Thanksgiving"
+    assert ha.push_payload("question", "Dana", "Thanksgiving", going=4)["body"] == "Thanksgiving"
+
+
+def test_the_reply_count_counts_the_saved_list_and_the_replies_not_yet_opened(monkeypatch, out):
+    # The saved list says 2 yes; 13 replies have come in since. The larger shows.
+    row = dict(ROW, guests='[{"name":"A","rsvp":"Yes"},{"name":"B","rsvp":"yes"},{"name":"C","rsvp":"No"}]')
+    _alert(monkeypatch, row, "ev1", "rsvp", "Jordan", "Yes")
+    assert out["push"][0][1]["body"] == "Friendsgiving · 13 said yes"
+
+
 def test_free_text_in_the_answer_never_reaches_the_device():
     # Only Yes / No / Maybe are ever shown. Anything else a caller hands in —
     # a note, a phone number, a question's words — is dropped, not echoed.
@@ -89,6 +107,8 @@ class _Conn:
             return {"id": HOST_ID, "email": self.email} if self.email else None
         return self.row
     async def fetchval(self, q, *a):
+        if "rsvp_submissions" in q:
+            return 13
         return "Oak Smoke BBQ"
 
 
@@ -130,7 +150,7 @@ def _alert(monkeypatch, row, *args, **kw):
 def test_the_push_goes_beside_the_email_to_the_studio_owner(monkeypatch, out):
     _alert(monkeypatch, ROW, "ev1", "rsvp", "Jordan", "Yes")
     assert out["email"] == ["Jordan replied Yes — Friendsgiving"]
-    assert out["push"] == [(HOST_ID, {"title": "Jordan replied Yes", "body": "Friendsgiving", "tag": "ngw-alert-ev1"})]
+    assert out["push"] == [(HOST_ID, {"title": "Jordan replied Yes", "body": "Friendsgiving · 13 said yes", "tag": "ngw-alert-ev1"})]
 
 
 def test_the_vendor_push_names_the_vendor_from_the_hosts_list(monkeypatch, out):

@@ -34,6 +34,7 @@ from .email_frame import frame, hue_for, paragraphs_html
 from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
 from . import web_push
+from .going_count import going_count, roster_yes
 
 log = logging.getLogger("ngw.host_alerts")
 
@@ -69,12 +70,18 @@ def _what(kind: str, who: str, answer: str | None) -> str:
     raise ValueError(kind)
 
 
-def push_payload(kind: str, who: str, event_name: str, answer: str | None = None, event_id: str = "") -> dict:
+def push_payload(kind: str, who: str, event_name: str, answer: str | None = None, event_id: str = "",
+                 going: int | None = None) -> dict:
     """The device notification for one alert. Pure. Exactly three fields, all
     fixed wording plus who answered and the event's name; never an answer's
-    body. The service worker opens the app itself, so no address rides here."""
+    body. The service worker opens the app itself, so no address rides here.
+    A reply also says how many have said yes (owner, 11/27/2026: "include the
+    count"): a number, never a name."""
+    body = _one_line(event_name) or "Your event"
+    if kind == "rsvp" and going is not None:
+        body += f" · {int(going)} said yes"
     return {"title": _what(kind, who, answer),
-            "body": _one_line(event_name) or "Your event",
+            "body": body,
             # One notification per event on the device: a later one replaces it.
             "tag": "ngw-alert-" + _one_line(event_id, 64)}
 
@@ -114,8 +121,8 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
         pool = await get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "select studio_id, data->>'name' as name, data->>'hostAlerts' as alerts "
-                "from public.events where id = $1", event_id)
+                "select studio_id, data->>'name' as name, data->>'hostAlerts' as alerts, "
+                "data->'guests' as guests from public.events where id = $1", event_id)
             if not row or row["alerts"] == "false" or row["studio_id"] is None:
                 return
             host = await conn.fetchrow(
@@ -128,6 +135,8 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
                 who = await conn.fetchval(
                     "select v->>'name' from public.events e, jsonb_array_elements(coalesce(e.data->'vendors','[]'::jsonb)) v "
                     "where e.id = $1 and v->>'id' = $2 limit 1", event_id, who) or "A vendor"
+            going = (await going_count(conn, event_id, roster_yes(row.get("guests")))
+                     if kind == "rsvp" else None)
         if not host or not host["email"] or not _claim(event_id):
             return
         delivered, failure = False, None
@@ -141,7 +150,7 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
             except Exception as e:  # noqa: BLE001 — the push below still goes
                 failure = e
         if push_on:
-            counts = await web_push.send_to_user(host["id"], push_payload(kind, who, row["name"], answer, event_id))
+            counts = await web_push.send_to_user(host["id"], push_payload(kind, who, row["name"], answer, event_id, going=going))
             delivered = delivered or counts.get("sent", 0) > 0
         if not delivered:
             # Nothing reached the host, so nothing used up the hour (11/16/2026:

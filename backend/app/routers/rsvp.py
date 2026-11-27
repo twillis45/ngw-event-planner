@@ -32,6 +32,7 @@ from typing import Optional, Literal
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
+from ..going_count import going_count
 from ..db import get_pool
 from ..host_alerts import alert_host
 from ..outward import host_name_for
@@ -451,30 +452,8 @@ async def _resolve_event(conn, rsvp_code: str):
     return row["id"], public
 
 
-async def _going_count(conn, event_id, roster_count):
-    """Yes count for the invite's social line (run 2, R2-24).
-
-    The roster count alone lags: a reply reaches the saved guest list only when
-    the host next opens the app, so guests replying in between were told "Be the
-    first to say yes" while others had. Replies already received count too —
-    each guest name's LATEST answer once — and the larger of the two is shown,
-    so neither source can lower the other. A number, never a name; a failed
-    read falls back to the roster count rather than failing the invite.
-    """
-    try:
-        n = await conn.fetchval(
-            """select count(*) from (
-                 select distinct on (lower(trim(guest_name))) rsvp
-                   from public.rsvp_submissions
-                  where event_id = $1 and coalesce(trim(guest_name), '') <> ''
-                  order by lower(trim(guest_name)), coalesce(updated_at, submitted_at) desc
-               ) latest
-              where lower(coalesce(rsvp, '')) like 'y%'""",
-            event_id,
-        )
-    except Exception:
-        return roster_count
-    return max(int(n or 0), int(roster_count or 0))
+# The yes count is shared with the host's reply alert: app/going_count.py.
+_going_count = going_count
 
 
 # ── 1. GET /api/public/invite/{rsvp_code} — PUBLIC invite resolver ─────────────
