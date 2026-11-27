@@ -165,12 +165,15 @@ test(`the board shows at most one lit primary, and only in the hero — ${state.
   // Ruling 31: none lit in dark, `?elegant=0` included (#220 Open, 11/22/2026:
   // the full board's hero card kept its ask lit in dark). In light the hero's
   // ask is the board's one lit button in both modes.
-  if (theme === 'dark') expect(heroLit, 'the dark hero ask wears the soft tier (rulings 29, 31)').toEqual([]);
+  // OWNER, 11/26/2026 ("C"): on the elegant board the dark hero ask wears the
+  // steel primary too, so dark reads like light there. The full board
+  // (`?elegant=0`) keeps ruling 31's soft dark ask.
+  if (theme === 'dark' && elegant === '0') expect(heroLit, 'the ?elegant=0 dark hero ask wears the soft tier (ruling 31)').toEqual([]);
   expect(together, 'two lit controls on screen at once').toEqual([]);
   // TIGHTENED TO ONE (cohesion F1, owner 11/24/2026; UX_11 rule 1). The choice
   // card used to show 0 lit at every width ("Tap one to settle it"), so the
   // board had no lit act at all. In light, our pick is said as the one button.
-  if (theme === 'light' && heroPick) expect(heroLit, 'the pick is the board’s one lit button').toEqual([expect.stringMatching(/^Go with /)]);
+  if ((theme === 'light' || elegant === '1') && heroPick) expect(heroLit, 'the pick is the board’s one lit button').toEqual([expect.stringMatching(/^Go with /)]);
 });
 
 // F1: the lit button settles our pick, the same write as tapping its row.
