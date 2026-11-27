@@ -1,0 +1,332 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "header",
+    "ok": false,
+    "error": "line style/place :: {\"name\":\"E2E_TEST_ Thanksgiving at the Lanes\",\"nameFs\":28,\"nameFw\":\"700\",\"line\":\"Monday, November 30 · 3 days Rain forecast for Monday (your event day), 100% chance — guests may need extra time to get there ›\",\"lineFs\":15,\"lineTt\":\"none\",\"lineBelowName\":true,\"gap\":58,\"lineAboveName\":false,\"bp\":\"mobile\",\"wx\":true,\"sample\":false}",
+    "sideways": 0
+   },
+   {
+    "name": "rename-longpress",
+    "ok": true,
+    "field": {
+     "active": "INPUT",
+     "inHeader": true,
+     "value": "E2E_TEST_ Thanksgiving at the Lanes",
+     "selected": 35,
+     "dialog": false
+    },
+    "nameUnchanged": true,
+    "sideways": 0
+   },
+   {
+    "name": "sample-tag",
+    "ok": true,
+    "sample": 1,
+    "line": "Sample Saturday, January 9 · 43 days",
+    "bp": "mobile",
+    "sideways": 0
+   },
+   {
+    "name": "trip-ahead",
+    "ok": true,
+    "line": "Dec 3–Dec 6 · 6 days",
+    "bp": "mobile",
+    "sideways": 0
+   },
+   {
+    "name": "trip-day1",
+    "ok": true,
+    "line": "Dec 3–Dec 6 · Day 1 of 4",
+    "bp": "mobile",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "header",
+    "ok": true,
+    "nameFs": 24,
+    "nameFw": "700",
+    "line": "MON, NOV 30 · 3 DAYS Rain forecast for Monday (your event day), 100% chance — guests may need extra time to get there ›",
+    "lineFs": 12,
+    "lineTt": "uppercase",
+    "lineBelowName": false,
+    "gap": -131,
+    "lineAboveName": true,
+    "bp": "tablet",
+    "wx": true,
+    "sample": false,
+    "evName": "E2E_TEST_ Thanksgiving at the Lanes",
+    "expectedPlain": null,
+    "sideways": 0
+   },
+   {
+    "name": "rename-longpress",
+    "ok": true,
+    "field": {
+     "active": "INPUT",
+     "inHeader": true,
+     "value": "E2E_TEST_ Thanksgiving at the Lanes",
+     "selected": 35,
+     "dialog": false
+    },
+    "nameUnchanged": true,
+    "sideways": 0
+   },
+   {
+    "name": "sample-tag",
+    "ok": true,
+    "sample": 1,
+    "line": "SAMPLE SAT, JAN 9 · 43 DAYS",
+    "bp": "tablet",
+    "sideways": 0
+   },
+   {
+    "name": "trip-ahead",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · 6 DAYS",
+    "bp": "tablet",
+    "sideways": 0
+   },
+   {
+    "name": "trip-day1",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · DAY 1 OF 4",
+    "bp": "tablet",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "header",
+    "ok": true,
+    "nameFs": 24,
+    "nameFw": "700",
+    "line": "MON, NOV 30 · 3 DAYS Rain forecast for Monday (your event day), 100% chance — guests may need extra time to get there ›",
+    "lineFs": 12,
+    "lineTt": "uppercase",
+    "lineBelowName": false,
+    "gap": -131,
+    "lineAboveName": true,
+    "bp": "tablet-land",
+    "wx": true,
+    "sample": false,
+    "evName": "E2E_TEST_ Thanksgiving at the Lanes",
+    "expectedPlain": null,
+    "sideways": 0
+   },
+   {
+    "name": "rename-longpress",
+    "ok": true,
+    "field": {
+     "active": "INPUT",
+     "inHeader": true,
+     "value": "E2E_TEST_ Thanksgiving at the Lanes",
+     "selected": 35,
+     "dialog": false
+    },
+    "nameUnchanged": true,
+    "sideways": 0
+   },
+   {
+    "name": "sample-tag",
+    "ok": true,
+    "sample": 1,
+    "line": "SAMPLE SAT, JAN 9 · 43 DAYS",
+    "bp": "tablet-land",
+    "sideways": 0
+   },
+   {
+    "name": "trip-ahead",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · 6 DAYS",
+    "bp": "tablet-land",
+    "sideways": 0
+   },
+   {
+    "name": "trip-day1",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · DAY 1 OF 4",
+    "bp": "tablet-land",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "header",
+    "ok": true,
+    "nameFs": 24,
+    "nameFw": "700",
+    "line": "MON, NOV 30 · 3 DAYS",
+    "lineFs": 12,
+    "lineTt": "uppercase",
+    "lineBelowName": false,
+    "gap": -92,
+    "lineAboveName": true,
+    "bp": "tablet-land",
+    "wx": false,
+    "sample": false,
+    "evName": "E2E_TEST_ Thanksgiving at the Lanes",
+    "expectedPlain": null,
+    "sideways": 0
+   },
+   {
+    "name": "rename-longpress",
+    "ok": true,
+    "field": {
+     "active": "INPUT",
+     "inHeader": true,
+     "value": "E2E_TEST_ Thanksgiving at the Lanes",
+     "selected": 35,
+     "dialog": false
+    },
+    "nameUnchanged": true,
+    "sideways": 0
+   },
+   {
+    "name": "sample-tag",
+    "ok": true,
+    "sample": 1,
+    "line": "SAMPLE SAT, JAN 9 · 43 DAYS",
+    "bp": "tablet-land",
+    "sideways": 0
+   },
+   {
+    "name": "trip-ahead",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · 6 DAYS",
+    "bp": "tablet-land",
+    "sideways": 0
+   },
+   {
+    "name": "trip-day1",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · DAY 1 OF 4",
+    "bp": "tablet-land",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "header",
+    "ok": true,
+    "nameFs": 24,
+    "nameFw": "700",
+    "line": "MON, NOV 30 · 3 DAYS",
+    "lineFs": 12,
+    "lineTt": "uppercase",
+    "lineBelowName": false,
+    "gap": -104,
+    "lineAboveName": true,
+    "bp": "desktop",
+    "wx": false,
+    "sample": false,
+    "evName": "E2E_TEST_ Thanksgiving at the Lanes",
+    "expectedPlain": null,
+    "sideways": 0
+   },
+   {
+    "name": "rename-longpress",
+    "ok": true,
+    "skipped": "not touch",
+    "sideways": 0
+   },
+   {
+    "name": "sample-tag",
+    "ok": true,
+    "sample": 1,
+    "line": "SAMPLE SAT, JAN 9 · 43 DAYS",
+    "bp": "desktop",
+    "sideways": 0
+   },
+   {
+    "name": "trip-ahead",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · 6 DAYS",
+    "bp": "desktop",
+    "sideways": 0
+   },
+   {
+    "name": "trip-day1",
+    "ok": true,
+    "line": "DEC 3–DEC 6 · DAY 1 OF 4",
+    "bp": "desktop",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]

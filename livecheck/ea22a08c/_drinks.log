@@ -1,0 +1,80 @@
+390x844 ok   list-wine 
+390x844 ok   rides-wine 
+390x844 ok   list-bring 
+390x844 ok   rides-bring 
+390x844 ok   list-none 
+390x844 ok   rides-none 
+390x844 ok   question-pick-none 
+834x1194 ok   list-wine 
+834x1194 ok   rides-wine 
+834x1194 ok   list-bring 
+834x1194 ok   rides-bring 
+834x1194 ok   list-none 
+834x1194 ok   rides-none 
+834x1194 ok   question-pick-none 
+1024x1366 ok   list-wine 
+1024x1366 ok   rides-wine 
+1024x1366 ok   list-bring 
+1024x1366 ok   rides-bring 
+1024x1366 ok   list-none 
+1024x1366 ok   rides-none 
+1024x1366 ok   question-pick-none 
+1194x834 ok   list-wine 
+1194x834 ok   rides-wine 
+1194x834 ok   list-bring 
+1194x834 ok   rides-bring 
+1194x834 ok   list-none 
+1194x834 ok   rides-none 
+1194x834 ok   question-pick-none 
+1440x900 ok   list-wine 
+1440x900 ok   rides-wine 
+1440x900 ok   list-bring 
+1440x900 ok   rides-bring 
+1440x900 ok   list-none 
+1440x900 ok   rides-none 
+1440x900 ok   question-pick-none 
+
+390x844 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  list-wine side 0
+  ok  rides-wine side 0
+  ok  list-bring side 0
+  ok  rides-bring side 0
+  ok  list-none side 0
+  ok  rides-none side 0
+  ok  question-pick-none side 0
+
+834x1194 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  list-wine side 0
+  ok  rides-wine side 0
+  ok  list-bring side 0
+  ok  rides-bring side 0
+  ok  list-none side 0
+  ok  rides-none side 0
+  ok  question-pick-none side 0
+
+1024x1366 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  list-wine side 0
+  ok  rides-wine side 0
+  ok  list-bring side 0
+  ok  rides-bring side 0
+  ok  list-none side 0
+  ok  rides-none side 0
+  ok  question-pick-none side 0
+
+1194x834 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  list-wine side 0
+  ok  rides-wine side 0
+  ok  list-bring side 0
+  ok  rides-bring side 0
+  ok  list-none side 0
+  ok  rides-none side 0
+  ok  question-pick-none side 0
+
+1440x900 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  list-wine side 0
+  ok  rides-wine side 0
+  ok  list-bring side 0
+  ok  rides-bring side 0
+  ok  list-none side 0
+  ok  rides-none side 0
+  ok  question-pick-none side 0
