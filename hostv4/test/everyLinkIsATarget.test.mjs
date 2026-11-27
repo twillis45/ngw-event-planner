@@ -9,14 +9,15 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/styles.css'), 'utf8');
+// The design language moved to the shared kit (src/guestsKit/kit.css, scoped .gk); the tokens stay in styles.css.
+const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/guestsKit/kit.css'), 'utf8');
 const rules = [...css.matchAll(/([^{}]*\.link[^{}]*)\{([^}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }));
 
 describe('every link is a 44px target', () => {
   // The live-check session, 11/26/2026: the guest sheet's "Done" measured 40×44,
   // short a word wide. 44 is a width rule too, so every link carries it.
   it('every link is at least 44 wide, and no rule narrows it', () => {
-    const base = rules.find((r) => r.sel === '.link');
+    const base = rules.find((r) => r.sel === '.gk .link');
     expect(base.body).toMatch(/min-width:\s*44px/);
     const bad = rules.filter((r) => /min-width:\s*([0-3]?\d|4[0-3])px/.test(r.body) || /min-width:\s*0\b/.test(r.body)).map((r) => r.sel);
     expect(bad).toEqual([]);
@@ -26,7 +27,7 @@ describe('every link is a 44px target', () => {
     expect(bad).toEqual([]);
   });
   it('a link in a sentence is 44 tall without moving the line', () => {
-    const r = rules.find((x) => /\.fine \.link/.test(x.sel) && /\.done \.link/.test(x.sel) && /\.line \.link/.test(x.sel));
+    const r = rules.find((x) => /\.fine \.link/.test(x.sel) && /\.done \.link/.test(x.sel) && /\.gk-line \.link/.test(x.sel));
     expect(r, 'one rule for links in a sentence').toBeTruthy();
     expect(r.body).toMatch(/display:\s*inline-flex/);
     expect(r.body).toMatch(/min-height:\s*44px/);

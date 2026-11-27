@@ -22,16 +22,16 @@ describe('the iPad has three panes', () => {
   it('split: the list pane holds its one action; the first guest shows beside it, with the shortcuts', () => {
     const html = render('split');
     expect(html).toContain('class="gsplit split"');
-    const list = html.slice(html.indexOf('class="listpane"'), html.indexOf('class="gdetail"'));
+    const list = html.slice(html.indexOf('class="listpane"'), html.indexOf('class="gk-gdetail"'));
     expect((list.match(/class="primary"/g) || []).length).toBe(1);
-    expect(html).toMatch(/class="gdetail"[^>]*>.*<h2 class="dhead">Ada Pine<\/h2>/);
+    expect(html).toMatch(/class="gk-gdetail"[^>]*>.*<h2 class="dhead">Ada Pine<\/h2>/);
     expect(html).toContain('data-keys');
     expect(html).toContain('aria-selected="true"');
   });
   it('compact: one pane until a guest is opened', () => {
     const html = render('compact');
     expect(html).toContain('class="gsplit compact"');
-    expect(html).not.toContain('class="gdetail');
+    expect(html).not.toContain('class="gk-gdetail');
   });
   it('phone: unchanged, no panes', () => {
     const html = render('phone');

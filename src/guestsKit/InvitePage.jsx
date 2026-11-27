@@ -19,7 +19,7 @@ import SendSheet from './SendSheet.jsx';
 import InvitePreview from './InvitePreview.jsx';
 import { readProfile } from './sendKit.jsx';
 
-const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const VOICE = { 'as-written': 'As written', tighter: 'Tighter', warmer: 'Warmer', playful: 'Playful', formal: 'Formal' };
 const GAP = { date: 'The day', time: 'The time guests arrive', place: 'Where it is', name: 'The event’s name', address: 'The street address' };
 const GIFT = [['None', null], ['No gifts, please', 'no_gifts'], ['Registry link', 'registry']];
@@ -82,7 +82,7 @@ export default function InvitePage({ ev, save, nav, status, onDesign }) {
 
         <h3 className="sh">The page they open</h3>
         <InvitePreview ev={ev} />
-        <div className="grp"><button className="row go" data-open-design onClick={onDesign}><span className="nm">Design this page<small>Layout, your message, who it’s from, colors</small></span>{chev}</button></div>
+        <div className="grp"><button className="row gk-go" data-open-design onClick={onDesign}><span className="nm">Design this page<small>Layout, your message, who it’s from, colors</small></span>{chev}</button></div>
 
         <h3 className="sh">Rules</h3>
         <Seg label="Plus-ones" value={ev.plusOnePolicy || null} options={[['Welcome', 'plus_one_ok'], ['Not this time', 'no_plus_ones']]} pick={(v) => save(plusOneEdit(v))} />
@@ -90,7 +90,7 @@ export default function InvitePage({ ev, save, nav, status, onDesign }) {
         <Seg label="Ask for mailing addresses" value={!!ev.collectAddresses} options={[['Yes', true], ['No', false]]} pick={(v) => save(addressesEdit(v))} />
         <Seg label="Gifts" value={gift} options={GIFT} pick={(v) => save(giftEdit(ev, v))} />
         {gift === 'registry' && (
-          <input className="field" aria-label="Registry link" placeholder="Paste the registry link" defaultValue={(ev.giftWish && ev.giftWish.detail) || ''}
+          <input className="gk-field" aria-label="Registry link" placeholder="Paste the registry link" defaultValue={(ev.giftWish && ev.giftWish.detail) || ''}
             onBlur={(e) => { if (e.target.value !== ((ev.giftWish && ev.giftWish.detail) || '')) save(giftDetailEdit(ev, e.target.value.trim())); }} />
         )}
         <p className="fine">The reply page follows these.</p>

@@ -118,6 +118,6 @@ describe('Guests folds away', () => {
   it('on an iPad, the first name still fills the detail pane', () => {
     localStorage.clear();
     mount(ten, 'split');
-    expect(q('.gdetail .dhead').textContent).toBe('Ada Pine');
+    expect(q('.gk-gdetail .dhead').textContent).toBe('Ada Pine');
   });
 });

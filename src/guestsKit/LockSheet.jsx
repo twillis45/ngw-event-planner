@@ -14,17 +14,17 @@ export default function LockSheet({ ev, save, onDone }) {
   const pick = (ed) => { save(ed); onDone(); };
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label="Lock the count" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="Lock the count" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{locked ? 'Locked at ' + locked : 'Lock the count'}</h2><button className="link" onClick={onDone}>Done</button></div>
         {locked ? (<>
           <p className="qhelp">Food and seats size to {locked}. Reopen it if more replies come in.</p>
-          <div className="grp"><button className="row go" data-reopen onClick={() => pick(reopenCountEdit())}>Reopen the count</button></div>
+          <div className="grp"><button className="row gk-go" data-reopen onClick={() => pick(reopenCountEdit())}>Reopen the count</button></div>
         </>) : (<>
           <p className="qhelp">Replies were due by now. Lock the number so food and seats size to it.</p>
           <div className="grp" data-lock-options>
-            {yes > 0 && <button className="row go" data-lock="yes" onClick={() => pick(lockCountEdit(yes, 'yes'))}><span className="nm">Set it at {yes}<small>Your confirmed yeses</small></span></button>}
-            {planned > 0 && planned !== yes && <button className="row go" data-lock="planned" onClick={() => pick(lockCountEdit(planned, 'planned'))}><span className="nm">Set it at {planned}<small>The number you planned around</small></span></button>}
+            {yes > 0 && <button className="row gk-go" data-lock="yes" onClick={() => pick(lockCountEdit(yes, 'yes'))}><span className="nm">Set it at {yes}<small>Your confirmed yeses</small></span></button>}
+            {planned > 0 && planned !== yes && <button className="row gk-go" data-lock="planned" onClick={() => pick(lockCountEdit(planned, 'planned'))}><span className="nm">Set it at {planned}<small>The number you planned around</small></span></button>}
           </div>
           <p className="fine"><button className="link" onClick={onDone}>Check the list first</button></p>
         </>)}
