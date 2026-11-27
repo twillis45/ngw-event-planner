@@ -166,14 +166,14 @@ test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
   const lean = money(/Lean\s+\$([\d,]+)/);   // a choice row: label, then amount
   const allout = money(/All-out\s+(?:Covers your plan\s+)?\$([\d,]+)/);
   expect(Number.isFinite(lean) && Number.isFinite(allout)).toBe(true);
-  // Since 11/26/2026 ("As rendered is fine") the per-head stands beside the
-  // PICKED figure, and picking a tier moves it there. So each tier is checked
-  // by picking it: the per-head shown must be that tier over the guests.
-  const per = page.locator('.hero [data-budget-per]').first();
-  for (const [label, amount] of [[/^Lean/, lean], [/^All-out/, allout]]) {
-    await page.locator('.hero .optrow', { hasText: label }).first().click();
-    await expect(per).toContainText(`$${Math.round(amount / guests)} a head`);
-  }
+  // Owner, 11/26/2026: "Per head for each". Every choice row carries its own
+  // per-head, on screen at once, so each tier is checkable without a tap.
+  const rows = await page.locator('.hero .optrow').allInnerTexts();
+  const rowOf = (rx) => (rows.find((t) => rx.test(t.trim())) || '').replace(/\s+/g, ' ');
+  expect(rowOf(/^Lean/), 'Lean row').toContain(`$${Math.round(lean / guests)} a head`);
+  expect(rowOf(/^All-out/), 'All-out row').toContain(`$${Math.round(allout / guests)} a head`);
+  const mid = money(/Mid.range\s+\$([\d,]+)/);
+  expect(rowOf(/^Mid.range/), 'Mid-range row').toContain(`$${Math.round(mid / guests)} a head`);
 });
 
 // ── AND THE SCREEN STAYS READABLE, WHICH IS WHY THE FOLD EXISTS ──────────
