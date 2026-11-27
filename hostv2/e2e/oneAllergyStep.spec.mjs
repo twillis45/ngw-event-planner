@@ -23,6 +23,7 @@ const ev = (days) => ({
     hosting_model: 'Host cooks the whole meal', service_style: 'Sit-down — everyone at the table',
     serve_time: 'Late afternoon, around 4 or 5', overnight_guests: 'No — everyone is local',
     turkey_method: 'Smoked', dietary_table: 'One or two needs — adjust dishes and label them',
+    drinks: 'Wine with dinner, sparkling cider for everyone', // asked since 11/26/2026
   },
 });
 const boot = async (page, e) => {

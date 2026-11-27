@@ -154,6 +154,26 @@ const thanksgivingHosting = {
       priorityBasis: { rationale: 'Almost every Thanksgiving table now has at least one dietary need, and the fixes are cheap ten days out and impossible at four in the afternoon; only you know your guests.', tier: 'reasoned' },
       why: 'Ask when you confirm the headcount; the fixes are small if planned: stuffing baked outside the bird with a batch made without sausage, gravy thickened without flour, a genuinely vegan vegetable side, and a dessert that isn\'t all pie crust. A guest with celiac disease or a nut allergy needs real separation, not a scraped-off portion, so plan their plate first.',
     },
+    // THE DRINKS (owner, 11/26/2026: "Thanksgiving should definitely offer
+    // alcohol"). The menu always carried red and white wine and a sparkling
+    // cider, but there was no question, so a host who said "guests bring the
+    // wine" or "no alcohol" could not be followed. The same drinks rule every
+    // type uses prices the answer (drinksCall): guests bringing it takes the
+    // wine off her list and keeps the cider; no alcohol does the same and turns
+    // the sober-ride check off.
+    {
+      id: 'drinks', drinksCall: true,
+      label: 'What are you pouring?',
+      options: ['Wine with dinner, sparkling cider for everyone', 'Guests bring the wine; host provides cider and water', 'No alcohol: sparkling cider and water'],
+      default: 'Wine with dinner, sparkling cider for everyone',
+      defaultWhy: 'Wine with dinner is the default: red and white at each end of the table and a sparkling cider so kids and non-drinkers raise a glass too. Change it if your family brings the bottles, or if nobody at this table drinks.',
+      when: 'T-7d',
+      blocks: ['beverage'],
+      affects: ['p_wine_cider', 'p_wine_cider_white', 'p_cider'],
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive',
+      priorityBasis: { rationale: 'Drinks are bought on the big grocery run the week of, and a change costs one stop; the default covers most tables.', tier: 'reasoned' },
+      why: 'Wine is part of most Thanksgiving tables, and so is the long drive home. Pour what your family drinks, keep a real alcohol-free option on the table, and if anyone has been drinking, they leave with a sober driver or stay the night.',
+    },
   ],
 
   milestones: [

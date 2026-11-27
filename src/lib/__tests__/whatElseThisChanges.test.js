@@ -108,8 +108,8 @@ describe('COVERAGE — measured, not targeted', () => {
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
     // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
     // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
-    expect(total).toBe(273);
-    expect(withImpacts).toBe(238)   // +2 on 11/19/2026: Group Trip's money_plan and split_rule block the budget, which has an impact;   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;  // all six Friendsgiving decisions have an impact
+    expect(total).toBe(274); // +1: Thanksgiving's drinks question (owner, 11/26/2026)
+    expect(withImpacts).toBe(239)   // +1 on 11/26/2026: Thanksgiving's drinks question;   // +2 on 11/19/2026: Group Trip's money_plan and split_rule block the budget, which has an impact;   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;  // all six Friendsgiving decisions have an impact
   });
 
   test('81% of block uses are placed, and 77 targets are deliberately not', () => {
@@ -122,8 +122,8 @@ describe('COVERAGE — measured, not targeted', () => {
     }
     // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
     // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
-    expect(uses).toBe(483);
-    expect(placed).toBe(391)   // +2 on 11/19/2026: those two budget blocks are placed;   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;
+    expect(uses).toBe(484); // +1: Thanksgiving's drinks question (owner, 11/26/2026)
+    expect(placed).toBe(392)   // +1 on 11/26/2026: Thanksgiving's drinks question;   // +2 on 11/19/2026: those two budget blocks are placed;   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;
     expect(unmapped.size).toBe(77);
   });
 });

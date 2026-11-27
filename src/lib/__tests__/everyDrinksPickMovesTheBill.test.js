@@ -29,6 +29,8 @@ const SAME_TIER = [
   ['Watch Party', ['Beer + soda + water', 'Full cooler bar'], FULL_BAR_IS_BASELINE],
   ['Game Night', ['Add one batch cocktail', 'Add one batch mocktail', 'Full bar'], 'One batch at one cited band, cocktail or mocktail; no spirits line beyond it.'],
   ['Housewarming', ['BYOB + host provides mixers/soda', 'Zero-proof / dry'], 'Either way the host buys only the soda, water and ice.'],
+  // Owner, 11/26/2026: Thanksgiving's drinks question.
+  ['Thanksgiving Hosting', ['Guests bring the wine; host provides cider and water', 'No alcohol: sparkling cider and water'], 'Either way the host buys only the sparkling cider and the coffee; no wine.'],
   ['Gender Reveal', ['Mocktails + soft drinks + beer/wine', 'Pink/blue punch bar'], 'OWNER CALL: the playbook does not say whether the punch bar pours beer and wine.'],
   ['Engagement Party', ['Beer + wine + signature cocktail', 'Full open bar'], FULL_BAR_IS_BASELINE],
   ['Anniversary', ['Wine + beer + champagne toast', 'Full bar + signature cocktail'], FULL_BAR_IS_BASELINE],
@@ -89,6 +91,8 @@ test('the picks the brief named do move the drinks total', () => {
     ['Vow Renewal', 'beverage', 'Zero-proof / dry'], ['Juneteenth Cookout', 'drinks', 'Potluck — guests bring drinks'],
     ['Gender Reveal', 'beverage', 'Mocktails + soft drinks only'], ['Get-Together', 'alcohol', 'BYOB'],
     ['Bachelor Party', 'bar', 'Beer only / BYOB'],
+    ['Thanksgiving Hosting', 'drinks', 'No alcohol: sparkling cider and water'],
+    ['Thanksgiving Hosting', 'drinks', 'Guests bring the wine; host provides cider and water'],
     // The cash-bar follow-up (integration, 11/21/2026): a cash or limited bar
     // prices below the hosted bar it used to equal.
     ['Engagement Party', 'bar', 'Cash/limited bar'], ['Retirement Party', 'bar', 'Limited / cash bar'],

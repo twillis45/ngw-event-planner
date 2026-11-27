@@ -42,6 +42,7 @@ test('the dry picks are the ones measured on 11/21/2026', () => {
     'Fundraiser / Gala: Dry', 'Gender Reveal: Mocktails + soft drinks only', 'Get-Together: Dry / family-friendly',
     'Graduation: No alcohol', 'Halloween Party: Zero-proof only', 'Holiday Party: Zero-proof / dry',
     'Housewarming: Zero-proof / dry', 'Juneteenth Cookout: Family-friendly / dry', 'Low Country Boil: Family-friendly / dry',
+    'Thanksgiving Hosting: No alcohol: sparkling cider and water', // owner, 11/26/2026
     'The Cookout: Red drink + soda + water (family-friendly)', 'Vow Renewal: Zero-proof / dry', 'Watch Party: Dry / family-friendly',
     'Wedding: Dry',
   ]);

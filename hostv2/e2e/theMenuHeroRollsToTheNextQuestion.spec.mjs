@@ -77,6 +77,7 @@ test('Thanksgiving: the turkey, then the table, then the hero moves on', async (
       service_style: 'Sit-down — everyone at the table',
       serve_time: 'Late afternoon, around 4 or 5',
       overnight_guests: 'No — everyone is local',
+      drinks: 'Wine with dinner, sparkling cider for everyone', // asked since 11/26/2026
     },
   }));
   // PREMISE: the food item is the hero, two questions open.
@@ -131,6 +132,7 @@ for (const route of ['?elegant=1', '?elegant=0']) {
         service_style: 'Sit-down — everyone at the table',
         serve_time: 'Late afternoon, around 4 or 5',
         overnight_guests: 'No — everyone is local',
+        drinks: 'Wine with dinner, sparkling cider for everyone', // asked since 11/26/2026
       },
     }), route);
     expect(await heroId(page)).toBe('card-phase:food');
@@ -160,6 +162,7 @@ for (const route of ['?elegant=1', '?elegant=0']) {
         service_style: 'Sit-down — everyone at the table',
         serve_time: 'Late afternoon, around 4 or 5',
         overnight_guests: 'No — everyone is local',
+        drinks: 'Wine with dinner, sparkling cider for everyone', // asked since 11/26/2026
       },
     }), route);
     expect(await heroId(page)).toBe('card-phase:food');

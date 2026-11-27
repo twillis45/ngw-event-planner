@@ -32,11 +32,13 @@ const foodAction = (ev) => ((eventPlan(ev, buildExperienceContext(ev, null, 1)) 
 
 test('the owner\'s case: the food item counts turkey and the table, and names them as its records', () => {
   const ev = tg(OWNER);
-  expect((openFoodChoices(ev) || []).map((c) => c.id)).toEqual(['turkey_method', 'dietary_table']);
+  // + the drinks question Thanksgiving asks since 11/26/2026 (owner: "Thanksgiving
+  // should definitely offer alcohol"): a third menu question, in its order.
+  expect((openFoodChoices(ev) || []).map((c) => c.id)).toEqual(['turkey_method', 'dietary_table', 'drinks']);
   const a = foodAction(ev);
   expect(a).toBeTruthy();
-  expect(a.title).toMatch(/· 2 open/);
-  expect(a.records).toEqual(['turkey_method', 'dietary_table']);
+  expect(a.title).toMatch(/· 3 open/);
+  expect(a.records).toEqual(['turkey_method', 'dietary_table', 'drinks']);
 });
 
 test('with the approach answered, the panel is the first open question — not the settled approach', () => {
@@ -52,13 +54,13 @@ test('with the approach answered, the panel is the first open question — not t
 test('answering it moves the panel to the next one, and the count falls with it', () => {
   const ev = tg({ ...OWNER, turkey_method: 'Smoked' });
   const a = foodAction(ev);
-  expect(a.title).toMatch(/· 1 open/);
-  expect(a.records).toEqual(['dietary_table']);
+  expect(a.title).toMatch(/· 2 open/);
+  expect(a.records).toEqual(['dietary_table', 'drinks']);
   expect(foodDecisionND(ev, 12, rowsFor(ev), a.records).id).toBe('dietary_table');
 });
 
 test('every menu question answered: no food item counts an open one', () => {
-  const ev = tg({ ...OWNER, turkey_method: 'Smoked', dietary_table: 'Nobody — the traditional menu works for everyone' });
+  const ev = tg({ ...OWNER, turkey_method: 'Smoked', dietary_table: 'Nobody — the traditional menu works for everyone', drinks: 'Wine with dinner, sparkling cider for everyone' });
   expect(openFoodChoices(ev)).toEqual([]);
   expect(foodAction(ev)).toBeUndefined();
 });

@@ -19,6 +19,7 @@ const ALL_SET = {
   hosting_model: 'Host cooks the turkey and core dishes, guests bring sides and desserts',
   turkey_method: 'Roasted in the oven',
   dietary_table: 'Nobody — the traditional menu works for everyone',
+  drinks: 'Wine with dinner, sparkling cider for everyone', // Thanksgiving asks since 11/26/2026
   service_style: 'Sit-down — everyone at the table',
   serve_time: 'Late afternoon, around 4 or 5',
   overnight_guests: 'No — everyone is local',

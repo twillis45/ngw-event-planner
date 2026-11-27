@@ -29,7 +29,7 @@ test('each playbook names at most one drinks call, and these are they', () => {
     'Dinner Party': 'alcohol', Birthday: 'alcohol', 'Get-Together': 'alcohol', Graduation: 'alcohol',
     'Watch Party': 'alcohol', 'Game Night': 'drinks', Housewarming: 'drinks', 'Gender Reveal': 'beverage',
     'Engagement Party': 'bar', Anniversary: 'beverage', 'Holiday Party': 'alcohol_service',
-    'Retirement Party': 'bar', 'Bachelor Party': 'bar', 'Vow Renewal': 'beverage', 'The Cookout': 'drinks',
+    'Retirement Party': 'bar', 'Thanksgiving Hosting': 'drinks', 'Bachelor Party': 'bar', 'Vow Renewal': 'beverage', 'The Cookout': 'drinks',
     'Fish Fry': 'drinks', 'Card Party': 'drinks', 'Day Party': 'bar', 'Juneteenth Cookout': 'drinks',
     'Crab Feast': 'drinks', 'Crawfish Boil': 'drinks', 'Low Country Boil': 'drinks', 'Pupusa Gathering': 'drinks',
     Wedding: 'bar', 'Client Dinner': 'alcohol', 'Fundraiser / Gala': 'bar', Friendsgiving: 'drinks',
