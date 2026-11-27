@@ -79,6 +79,10 @@ const EV = { id: 'E2E_TEST_vr', name: 'E2E_TEST_ Thanksgiving', type: 'Thanksgiv
         const sorted = starts.map((s) => s.replace(/\D/g, '').slice(-14)).every((v, i, a) => !i || a[i - 1] <= v);
         await closeSheet(p);
         const out = { button: btn, firstRows: rows, events, trig10, trig0, firstStarts: starts.slice(0, 3), lastStart: starts[starts.length - 1], summaries: sums.slice(0, 20), inTimeOrder: sorted, filename: dl.suggestedFilename(), arrivals: sums.filter((s) => /due|arriv|guest/i.test(s)) };
+        // #311: steps already past (before 1:30 PM on the screen's clock) are left out.
+        const past = starts.filter((x) => (x.replace(/\D/g, '').slice(-14)) < '20261126133000');
+        out.pastIncluded = past;
+        if (past.length) throw new Error('past steps included :: ' + JSON.stringify(out));
         if (!n10 || events !== n10 || !trig10.some((t) => /-PT10M/.test(t)) || trig0.some((t) => /10M/.test(t)) || !sorted) throw new Error(JSON.stringify(out));
         return out;
       });

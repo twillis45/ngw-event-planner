@@ -82,7 +82,8 @@ const PAST = { id: 'E2E_TEST_past', name: 'E2E_TEST_ 40th Birthday', type: 'Birt
         const changed = await p.evaluate((k) => JSON.parse(localStorage.getItem(k))[0].totalBudget ?? null, KEY);
         const out = { drawer: drawer.text, controls: drawer.controls, small, ownInputInView: !!box && box.y >= 0 && box.y + box.height <= (await p.evaluate(() => innerHeight)), totalBudgetSaved: changed,
           drawerPerHead: /a head/.test(drawer.text), drawerPick: (/(Lean|Mid[-\u2011]range|All-out)\s*·\s*our pick/.exec(drawer.text) || [])[1] || null };
-        if (!/Change your budget/.test(drawer.text) || small.length || !out.ownInputInView || changed != null) throw new Error(JSON.stringify(out));
+        // #312: the drawer's "our pick" is the question's recommended tier (All-out, "Covers your plan"), not the host's current selection; each tier shows its per-head.
+        if (!/Change your budget/.test(drawer.text) || small.length || !out.ownInputInView || changed != null || !out.drawerPerHead || out.drawerPick !== 'All-out') throw new Error(JSON.stringify(out));
         return out;
       });
       await cur.ctx.close();

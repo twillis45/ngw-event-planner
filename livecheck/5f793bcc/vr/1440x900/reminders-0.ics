@@ -1,0 +1,162 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//No Guesswork//Day Reminders//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-cooking-4-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T140000
+SUMMARY:Turkey out to rest under foil
+DESCRIPTION:Turkey out to rest under foil — the freed oven starts the side
+  rotation: casseroles in\, stuffing browning\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turkey out to rest under foil
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-cooking-5-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T143000
+SUMMARY:Mash finished and held warm
+DESCRIPTION:Mash finished and held warm\; gravy finished with the dripping
+ s\; rolls in for their ten minutes\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Mash finished and held warm
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-vendor-v-rent-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T143000
+SUMMARY:E2E_TEST_ Rentals due
+DESCRIPTION:E2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:E2E_TEST_ Rentals due
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-6-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T150000
+SUMMARY:Arrivals
+DESCRIPTION:Arrivals: coats\, first drinks\, travelers landed and settled\
+ ; helpers given real jobs away from the stove\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Arrivals
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-7-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T152000
+SUMMARY:Arriving dishes landed\, labeled\, and slotted into the oven map
+DESCRIPTION:Arriving dishes landed\, labeled\, and slotted into the oven m
+ ap\; serving spoons matched to dishes\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Arriving dishes landed\, labeled\, and slotted into the oven m
+ ap
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-8-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T160000
+SUMMARY:Dinner: everything to the table at once
+DESCRIPTION:Dinner: everything to the table at once — carve\, sauce boats 
+ out\, sides in their places\, and sit down yourself\nE2E_TEST_ Thanksgivi
+ ng
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Dinner: everything to the table at once
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-9-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T164500
+SUMMARY:Seconds round
+DESCRIPTION:Seconds round\; kids table check\; the thankful-for moment if 
+ your table does one\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Seconds round
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-10-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T173000
+SUMMARY:Dessert and coffee
+DESCRIPTION:Dessert and coffee: pies out with the whipped cream\, the tabl
+ e cleared to make room\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Dessert and coffee
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-11-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T183000
+SUMMARY:Leftovers packed into send-home containers
+DESCRIPTION:Leftovers packed into send-home containers — inside the two-ho
+ ur safety window\, dressed as hospitality\nE2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Leftovers packed into send-home containers
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-program-12-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T193000
+SUMMARY:The long afternoon: games\, the walk\, the couch
+DESCRIPTION:The long afternoon: games\, the walk\, the couch — and the lon
+ g-drive guests nudged toward the road with coffee and their container\nE2
+ E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:The long afternoon: games\, the walk\, the couch
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:E2E_TEST_vr-ros-pb-ros-E2E_TEST_vr-cleanup-13-2026-11-26@ngw-day
+DTSTAMP:20261126T183000Z
+DTSTART:20261126T203000
+SUMMARY:Final reset
+DESCRIPTION:Final reset: last dishes in\, counters cleared\, trash out\, t
+ omorrow's turkey-sandwich supplies front and center in the refrigerator\n
+ E2E_TEST_ Thanksgiving
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Final reset
+TRIGGER:PT0M
+END:VALARM
+END:VEVENT
+END:VCALENDAR
