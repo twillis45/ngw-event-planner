@@ -22,7 +22,7 @@ import { rsvpState } from '@app/lib/rsvp';
 import { filterGuestsByName } from '@app/lib/seatingPlan';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
-import { nudgeRecipients, nudgeCount, wasInvited } from '@app/lib/replyNudge';
+import { nudgeRecipients } from '@app/lib/replyNudge';
 import NudgeSheet from './NudgeSheet.jsx';
 import LockSheet from './LockSheet.jsx';
 import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
@@ -32,7 +32,9 @@ import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
 import { getLastSyncTime } from '@app/lib/api/syncState';
 import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
 import { questionsWaitingLine } from '@app/lib/guestInbox';
-import { guestPath } from './guestPath.js';
+import { guestPath, guestQuestions, answersLine, guestPathState } from '@app/lib/guestPath';
+// Re-exported for the page's own tests, which read them from here.
+export { guestQuestions, answersLine };
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
@@ -58,24 +60,6 @@ function Headcount({ counts, of }) {
 }
 const longDay = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-
-/** The questions still to ask, in the prototype's order. An answer is a saved field. */
-export function guestQuestions(ev) {
-  const q = [];
-  if (!(Number(ev.guestEstimate) > 0) && ev.guestCountSource !== 'host') q.push('count');
-  if (!ev.guestMode) q.push('mode');
-  // Unset or cleared (Undo writes null back) is unanswered: the question returns.
-  if (ev.plusOnePolicy == null) q.push('plus');
-  if (ev.kidsPolicy == null) q.push('kids');
-  // Too close for an honest reply-by date (owner's Thanksgiving, 11/25/2026:
-  // the party was the next day), the question has no answer, so it isn't asked.
-  if (!String(ev.rsvpDeadline || '').trim()) {
-    let close = false;
-    try { const p = proposeReplyBy(ev); close = !!(p && p.tooClose); } catch { close = false; }
-    if (!close) q.push('replyBy');
-  }
-  return q;
-}
 
 function Stepper({ value, onChange, label }) {
   return (
@@ -150,15 +134,6 @@ function ReplyByCard({ ev, save }) {
     </>);
   }
 }
-
-const ANSWER = {
-  count: (ev) => 'about ' + (Number(ev.guestEstimate) || '—'),
-  mode: (ev) => (ev.guestMode === 'count' ? 'by headcount' : 'by name'),
-  plus: (ev) => (ev.plusOnePolicy === 'plus_one_ok' ? '+1s welcome' : 'no +1s'),
-  kids: (ev) => (ev.kidsPolicy === 'kids_welcome' ? 'kids welcome' : 'adults only'),
-  replyBy: (ev) => (String(ev.rsvpDeadline || '').trim() ? 'replies by ' + new Date(ev.rsvpDeadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'no reply-by date'),
-};
-export const answersLine = (ev) => Object.keys(ANSWER).map((k) => ANSWER[k](ev)).join(' · ');
 
 /** Your answers: every question again, in a sheet, to change one. */
 function AnswersSheet({ ev, save, onDone }) {
@@ -425,15 +400,10 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const planned = Number(guestCountFor(ev).count) || null;
   // Names stay on the page once there are any, even after the count is locked
   // (locking writes guestMode 'count', as hostv2's lock does).
-  const byName = ev.guestMode !== 'count' || named > 0;
-  const locked = ev.guestMode === 'count' ? Number(ev.guestCount) || 0 : 0;
-  const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
-  const replyByPassed = !!ev.rsvpDeadline && String(ev.rsvpDeadline).slice(0, 10) < today;
+  // The plan as the path reads it: one source, shared with hostv2 (lib/guestPath).
+  const ps = guestPathState(ev, { waiting });
+  const { byName, locked, replyByPassed, toNudge, noReach, invited, replied } = ps;
   const reach = nudgeRecipients(ev);
-  const toNudge = nudgeCount(reach);
-  const noReach = reach.unreachable.length;
-  const invited = guests.filter((g) => wasInvited(ev, g)).length;
-  const replied = guests.filter((g) => wasInvited(ev, g) && rsvpState(g) !== 'pending').length;
 
   const add = () => {
     const lines = nameLines(text);
@@ -484,7 +454,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   // THE PATH AND THE BOTTOM BUTTON come from one place (guestPath), so the lit
   // step is always the button. LOCK THE COUNT stays the button after the reply-by
   // date, and nowhere else (owner, 11/25/2026).
-  const path = guestPath({ qs, byName, named, sent: !!ev.invitesSentAt, replyByPassed, locked, toNudge, noReach, replied, invited, waiting, deadline: ev.rsvpDeadline }, 'Plan for ' + count);
+  const path = guestPath(ps, 'Plan for ' + count);
   const focusAdd = () => { const f = document.getElementById('addname'); if (f) f.focus(); };
   const GO = {
     plan: () => save(countEdit(ev, count)),

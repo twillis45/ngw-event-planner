@@ -80,6 +80,8 @@ const READERS = Object.freeze({
   'src/lib/placeIntelligence.js': { need: NEED.PLANNING, why: 'a >=50 threshold for venue advice' },
   'src/lib/assembleRevealEngines.js': { need: NEED.PLANNING, why: 'reveal-stage sizing preview' },
 
+  // ── Display. ─────────────────────────────────────────────────────────────
+  'src/lib/guestPath.js': { need: NEED.DISPLAY, why: 'the Guests path shows "Locked at N": the count the host locked (guestCount under guestMode count), not a planning number; its answers line uses guestCountFor' },
   // ── Raw intake, specifically. ────────────────────────────────────────────
   'src/lib/hostIntel.js': { need: NEED.RAW_INTAKE, why: 'compares what was PLANNED against what happened on past events — the planned number is the subject' },
   'src/lib/analyticsReader.js': { need: NEED.RAW_INTAKE, why: 'reads historical events as recorded' },
