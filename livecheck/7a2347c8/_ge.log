@@ -1,0 +1,43 @@
+
+390x844 console:0 http:0 blocked:0 guest-threads:0 planUnchanged:true
+  ok  01-open-guests floors 0/0/0
+  ok  02-each-group-flips floors 0/0/0
+  ok  03-open-survives-reload floors 0/0/0
+  ok  04-closed-survives-reload floors 0/0/0
+  ok  05-more-sheet floors 0/0/0
+  ok  06-add-sheet floors 0/0/0
+
+834x1194 console:0 http:0 blocked:0 guest-threads:0 planUnchanged:true
+  ok  01-open-guests floors 0/0/0
+  ok  02-each-group-flips floors 0/0/0
+  ok  03-open-survives-reload floors 0/0/0
+  ok  04-closed-survives-reload floors 0/0/0
+  ok  05-more-sheet floors 0/0/0
+  ok  06-add-sheet floors 0/0/0
+
+1024x1366 console:0 http:0 blocked:0 guest-threads:0 planUnchanged:true
+  ok  01-open-guests floors 0/0/0
+  ok  02-each-group-flips floors 0/0/0
+  ok  03-open-survives-reload floors 0/0/0
+  ok  04-closed-survives-reload floors 0/0/0
+  ok  05-more-sheet floors 0/0/0
+  ok  06-add-sheet floors 0/0/0
+
+1194x834 console:0 http:0 blocked:0 guest-threads:0 planUnchanged:true
+  ok  01-open-guests floors 0/0/0
+  ok  02-each-group-flips floors 0/0/0
+  ok  03-open-survives-reload floors 0/0/0
+  ok  04-closed-survives-reload floors 0/0/0
+  ok  05-more-sheet floors 0/0/0
+  ok  06-add-sheet floors 0/0/0
+
+1440x900 console:0 http:0 blocked:0 guest-threads:0 planUnchanged:true
+  ok  01-open-guests floors 0/0/0
+  ok  02-each-group-flips floors 0/0/0
+  ok  03-open-survives-reload floors 0/0/0
+  ok  04-closed-survives-reload floors 0/0/0
+  ok  05-more-sheet floors 0/0/0
+  ok  06-add-sheet floors 0/0/0
+
+console: []
+http: []

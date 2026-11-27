@@ -1,0 +1,497 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "list-wine",
+    "ok": true,
+    "drinksCount": "0 of 5",
+    "wineShop": true,
+    "pick": "Wine with dinner, sparkling cider for everyone",
+    "red": true,
+    "white": true,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [
+     "l SHOPPING AT Butcher Grocery Wine shop F Food 0 of 10 bought ",
+     "73 est. › Check off all 5 Red wine essential 3 bottles ",
+     " Price covers the white wine too area average $23–$44 est.",
+     " › White wine essential 3 bottles "
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "rides-wine",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-bring",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "Guests bring the wine; host provides cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-bring",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-none",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "No alcohol: sparkling cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-none",
+    "ok": true,
+    "soberRideRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "question-pick-none",
+    "ok": true,
+    "questionShown": 1,
+    "inChoices": false,
+    "opened": "‹ Sections The spread & shopping Close $239–$427 estimate, all in · $18–$33 a head · 10–13 guests · seating & gear included What’s in the estimate Food prices adjusted for the South · BLS Oct 2026 · est. prices Aug 2026 · “area average” means the region’s basket stood in — BLS publishes no price for that line itself YOUR CHOICES Are you cooking the whole meal, or is it a potluck? Host cooks the tu",
+    "picked": "No alcohol: sparkling cider and water",
+    "listAfter": {
+     "red": false,
+     "white": false,
+     "cider": true
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "list-wine",
+    "ok": true,
+    "drinksCount": "0 of 5",
+    "wineShop": true,
+    "pick": "Wine with dinner, sparkling cider for everyone",
+    "red": true,
+    "white": true,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [
+     "l SHOPPING AT Butcher Grocery Wine shop F Food 0 of 10 bought ",
+     "73 est. › Check off all 5 Red wine essential 3 bottles ",
+     " Price covers the white wine too area average $23–$44 est.",
+     " › White wine essential 3 bottles "
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "rides-wine",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-bring",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "Guests bring the wine; host provides cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-bring",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-none",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "No alcohol: sparkling cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-none",
+    "ok": true,
+    "soberRideRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "question-pick-none",
+    "ok": true,
+    "questionShown": 1,
+    "inChoices": false,
+    "opened": "‹ Sections The spread & shopping Close $239–$427 estimate, all in · $18–$33 a head · 10–13 guests · seating & gear included What’s in the estimate Food prices adjusted for the South · BLS Oct 2026 · est. prices Aug 2026 · “area average” means the region’s basket stood in — BLS publishes no price for that line itself YOUR CHOICES Are you cooking the whole meal, or is it a potluck? Host cooks the tu",
+    "picked": "No alcohol: sparkling cider and water",
+    "listAfter": {
+     "red": false,
+     "white": false,
+     "cider": true
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "list-wine",
+    "ok": true,
+    "drinksCount": "0 of 5",
+    "wineShop": true,
+    "pick": "Wine with dinner, sparkling cider for everyone",
+    "red": true,
+    "white": true,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [
+     "l SHOPPING AT Butcher Grocery Wine shop F Food 0 of 10 bought ",
+     "73 est. › Check off all 5 Red wine essential 3 bottles ",
+     " Price covers the white wine too area average $23–$44 est.",
+     " › White wine essential 3 bottles "
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "rides-wine",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-bring",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "Guests bring the wine; host provides cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-bring",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-none",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "No alcohol: sparkling cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-none",
+    "ok": true,
+    "soberRideRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "question-pick-none",
+    "ok": true,
+    "questionShown": 1,
+    "inChoices": false,
+    "opened": "The spread & shopping Close $239–$427 estimate, all in · $18–$33 a head · 10–13 guests · seating & gear included What’s in the estimate Food prices adjusted for the South · BLS Oct 2026 · est. prices Aug 2026 · “area average” means the region’s basket stood in — BLS publishes no price for that line itself YOUR CHOICES Are you cooking the whole meal, or is it a potluck? Host cooks the turkey and co",
+    "picked": "No alcohol: sparkling cider and water",
+    "listAfter": {
+     "red": false,
+     "white": false,
+     "cider": true
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "list-wine",
+    "ok": true,
+    "drinksCount": "0 of 5",
+    "wineShop": true,
+    "pick": "Wine with dinner, sparkling cider for everyone",
+    "red": true,
+    "white": true,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [
+     "l SHOPPING AT Butcher Grocery Wine shop F Food 0 of 10 bought ",
+     "73 est. › Check off all 5 Red wine essential 3 bottles ",
+     " Price covers the white wine too area average $23–$44 est.",
+     " › White wine essential 3 bottles "
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "rides-wine",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-bring",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "Guests bring the wine; host provides cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-bring",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-none",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "No alcohol: sparkling cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-none",
+    "ok": true,
+    "soberRideRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "question-pick-none",
+    "ok": true,
+    "questionShown": 1,
+    "inChoices": false,
+    "opened": "The spread & shopping Close $239–$427 estimate, all in · $18–$33 a head · 10–13 guests · seating & gear included What’s in the estimate Food prices adjusted for the South · BLS Oct 2026 · est. prices Aug 2026 · “area average” means the region’s basket stood in — BLS publishes no price for that line itself YOUR CHOICES Are you cooking the whole meal, or is it a potluck? Host cooks the turkey and co",
+    "picked": "No alcohol: sparkling cider and water",
+    "listAfter": {
+     "red": false,
+     "white": false,
+     "cider": true
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "list-wine",
+    "ok": true,
+    "drinksCount": "0 of 5",
+    "wineShop": true,
+    "pick": "Wine with dinner, sparkling cider for everyone",
+    "red": true,
+    "white": true,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [
+     "l SHOPPING AT Butcher Grocery Wine shop F Food 0 of 10 bought ",
+     "73 est. › Check off all 5 Red wine essential 3 bottles ",
+     " Price covers the white wine too area average $23–$44 est.",
+     " › White wine essential 3 bottles "
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "rides-wine",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-bring",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "Guests bring the wine; host provides cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-bring",
+    "ok": true,
+    "soberRideRow": true,
+    "sideways": 0
+   },
+   {
+    "name": "list-none",
+    "ok": true,
+    "drinksCount": "0 of 3",
+    "wineShop": false,
+    "pick": "No alcohol: sparkling cider and water",
+    "red": false,
+    "white": false,
+    "cider": true,
+    "listFound": true,
+    "wineLines": [],
+    "sideways": 0
+   },
+   {
+    "name": "rides-none",
+    "ok": true,
+    "soberRideRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "question-pick-none",
+    "ok": true,
+    "questionShown": 1,
+    "inChoices": false,
+    "opened": "The spread & shopping Close $239–$427 estimate, all in · $18–$33 a head · 10–13 guests · seating & gear included What’s in the estimate Food prices adjusted for the South · BLS Oct 2026 · est. prices Aug 2026 · “area average” means the region’s basket stood in — BLS publishes no price for that line itself YOUR CHOICES Are you cooking the whole meal, or is it a potluck? Host cooks the turkey and co",
+    "picked": "No alcohol: sparkling cider and water",
+    "listAfter": {
+     "red": false,
+     "white": false,
+     "cider": true
+    },
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]

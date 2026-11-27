@@ -1,0 +1,76 @@
+390x844 ok   v2-one-count 
+390x844 ok   v2-weather-rain 
+390x844 ok   v4-day 
+390x844 ok   v4-weather-note 
+390x844 ok   v4-todays-run 
+390x844 ok   v4-counter-mode 
+390x844 ok   v4-phase-0730 
+390x844 ok   v4-phase-1600 
+390x844 ok   v4-phase-2010 
+834x1194 ok   v2-one-count 
+834x1194 ok   v2-weather-rain 
+834x1194 ok   v4-day 
+834x1194 ok   v4-weather-note 
+834x1194 ok   v4-todays-run 
+834x1194 ok   v4-counter-mode 
+1024x1366 ok   v2-one-count 
+1024x1366 ok   v2-weather-rain 
+1024x1366 ok   v4-day 
+1024x1366 ok   v4-weather-note 
+1024x1366 ok   v4-todays-run 
+1024x1366 ok   v4-counter-mode 
+1194x834 ok   v2-one-count 
+1194x834 ok   v2-weather-rain 
+1194x834 ok   v4-day 
+1194x834 ok   v4-weather-note 
+1194x834 ok   v4-todays-run 
+1194x834 ok   v4-counter-mode 
+1440x900 ok   v2-one-count 
+1440x900 ok   v2-weather-rain 
+1440x900 ok   v4-day 
+1440x900 ok   v4-weather-note 
+1440x900 ok   v4-todays-run 
+1440x900 ok   v4-counter-mode 
+
+390x844 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v2-one-count floors 0/0
+  ok  v2-weather-rain floors 0/0
+  ok  v4-day floors 0/0
+  ok  v4-weather-note floors 0/0
+  ok  v4-todays-run floors 0/0
+  ok  v4-counter-mode floors 0/0
+  ok  v4-phase-0730 floors 0/0
+  ok  v4-phase-1600 floors 0/0
+  ok  v4-phase-2010 floors 0/0
+
+834x1194 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v2-one-count floors 0/0
+  ok  v2-weather-rain floors 0/0
+  ok  v4-day floors 0/0
+  ok  v4-weather-note floors 0/0
+  ok  v4-todays-run floors 0/0
+  ok  v4-counter-mode floors 0/0
+
+1024x1366 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v2-one-count floors 0/0
+  ok  v2-weather-rain floors 0/0
+  ok  v4-day floors 0/0
+  ok  v4-weather-note floors 0/0
+  ok  v4-todays-run floors 0/0
+  ok  v4-counter-mode floors 0/0
+
+1194x834 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v2-one-count floors 0/0
+  ok  v2-weather-rain floors 0/0
+  ok  v4-day floors 0/0
+  ok  v4-weather-note floors 0/0
+  ok  v4-todays-run floors 0/0
+  ok  v4-counter-mode floors 0/0
+
+1440x900 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v2-one-count floors 0/0
+  ok  v2-weather-rain floors 0/0
+  ok  v4-day floors 0/0
+  ok  v4-weather-note floors 0/0
+  ok  v4-todays-run floors 0/0
+  ok  v4-counter-mode floors 0/0
