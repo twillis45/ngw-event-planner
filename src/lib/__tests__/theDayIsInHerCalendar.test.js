@@ -74,3 +74,25 @@ test('a long run step reminds with its short title; the full step is in the entr
   expect(ics).toContain('SUMMARY:Baste and rotate the bird\r\n');
   expect(ics).toContain('casseroles out of the refrigerator');
 });
+
+// OWNER, 11/27/2026: "Yes" to leaving out what has already passed, and the host
+// travels with the event, so the times stay floating (the phone's own zone).
+test('steps already past are left out, from the reminders and from the file', () => {
+  const at11 = new Date(2026, 10, 26, 11, 0);   // 11:00 local on the day
+  const r = dayReminders(EV(), at11);
+  expect(r.map((x) => x.label)).toEqual(['Last look: drinks, coats, candles', 'Guests arrive']);
+  const ics = dayRemindersIcs(EV(), { lead: 10 }, at11);
+  expect((ics.match(/BEGIN:VEVENT/g) || []).length).toBe(2);
+  expect(ics).not.toContain('Bay Catering due');
+});
+
+test('a step at this very minute is past; with no clock, nothing is dropped', () => {
+  expect(dayReminders(EV(), new Date(2026, 10, 26, 14, 30)).map((x) => x.time)).toEqual(['15:00']);
+  expect(dayReminders(EV())).toHaveLength(4);
+});
+
+test('the times float: no zone, no UTC mark, so they follow the phone', () => {
+  const ics = dayRemindersIcs(EV(), { lead: 10 }, new Date(2026, 10, 25, 12, 0));
+  expect(ics).toMatch(/DTSTART:20261126T150000\r\n/);
+  expect(ics).not.toMatch(/TZID|DTSTART:[0-9T]+Z/);
+});
