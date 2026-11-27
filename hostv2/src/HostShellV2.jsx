@@ -10815,7 +10815,7 @@ export default function HostShellV2() {
       const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
       return (
         <AskColumn>
-          <BigValue suffix={(pickedPer || mark) ? <span data-budget-per>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
+          <BigValue valueProps={{ 'data-budget-fig': '' }} suffix={(pickedPer || mark) ? <span data-budget-per>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
           {short ? <Grounding>{short}</Grounding> : null}
           {roomsNote}
           <OptionList ariaLabel="Budget" value={picked}
@@ -14050,7 +14050,7 @@ export default function HostShellV2() {
                         {!lands && !coiHero && !coiTaskDone && !decHeroActions && <span className="tag plan">in the full app</span>}
                         {!coiHero && !coiTaskDone && dueChip(a)}
                       </div>
-                      {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
+                      {isHero ? ((rec && !coiHero && !coiTaskDone && !heroBudgetAsk) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
                       {coiTaskDone
                         ? <p className="because">Every vendor's proof is on file — you're clear here.</p>
                         /* When the hero renders a decision (decopt), suppress the action's own

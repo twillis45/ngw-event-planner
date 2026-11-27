@@ -84,12 +84,13 @@ function useTickedValue(children) {
   return disp;
 }
 
-export function BigValue({ children, suffix, tone = 'default', gap = ASK_RHYTHM.eyebrowToValue, style }) {
+// valueProps: attributes for the figure itself (a hook the stylesheet can key on).
+export function BigValue({ children, suffix, tone = 'default', gap = ASK_RHYTHM.eyebrowToValue, style, valueProps }) {
   const t = toneOf(tone);
   const disp = useTickedValue(children);
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: gap }}>
-      <span style={{
+      <span {...valueProps} style={{
         // 1.08, not 1: word stars wrap ("No place picked yet") and at 44px a unit
         // line box gives wrapped lines zero leading and lets descenders collide
         // with the guide voice below (hero/voice overlap audit, 2026-07-28).
