@@ -30,7 +30,7 @@ test('Your money shows the budget her lines set, not a proposal', async ({ page 
   const sheet = page.locator('.sheet').last();
   await expect(sheet).toContainText('Your budget');
   await expect(sheet).toContainText('$5,000');
-  await expect(sheet).not.toContainText('A number to plan around');
+  await expect(sheet).not.toContainText('How much do you want to spend?'); // the proposal's question (11/26/2026)
   await expect(sheet).not.toContainText('$13,600');
 });
 

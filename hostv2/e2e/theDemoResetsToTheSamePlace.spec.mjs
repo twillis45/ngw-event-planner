@@ -128,7 +128,7 @@ test.describe('the demo account the runbook describes', () => {
     // THE BEAT. The demo script opens here, and this is the assertion the
     // engine-side test cannot make: that the screen the operator shows a buyer
     // actually asks for the budget.
-    await expect.poll(() => heroText(page), { timeout: 20_000 }).toMatch(/set your budget/i);
+    await expect.poll(() => heroText(page), { timeout: 20_000 }).toMatch(/how much do you want to spend\?/i); // the budget question since 11/26/2026
   });
 
   // ── THE FRESH-ID CONTRACT, DRIVEN RATHER THAN UNIT-TESTED ────────────────

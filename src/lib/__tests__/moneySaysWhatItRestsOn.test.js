@@ -132,7 +132,11 @@ describe('A P1-7 — the budget hero lights the number its own sentence recommen
 
   test('the shell lights budgetProposalCta’s figure, not the band’s middle', () => {
     const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
-    expect(shell).toMatch(/budgetProposalCta\(/);
+    // Since 11/26/2026 the shell reads the lit figure from the shared answer
+    // (lib/budgetChoices), which is budgetProposalCta's own.
+    const choices = fs.readFileSync(path.join(__dirname, '../budgetChoices.js'), 'utf8');
+    expect(choices).toMatch(/const cta = budgetProposalCta\(/);
+    expect(shell).toMatch(/_bc\.cta\.lit/);
     expect(shell).not.toMatch(/<button className="cta" onClick=\{\(\) => setB\(typical\)\}>Use \{fmt\(typical\)\}<\/button>/);
   });
 });

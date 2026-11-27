@@ -64,7 +64,9 @@ const openBudget = async (page, over = {}) => {
   // money sheet, and the editor sits one more tap behind a "Your budget - $N"
   // row. The WHERE YOU STAND tile LOOKS like a route and is not — it opens
   // nothing in this state — and a plain /budget/i hits the chip first anyway.
-  const opened = await tapText(page, 'Set your budget');
+  // Since 11/26/2026 ("As rendered is fine") the unset question is already on
+  // the plan's front, with its "Plan with $N" button: no tap needed.
+  const opened = (await page.locator('[data-budget-plan]').count()) > 0 || await tapText(page, 'Set your budget');
   if (!opened) {
     await page.evaluate(() => {
       const chip = [...document.querySelectorAll('button,[role=button],a')]
@@ -84,8 +86,8 @@ test('(premise) the budget proposal is on screen with its one-tap chip', async (
   // opened — and an absent string is not a passing one.
   const t = await openBudget(page);
   // Owner, 11/24/2026 ("Copy is too wordy"): the headline is read where it stands.
-  expect(t).toMatch(/A number to plan around \$4,000/);
-  expect(t).toMatch(/Use \$4,000/);
+  expect(t).toMatch(/How much do you want to spend\?.{0,200}?\$4,000/);
+  expect(t).toMatch(/Plan with \$4,000/);
 });
 
 test('THE ROOMS REACH THE HOST — her own cheapest listing, in dollars', async ({ page }) => {
@@ -115,9 +117,9 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // The same reading-order rule the sibling note is held to: a true sentence
   // below the one-tap chip would not have informed the tap.
   const t = await openBudget(page);
-  const estimate = t.search(/A number to plan around \$4,000/);
+  const estimate = t.search(/How much do you want to spend\?.{0,200}?\$4,000/);
   const rooms = t.search(/The rooms are on top of this/);
-  const chip = t.search(/Use \$4,000/);
+  const chip = t.search(/Plan with \$4,000/);
   expect(estimate).toBeGreaterThan(-1);
   expect(rooms).toBeGreaterThan(estimate);
   expect(chip).toBeGreaterThan(rooms);
@@ -128,7 +130,7 @@ test('NEGATIVE CONTROL: no shortlist, no sentence — and never a zero', async (
   // get silence here rather than "$0 for the stay".
   await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
   const t = await openBudget(page, { lodgingOptions: [] });
-  expect(t).toMatch(/A number to plan around/);           // premise: still the budget screen
+  expect(t).toMatch(/How much do you want to spend\?/);           // premise: still the budget screen
   expect(t).not.toMatch(/The rooms are on top of this/);
   expect(t).not.toMatch(/\$0 for the stay/);
 });

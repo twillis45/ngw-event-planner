@@ -307,7 +307,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
@@ -7253,6 +7253,7 @@ export default function HostShellV2() {
   // BUDGET PROPOSE-DON'T-ASK: the editor leads with ONE grounded number (Typical) + agree/change;
   // "Change" opens the tiers+custom drawer. This flag = the host asked to change the number.
   const [budgetChanging, setBudgetChanging] = useState(false);
+  const [budgetPick, setBudgetPick] = useState(null); // the budget question's picked choice (null: the lit one)
 
   // Row-level landings inside the prototype — a route with a real destination
   // here opens the sheet on the exact row, instead of toasting.
@@ -10715,8 +10716,6 @@ export default function HostShellV2() {
     // when it is all you have; calling it typical was not. The variable keeps
     // its name because renaming it would touch the engine for a copy fix.
     const OPT_LABELS = ['Lean', 'Mid‑range', 'All-out'];
-    const low = _bc ? _bc.low : 0;
-    const high = _bc ? _bc.high : 0;
     const typical = _bc ? _bc.typical : 0;
     // "Budget is set" = the host gave us a NUMBER (event.totalBudget), NOT money.planned
     // (which is spend.total — non-zero from line items even when the host set no budget).
@@ -10785,190 +10784,56 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
-      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
-      // wordy"). budgetAskCopy: the headline is the figure the lit button
-      // offers, the per-head is that headline over the guests (rounded as the
-      // tiers round), and one line says where it comes from.
+      // ── THE BUDGET QUESTION IN THE NEW STRUCTURE (owner, 11/26/2026: "As
+      // rendered is fine"; UX_12 decisions A + T2, v4 paused) ──────────────
+      // One question, its choices, one button. The choices are the shared
+      // answer (lib/budgetChoices, the list hostv4 shows): Lean, Mid-range,
+      // All-out, and "Covers your plan" when the plan's lines cost more than
+      // any tier; the lit figure is picked. The picked figure is the big
+      // number with its per-head (T2), marked as an estimate where the
+      // disclosure says it must be (UX_08). "A different amount" opens the
+      // Change drawer. Why these figures and what they leave out are one tap
+      // down ("How we got these"); the rooms and shortfall notes stay in view.
       const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
-      // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
-      // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
+      const choices = _bc ? _bc.choices : [];
+      const lit = _bc ? _bc.cta.lit : ask.headline;
+      const picked = (budgetPick != null && choices.some((c) => c.amount === budgetPick)) ? budgetPick : lit;
+      // The per-head is the shared answer's own (lib/budgetChoices), one division read once.
+      const pickedPer = ((choices.find((c) => c.amount === picked) || {}).perHead) || '';
+      const mark = !!(estDisclosure && estDisclosure.mustMark);
+      const excl = (() => { try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; } })();
+      const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
       return (
         <AskColumn>
-          <Eyebrow>A number to plan around</Eyebrow>
-          {/* THE LEAST-GROUNDED NUMBER IN THE PRODUCT WAS THE ONE THAT BECOMES
-              THE BUDGET (2026-09-18). 532 of 622 priced food LINES pass a
-              registry-checked provenance predicate against 297 dated sources —
-              and the per-head bands that produce THIS figure had no provenance
-              field in their shape at all, while rendering as a bare big number
-              with a one-tap "Use $X". UX_08: never show an estimate without the
-              marker. `provenanceKeys` lists only the factors that actually moved
-              this figure, so the disclosure is specific rather than a blanket
-              disclaimer, and `sources` is empty for every budget figure — this
-              reads as an explanation, never as a citation. */}
-          {/* ── PER HEAD BELONGS IN THE HERO (host, 2026-10-06) ────────────
-              It first shipped as its own Grounding line under the paragraph,
-              which buried the only figure on this screen a host can actually
-              check. $13,200 is not checkable against anything they have lived
-              through; $440 a head is — it is the number they can hold against
-              a dinner they have paid for. It rides the locked suffix slot, so
-              the hero stays ONE object at 44/750 and the disclosure marker
-              keeps its place at the end. Pure arithmetic on two figures
-              already on screen: nothing to ground, nothing invented. */}
-          <BigValue suffix={(
-            <>
-              {guests > 0 && (
-                /* A FIGURE, NOT A FOOTNOTE (host, 2026-10-06). It first rode
-                   the suffix slot at 13px muted, which is the register this
-                   kit uses for units and disclosure markers — and a host read
-                   it as one. 22/700 in ink is unmistakably a number while
-                   staying half the hero's 44, so the total is still the one
-                   loud thing and the checkable figure is no longer a caption
-                   on it. */
-                <span style={{
-                  fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
-                  color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{ask.perHead}</span>
-              )}
-              {/* The separator binds FORWARD, not back: at 390px the suffix
-                  wraps after the per-head figure, and a trailing "·" left
-                  dangling at the end of the first line reads as a dropped
-                  word. Glued to what follows, the whole marker moves down
-                  together. */}
-              {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
-            </>
-          )}>{fmt(ask.headline)}</BigValue>
-          <Grounding>{ask.grounding}</Grounding>
-          {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
-              `belowRequiredVendors` has been on the estimate result since
-              2026-09-19 with no reader. Surprise Proposal's own roster needs a
-              photographer and a ring — a $1,750 floor — under a $100-300
-              estimate. The open call was "refuse the headline or floor it";
-              the decision was neither. Refusing costs the host the number they
-              came for; flooring builds their primary figure out of 224 vendor
-              ranges carrying zero provenance. They get both, and are told
-              which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
-          {(() => {
-            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
-            return short ? <Grounding>{short}</Grounding> : null;
-          })()}
-          {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
-              `belowLodgingFloor` has sat on the estimate result since
-              2026-09-22 with zero UI readers — computed, asserted seven times
-              in test, shown to nobody. The Market Realist seat scored the
-              product down for it three sittings running: the app computes the
-              contradiction between a vendor's published price and its own
-              invented band, and tells the host nothing.
-              The exclusions fold below already says lodging is excluded, as a
-              CATEGORY. The host is at the same time looking at a real price
-              for it on their own shortlist, and nothing put the two numbers in
-              one sentence. See lib/budgetCopy.js#stayOnTopOfTheRangeNote for
-              why this does not cry "contradiction" and why it mints no new
-              band. */}
+          <BigValue suffix={(pickedPer || mark) ? <span data-budget-per>{[pickedPer, mark ? 'est.' : ''].filter(Boolean).join(' · ')}</span> : null}>{fmt(picked)}</BigValue>
+          {short ? <Grounding>{short}</Grounding> : null}
           {roomsNote}
-          {/* The plan's lines above the band's middle (issue #100) are said in
-              the one line above, and the band's middle is "Mid-range" in the tier
-              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
-          {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
-              The old line here said "travel-scale costs are part of the
-              numbers", which a host reads as "the flights are in this". The
-              estimator means the opposite: `notIncludedFor` has named the
-              exclusions since the family-aware intake work, and grepped
-              2026-10-06 its only reader in the tree was the CRA-side
-              BudgetEstimateHint — so the one screen that turns this estimate
-              into a committed budget with a single tap was the one screen that
-              never said what it leaves out.
-              WIRED TO THE FUNCTION, NOT THE CONSTANT — and the first cut of
-              this was not. It imported the raw 3-line
-              TRAVEL_LOGISTICS_NOT_INCLUDED while its own comment claimed the
-              exclusions were wired "in the engine's own words", and the 2026-
-              10-06 review board opened it: for a destination Birthday
-              `notIncludedFor` answers with EIGHT lines and the host was shown
-              three. The five it dropped were gifts and favors, outfits for the
-              guest of honor, tips beyond service charge, pre- or post-event
-              gatherings — and cake, which on an 80th birthday is the one that
-              bites. Calling the function is the whole fix; the raw constant
-              was never the engine's answer, only one third of it.
-              AND IT IS NO LONGER GATED ON TRAVEL. The old condition was
-              `est.destinationAdjusted`, so a church-hall lunch got no
-              disclosure at all and src/App.js — the FROZEN donor — stayed the
-              only surface in the product that had ever rendered the full list.
-              `notIncludedFor` already scopes itself: it prepends the three
-              travel lines only when `isDestination`, so a local event is told
-              about its cake and its tips and never about visas. */}
-          {/* ── AND THEN IT WAS TOO MUCH PROSE (host, 2026-10-06) ──────────
-              The eight lines shipped as one run-on sentence and buried the
-              ask. Measured by the re-score board at 390px: 136px of grey
-              text, 31% of a 433px column, a 167% increase — and on a LOCAL
-              event it went from nothing at all to 85px. Both the reduction
-              seat and the data-ink seat predicted it before it shipped; the
-              host said it within the hour.
-              None of the honesty is dropped. A count is the summary a host
-              can act on — knowing there ARE eight is most of the value — and
-              the fold carries the engine's own words for anyone who wants
-              them. The summary names the ones with real money behind them so
-              the line is useful closed as well as open. `<details>` is the
-              house pattern for this and the food tab already ships one
-              ("What's in the estimate"); this reaches for it rather than
-              inventing a second shape. */}
-          {(() => {
-            const excl = (() => {
-              try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
-            })();
-            if (!excl.length) return null;
-            // Named from THIS list (lib notIncludedSummary, 11/20/2026) — it
-            // said "gifts and the cake" on a Board Meeting and a Thanksgiving.
-            return (
-              <details className="excl-fold" style={{ marginTop: 8 }}>
-                <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedLine(excl)}
-                </summary>
-                <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
-              </details>
-            );
-          })()}
-          {/* ONE LIT NUMBER, THE ONE THE SENTENCE RECOMMENDS (audit A P1-7).
-              It lit "Use $1,000" under "your plan's own lines already add up
-              to about $1,360 — more than this $1,000". budgetProposalCta picks
-              the plan's figure when the plan costs more than the middle. */}
-          {(() => {
-            const cta = (() => { try { return budgetProposalCta(spend && spend.expected, typical); } catch (_e) { return { lit: typical, alt: null }; } })();
-            return (
-              <CtaRow>
-                <button className="cta" onClick={() => setB(cta.lit)}>Use {fmt(cta.lit)}</button>
-                <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
-              </CtaRow>
-            );
-          })()}
-          {/* ── THE OTHER TWO NUMBERS ARE AS UNCHECKABLE AS THE FIRST ──────
-              Tufte's objection at the 2026-10-06 board, and it lands: the
-              entire argument for showing a per-head is that $13,200 is not a
-              figure a host can hold against anything they have lived through
-              and $440 is. By that argument $6,600 and $19,800 are equally
-              opaque, and the honesty had been granted to exactly one of the
-              three. It costs a few characters to give it to all of them, and
-              a host choosing between tiers is now comparing per-person
-              numbers rather than totals — which is the comparison they can
-              actually reason about. */}
-          {ask.covers ? (
-            // The plan costs more than the mid-range: the mid-range is a tier,
-            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
-            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
-            <Grounding gap={16}>
-              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
-                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
-                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
-              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
-            </Grounding>
-          ) : (low || high) ? (
-            <Grounding gap={16}>
-              or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
-              {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
-              {low && high ? ' · ' : ''}
-              {high ? <button className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
-              {high && guests > 0 ? ` (${perHeadText(perHeadRange(high, high, guests), fmt)})` : ''}
-            </Grounding>
-          ) : null}
+          <OptionList ariaLabel="Budget" value={picked}
+            onPick={(v) => { if (v === 'other') setBudgetChanging(true); else setBudgetPick(v); }}
+            options={[
+              ...choices.map((c) => ({
+                value: c.amount,
+                label: (c.key === 'covers' || (ask.covers && c.lit)) ? <>{c.label}<small className="optnote">Covers your plan</small></> : c.label,
+                // Owner, 11/26/2026: "Per head for each". The shared answer's own per-head.
+                sub: <>{fmt(c.amount)}{c.perHead ? <small className="optper">{c.perHead}</small> : null}</>,
+              })),
+              { value: 'other', label: 'A different amount' },
+            ]} />
+          <details className="excl-fold" data-budget-why>
+            <summary className="grounding">How we got these{excl.length ? ' · ' + notIncludedLine(excl) : ''}</summary>
+            <p className="grounding">{ask.grounding}</p>
+            {excl.length > 0 && <p className="grounding">Not included: {excl.join(' · ')}</p>}
+          </details>
+          {/* The button is the last thing in `.editor-slot`, which clips vertically
+              (its height animates). The attention cue's pulse reaches 15px below the
+              button (outline-offset 12px + 3px width, styles.css "THE ATTENTION CUE"),
+              and overflow-clip-margin does not reach iOS Safari (owner's phone,
+              11/26/2026: the ring cut off under "Plan with $400"). 16px of real room
+              keeps the whole ring inside the slot (styles.css, "THE BUDGET QUESTION").
+              Pinned: theBudgetAskSaysItInFewWords. */}
+          <CtaRow>
+            <button className="cta" data-budget-plan onClick={() => setB(picked)}>Plan with {fmt(picked)}</button>
+          </CtaRow>
         </AskColumn>
       );
     }

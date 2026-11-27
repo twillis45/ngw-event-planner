@@ -51,3 +51,10 @@ test('what it leaves out comes with it', () => {
 test('no type the estimator knows: no choices', () => {
   expect(budgetChoices({ id: 'x', type: '', guestEstimate: 0 })).toBe(null);
 });
+
+// THE QUESTION, IN BOTH SHELLS (owner, 11/26/2026: the hostv2 budget question
+// "as rendered"): the ask is a question, the words hostv4 already used.
+import { ASK_KINDS } from '../heroAsk';
+test('the budget ask is the question both shells show', () => {
+  expect(ASK_KINDS.budget).toBe('How much do you want to spend?');
+});
