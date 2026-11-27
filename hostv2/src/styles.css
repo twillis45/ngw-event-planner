@@ -3387,7 +3387,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .hero.elegant .hero-card:has([data-budget-plan]) > .card-head > .card-top:empty{ display:none; }
 [data-budget-fig]{ font-size:52px !important; font-weight:800 !important; letter-spacing:-.02em !important; }
 .hero [data-budget-per]{ font-size:17px; font-weight:600; }
-.optlist[aria-label="Budget"]{ background:var(--card); border-radius:var(--r-lg); padding:0 var(--sp-1); overflow:hidden; }
+.optlist[aria-label="Budget"]{ background:var(--card); border-radius:var(--r-lg); padding:0 var(--sp-1); }
 :root[data-theme="light"] .optlist[aria-label="Budget"]{ box-shadow:0 0 0 1px var(--line); }
 .optlist[aria-label="Budget"] .optrow{ min-height:52px; padding:var(--sp-3); border-radius:var(--r-md); }
 .optlist[aria-label="Budget"] .optdot{ position:relative; width:22px; height:22px; box-sizing:border-box; border:1.5px solid var(--muted); background:transparent; }
