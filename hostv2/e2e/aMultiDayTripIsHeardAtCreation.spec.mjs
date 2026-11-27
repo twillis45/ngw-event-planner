@@ -14,6 +14,8 @@
 // The clock is pinned to Saturday 11/21/2026, so "Dec 3" is this December and
 // "next weekend" stays ambiguous whenever CI runs. setFixedTime, not install,
 // so timers still run.
+// Case-insensitive on the date line: the phone writes it in plain words
+// (T2, owner 11/27/2026), wider screens in capitals; the words are the check.
 import { test, expect, settled, openSectionByName, identityLine } from './fixtures.mjs';
 
 const SANTA_FE = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, about 30 people flying in for 3 nights, dinner at an adobe courtyard, she uses a walker and the altitude is hard on her";
@@ -68,7 +70,7 @@ test('a trip with two dates is a group trip, and every screen says Dec 3–6', a
   await expect(revealCard(page, 'Your Event')).toContainText('Dec 3–6 (3 nights)');
 
   await openPlan(page);
-  await expect(identityLine(page)).toContainText('DEC 3–DEC 6', { useInnerText: true });
+  await expect(identityLine(page)).toContainText(/DEC 3–DEC 6/i, { useInnerText: true });
   await expect(await spaceDates(page)).toContainText('Dates · Dec 3–6 (3 nights)');
   await closeSheet(page);
 
@@ -111,7 +113,7 @@ test('the Santa Fe 80th: the dates are set once at creation and nothing asks for
   await expect(revealCard(page, 'Where Everyone Stays')).toContainText('3 nights to cover');
 
   await openPlan(page);
-  await expect(identityLine(page)).toContainText('JUN 14–JUN 17', { useInnerText: true });
+  await expect(identityLine(page)).toContainText(/JUN 14–JUN 17/i, { useInnerText: true });
 
   // The board: no hero, chip or card asks for the date again.
   await expect(page.locator('body')).not.toContainText(DATE_ASKS);
