@@ -8924,6 +8924,18 @@ button.vc-pill::after{
 .tt-caret{ color:var(--muted); font-size:15px; }
 .tt-title:hover .tt-caret{ color:var(--steel-soft); }
 .tt-sub{ margin-top:-8px; color:var(--muted); font-size:15px; }
+/* THE PHONE'S HEADER WEARS T2 (owner, 11/27/2026: "T2 applied version is
+   fine"; theHeaderWearsT2). The name first at 28 / 700, then the date line
+   under it in plain words at 15px, then the type line. The date line keeps
+   what rides on it (the Sample tag, the weather). The 21px name beside
+   "Name it" keeps its room. Desktop and tablet headers are unchanged. */
+.stagewrap[data-bp="mobile"] .tt-head{ display:flex; flex-direction:column; }
+.stagewrap[data-bp="mobile"] .tt-head > .tt-title-row{ order:-1; }
+.stagewrap[data-bp="mobile"] .tt-r1{ font-size:15px; font-weight:500; letter-spacing:0; text-transform:none; }
+.stagewrap[data-bp="mobile"] .tt-title-row:not(.has-nameit) .tt-name{ font-size:28px; letter-spacing:-.02em; }
+.stagewrap[data-bp="mobile"] .tt-title{ margin-top:0 !important; }
+/* The rename field opens where the name was, so it loses the same margin. */
+.stagewrap[data-bp="mobile"] .tt-renaming{ margin-top:0; }
 
 /* THE RIBBON — done fills with the progress green, open is outlined, NOW is
    the part the question is about. */

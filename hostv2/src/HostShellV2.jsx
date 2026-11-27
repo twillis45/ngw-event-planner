@@ -4109,12 +4109,22 @@ export default function HostShellV2() {
     const tail = theme ? ' — ' + theme : '';
     const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
     const sub = [theme, e.type].filter(Boolean).join(' · ');
+    // THE PHONE'S DATE LINE IN PLAIN WORDS (owner, 11/27/2026: "T2 applied
+    // version is fine"): under the name, "Thursday, December 17 · 21 days",
+    // not capitals above it. Same facts as the eyebrow; only the wording and
+    // place change, and only on the phone (theHeaderWearsT2).
+    const plain = bp === 'mobile';
+    const cap = (t) => { const l = String(t).toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1); };
+    const when = (plain && event.date && !(spanNights(event) > 0))
+      ? (() => { try { return new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); } catch { return e.when; } })()
+      : e.when;
+    const urgency = plain ? e.urgency.map(cap) : e.urgency;
     return (
       <header className="tt-head" data-tt-head>
         <div className="tt-r1">
           {menu}
           {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
-          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
+          <span>{when}{when && urgency.length ? ' · ' : ''}<span data-tt-urgency>{urgency.join(' · ')}</span></span>
           {/* The weather pill lands here when it would show (near the date). */}
           {ttHead && <span className="tt-wx-slot" ref={setTtWxSlot} />}
         </div>

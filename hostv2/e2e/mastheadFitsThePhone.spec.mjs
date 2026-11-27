@@ -74,8 +74,9 @@ test('A LONG NAME FITS IN TWO LINES — it was four', async ({ page }) => {
   // The identity and the calendar entry both survive the cut.
   expect(m.text).toMatch(/MARGARET ADEYEMI/);
   const [y, mo, d] = base.date.split('-').map(Number);
-  const onCalendar = new Date(y, mo - 1, d).toLocaleString('en-US', { month: 'short' }).toUpperCase() + ' ' + d;
-  expect(m.text).toContain(onCalendar);
+  // The phone writes the month out since T2 (owner, 11/27/2026): "December 27".
+  const month = (style) => new Date(y, mo - 1, d).toLocaleString('en-US', { month: style }).toUpperCase();
+  expect(m.text).toMatch(new RegExp(`(${month('short')}|${month('long')}) ${d}\\b`));
   // The restatement does not: the name already says "Retirement".
   expect(m.text).not.toMatch(/RETIREMENT PARTY/);
 });

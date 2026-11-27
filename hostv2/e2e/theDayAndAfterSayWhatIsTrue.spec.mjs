@@ -10,6 +10,8 @@
 //                open Calls, no "all clear" over an unpaid balance, and the
 //                unpaid balance is what "still owed" names.
 // Events are the audit's own seeds (audit2/C/scripts/events.js).
+// Case-insensitive on the date line: the phone writes it in plain words
+// (T2, owner 11/27/2026), wider screens in capitals; the words are the check.
 import { test, expect, settled, identityLine } from './fixtures.mjs';
 
 const WEDDING = {
@@ -87,7 +89,7 @@ test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask',
   await boot(page, TRIP, '2027-05-13T09:00:00');
   await landsOnTheDayThenPlan(page);
   await expect(hero(page).locator('h2.ask')).toHaveText('Day 1 of 4.');
-  await expect(identityLine(page)).toContainText('DAY 1 OF 4', { useInnerText: true });
+  await expect(identityLine(page)).toContainText(/DAY 1 OF 4/i, { useInnerText: true });
   await expect(page.getByRole('main')).not.toContainText(/Pick the place|Where is the event\?/);
 
   await page.clock.setFixedTime(new Date('2027-05-15T09:00:00'));
@@ -101,7 +103,7 @@ test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask',
 test('the day after a trip counts from its last day, and is not "the day"', async ({ page }) => {
   await boot(page, TRIP, '2027-05-17T10:00:00');
   await landsOnAfterThenPlan(page);
-  await expect(identityLine(page)).toContainText('1 DAY AGO', { useInnerText: true });
+  await expect(identityLine(page)).toContainText(/1 DAY AGO/i, { useInnerText: true });
   await expect(hero(page).locator('h2.ask')).toHaveText('All 4 days, done.');
   await expect(hero(page)).toContainText('yesterday');
 });

@@ -149,13 +149,16 @@ test.describe('phone 390x844', () => {
     await expect(page.locator('[data-tt-head]')).toBeVisible();
     expect(await shown(page, '.ev-eyebrow'), 'no ☰ eyebrow').toBe(0);
     expect(await shown(page, '[aria-label="Menu"]'), 'no Menu button').toBe(0);
-    await expect(page.locator('[data-tt-head] .tt-r1')).toHaveText('THU, NOV 26 · 3 DAYS', { useInnerText: true });
+    // T2 (owner, 11/27/2026: "T2 applied version is fine") supersedes the
+    // 11/23 phone header: the date line is in plain words, under the name
+    // (theHeaderWearsT2 pins its sizes).
+    await expect(page.locator('[data-tt-head] .tt-r1')).toHaveText('Thursday, November 26 · 3 days', { useInnerText: true });
     await expect(page.locator('[data-tt-title] .tt-name')).toHaveText('Thanksgiving Dinner');
     await expect(page.locator('[data-tt-title] .tt-caret')).toHaveText('▾');
-    // The title sits under the date line, and the ask under both.
+    // The date line sits under the title, and the ask under both.
     const r1 = await rect(page, '[data-tt-head] .tt-r1'); const t = await rect(page, '[data-tt-title]'); const ask = await rect(page, 'h2.ask');
-    expect(t.top).toBeGreaterThanOrEqual(r1.bottom - 1);
-    expect(ask.top).toBeGreaterThan(t.bottom);
+    expect(r1.top).toBeGreaterThanOrEqual(t.bottom - 1);
+    expect(ask.top).toBeGreaterThan(r1.bottom);
     await page.locator('[data-tt-title]').click();
     await sheetSettled(page);
     await expect(page.locator('#sheet-title')).toHaveText('Your events');
