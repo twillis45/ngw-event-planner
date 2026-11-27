@@ -3361,9 +3361,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    each"). Its own line, so "$400" and "$29 a head" never run together. */
 .optsub .optper{ display:block; text-align:right; white-space:nowrap; font-size:.875em; }
 .optlist[aria-label="Budget"]{ margin-top:var(--sp-4); }
+/* Its rows sit on the board, under the 44x44 floor's sweep: a one-line row
+   measured 43 at tablet-tall in CI (the 1px row rule inside a 44 border box).
+   The house tap minimum, so no row rides the edge. */
+.optlist[aria-label="Budget"] .optrow{ min-height:var(--tap-min); }
 [data-budget-why]{ margin-top:var(--sp-3); }
 [data-budget-why] > summary{ cursor:pointer; }
-[data-budget-why] > p{ margin:6px 0 0; }
+[data-budget-why] > p{ margin:var(--sp-2) 0 0; }
 :has(> [data-budget-plan]){ padding-bottom:var(--sp-4); }
 
 
