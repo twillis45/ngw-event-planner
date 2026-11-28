@@ -4,8 +4,8 @@
    this file only maps the kit's tokens to hostv2's own, light and dark, and
    frames the layer. Nothing here restyles a component. */
 
-/* The layer: over the board and its sheets (z 40), under hostv2's line with
-   its Undo (.toast, z 60), so a change always says so on screen. */
+/* The layer: over the board and its sheets (z 40). hostv2's saved line with
+   its Undo shows inside the page, not over it (HostShellV2: status). */
 .gk.gk-v2{ position:fixed; inset:0; z-index:45; background:var(--bg); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow:hidden; }
 
 /* The kit's tokens, in hostv2's palette. */

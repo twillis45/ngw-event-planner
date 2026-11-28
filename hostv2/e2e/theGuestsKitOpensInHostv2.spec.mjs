@@ -37,10 +37,12 @@ test('with the switch on, Guests is the kit: one question at a time, saved throu
   await expect(kit(page).locator('h1.lt')).toHaveText('Guests');
   await expect(kit(page).locator('h2.gk-q')).toHaveText('Can guests bring someone?');
   await kit(page).getByRole('button', { name: 'Yes, plus-ones are welcome' }).click();
-  // The next question, and hostv2's own line with its Undo, on the screen.
+  // The next question, and hostv2's own line with its Undo, on the screen: in
+  // the page, where hostv4 shows it (theGuestsKitStaysInHostv2: covering nothing).
   await expect(kit(page).locator('h2.gk-q')).toHaveText('Are kids welcome?');
-  const toast = page.locator('.toast.on');
+  const toast = kit(page).locator('[data-done]');
   await expect(toast).toContainText(/plus-ones/i);
+  await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
   const box = await toast.boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.y + box.height).toBeLessThanOrEqual(844);

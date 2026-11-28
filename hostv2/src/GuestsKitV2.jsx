@@ -6,7 +6,7 @@
 // whose `from` is the page before it, so the phone's Back walks back one page
 // at a time through hostv2's own overlay history (HostShellV2, closeSheet).
 // Saves go through hostv2's one write path (patchEvent), so its Undo line is
-// the one on screen. G2c-1: behind ?guests=kit.
+// the one on screen, in the page, never over it. G2c-1: behind ?guests=kit.
 import GuestsPage from '@app/guestsKit/GuestsPage.jsx';
 import InvitePage from '@app/guestsKit/InvitePage.jsx';
 import InviteDesignPage from '@app/guestsKit/InviteDesignPage.jsx';
@@ -30,8 +30,9 @@ const back = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6
  * @param {Function} p.onBack    back one page (closeSheet)
  * @param {boolean} p.sample     a sample plan
  * @param {object} p.actions     hostv2's own sheets for the kit's steps (kitHost.js), so nothing points elsewhere
+ * @param {object} p.status      hostv2's saved line ({ msg, ok, action, onAction }), shown in the page where hostv4 shows its own
  */
-export default function GuestsKitV2({ event, page, backTo, save, push, onBack, sample, actions }) {
+export default function GuestsKitV2({ event, page, backTo, save, push, onBack, sample, actions, status = null }) {
   const layout = useLayout();
   // hostv2's section rail (wide screens) stays the left column, as the approved
   // iPad render drew it: the layer starts at its right edge. No rail, no offset.
@@ -46,16 +47,22 @@ export default function GuestsKitV2({ event, page, backTo, save, push, onBack, s
     window.addEventListener('resize', read);
     return () => window.removeEventListener('resize', read);
   }, []);
+  // The saved line with its Undo, in the kit's own markup, where hostv4 puts it.
+  const line = status ? (
+    <p className={status.ok ? 'done' : 'fine'} role="status" aria-live="polite" data-done>
+      {status.msg}{status.action && <> <button className="link" onClick={status.onAction}>{status.action}</button></>}
+    </p>
+  ) : null;
   const navbar = (title, acts) => (<>
     <div className="navbar"><button className="backbtn" onClick={onBack} aria-label={'Back to ' + backTo}>{back}{backTo}</button></div>
     {acts ? <div className="ltrow"><h1 className="lt">{title}</h1>{acts}</div> : <h1 className="lt">{title}</h1>}
   </>);
   const body = (
     <div className="gk-app pushed" key={page}>
-      {page === 'guests' && <GuestsPage key={event.id} ev={event} save={save} sample={sample} nav={(acts) => navbar(TITLE.guests, acts)} status={null} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
-      {page === 'invite' && <InvitePage key={event.id} ev={event} save={save} nav={navbar(TITLE.invite)} status={null} onDesign={() => push('invite-design')} />}
-      {page === 'invite-design' && <InviteDesignPage key={event.id} ev={event} save={save} nav={navbar(TITLE['invite-design'])} status={null} />}
-      {page === 'updates' && <UpdatesPage key={event.id} ev={event} nav={navbar(TITLE.updates)} status={null} />}
+      {page === 'guests' && <GuestsPage key={event.id} ev={event} save={save} sample={sample} nav={(acts) => navbar(TITLE.guests, acts)} status={line} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
+      {page === 'invite' && <InvitePage key={event.id} ev={event} save={save} nav={navbar(TITLE.invite)} status={line} onDesign={() => push('invite-design')} />}
+      {page === 'invite-design' && <InviteDesignPage key={event.id} ev={event} save={save} nav={navbar(TITLE['invite-design'])} status={line} />}
+      {page === 'updates' && <UpdatesPage key={event.id} ev={event} nav={navbar(TITLE.updates)} status={line} />}
     </div>
   );
   return (
