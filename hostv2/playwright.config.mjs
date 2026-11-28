@@ -135,6 +135,8 @@ const SELF_PINNED = [
 // self-pinned ones, because a test has to run SOMEWHERE.
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
+  // Same 5244 harness: a plan from the account can be deleted on any device.
+  '**/aSyncedPlanCanBeDeleted.spec.mjs',
   // Same 5244 harness: a second device's edits must not pin over later account copies.
   '**/anEditOnTheSecondDeviceStillSyncs.spec.mjs',
   '**/aHostCanTurnAnalyticsOff.spec.mjs',
