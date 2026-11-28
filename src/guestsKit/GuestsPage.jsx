@@ -27,6 +27,7 @@ import { renamedGuestPatch } from '@app/lib/guestMerge';
 import { guestHelperRoles } from '@app/lib/helperResponsibility';
 import { isCommApiConfigured, listSentMessages } from '@app/lib/commApi';
 import NudgeSheet from './NudgeSheet.jsx';
+import ImportSheet from './ImportSheet.jsx';
 import LockSheet from './LockSheet.jsx';
 import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
 import { downloadCSV } from '@app/lib/download';
@@ -437,7 +438,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [find, setFind] = useState('');
   const [open, setOpen] = useState(null);
   const [answers, setAnswers] = useState(false);
-  const [sheet, setSheet] = useState(null); // 'nudge' | 'lock' | 'add' | 'more'
+  const [sheet, setSheet] = useState(null); // 'nudge' | 'lock' | 'add' | 'more' | 'import'
   const [nudgeOnly, setNudgeOnly] = useState(null); // a guest id: the guest sheet's "Nudge Ava"
   const nudgeOne = (id) => { if (layout === 'phone') setOpen(null); setNudgeOnly(id); };
   // The one open group. undefined: not yet chosen (on an iPad split, the
@@ -706,16 +707,17 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
                 <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
               </button>
             </div>)}
-            {host && host.qr && host.importList && (<div className="grp" data-more-host>
-              <button className="row gk-go" data-show-qr onClick={() => { setSheet(null); host.qr(); }}><span>Show QR code</span>{chev}</button>
-              <button className="row gk-go" data-import onClick={() => { setSheet(null); host.importList(); }}><span>Import a list</span>{chev}</button>
-            </div>)}
+            <div className="grp" data-more-host>
+              {host && host.qr && <button className="row gk-go" data-show-qr onClick={() => { setSheet(null); host.qr(); }}><span>Show QR code</span>{chev}</button>}
+              {byName && <button className="row gk-go" data-import onClick={() => setSheet('import')}><span>Import a list</span>{chev}</button>}
+            </div>
             {shareLine && <p className="fine" role="status" data-share-line>{typeof shareLine === 'string' ? shareLine : <>{shareLine.text}{shareLine.signIn && <> <button className="link" onClick={() => { setSheet(null); host.openSignIn(); }}>Sign in</button></>}</>}</p>}
-            {!host && <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
+            {!host && <p className="fine">The QR code is in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
           </div>
         </div>
       )}
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
+      {sheet === 'import' && <ImportSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {nudgeOnly != null && <NudgeSheet ev={ev} save={save} only={nudgeOnly} onDone={() => setNudgeOnly(null)} />}
       {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {opened && layout === 'phone' && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} onNudge={nudgeOne} />}

@@ -64,13 +64,32 @@ test('⋯ More imports a list and shows the QR code here', async ({ page }) => {
   await kit(page).getByRole('button', { name: 'More' }).click();
   await expect(kit(page).locator('[data-import]')).toHaveText(/Import a list/);
   await expect(kit(page).locator('[data-show-qr]')).toHaveText(/Show QR code/);
+  // Since G2c-2b-3 the import is the kit's own sheet (theKitImportsAList).
   await kit(page).locator('[data-import]').click();
-  await expect(page.locator('input[aria-label="Guest CSV file"]')).toBeAttached();
-  // The landing puts focus on the file picker; Escape there still closes the
-  // sheet (a file picker has no typing for Escape to cancel).
+  await expect(kit(page).locator('[data-import-sheet] input[aria-label="Guest CSV file"]')).toBeAttached();
+  await expect(page.locator('.sheet #sheet-title')).toHaveCount(0);
+});
+
+// #323's fix, kept: on the old Guests sheet's own import (still there for
+// ?guests=old), Escape with focus on the file picker closes the sheet, since
+// a file picker has no typing for Escape to cancel.
+test('on the old sheet’s import, Escape from the file picker closes the sheet', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, EV);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 700 });
+  await expect(page.locator('.sheet #sheet-title')).toBeVisible();
+  await page.locator('#guests-import-anchor').first().click();
+  const picker = page.locator('input[aria-label="Guest CSV file"]');
+  await picker.focus();
   await expect.poll(() => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label'))).toBe('Guest CSV file');
   await page.keyboard.press('Escape');
-  await expect(page.locator('[data-guests-kit="guests"]')).toBeVisible();
+  await expect(page.locator('.sheet #sheet-title')).toHaveCount(0);
 });
 
 test('signed out, sending asks for sign-in here: hostv2’s own sign-in opens over Guests', async ({ page }) => {
