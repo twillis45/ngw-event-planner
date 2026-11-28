@@ -24,12 +24,16 @@ import { unfilledBlanks } from '@app/lib/guestFacing';
 import { listSentMessages } from '@app/lib/commApi';
 import { buildMessageTimeline, filterTimeline } from '@app/lib/messageTimeline';
 import { readProfile } from './sendKit.jsx';
+import { recordHandoff } from '@app/lib/sendLedger';
+
+// What the old draft sheet called this draft; a hand-off is recorded under it.
+const UPDATE_TITLE = 'Update to everyone';
 import { useKitHost } from './kitHost.js';
 
 const when = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
 const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
-function Updates({ ev }) {
+function Updates({ ev, save }) {
   const u = useGuestUpdates(ev.id);
   // WRITTEN FROM THE PLAN (render screen 5): the box starts with the plan's own
   // update (the old sheet's "Update everyone" draft); she edits it. A blank the
@@ -39,8 +43,12 @@ function Updates({ ev }) {
   const [copied, setCopied] = useState('');
   const blanks = unfilledBlanks(draft);
   const ready = !!draft.trim() && !blanks.length;
+  // A hand-off she makes herself is recorded on the plan, as the old draft sheet
+  // did (lib/sendLedger), so "Everything that went out" lists it: "copied to
+  // send" or "by text", never "sent". For guests, so it files under them.
+  const handedOff = (channel) => { if (save) save({ patch: { sendLedger: recordHandoff(ev.sendLedger, UPDATE_TITLE, channel, new Date().toISOString(), { kind: 'guests' }) }, msg: null }); };
   const copy = () => {
-    const ok = () => setCopied('Copied. Nothing was sent.');
+    const ok = () => { setCopied('Copied. Nothing was sent.'); handedOff('copy'); };
     const no = () => setCopied('Couldn’t copy here. Select the words and copy them.');
     try { navigator.clipboard.writeText(draft).then(ok, no); } catch { no(); }
   };
@@ -65,7 +73,7 @@ function Updates({ ev }) {
         {u.confirm && <button className="link" onClick={() => u.setConfirm(false)}>Not yet</button>}
         {!u.confirm && <button className="link" data-update-copy disabled={!ready} onClick={copy}>Copy</button>}
         {!u.confirm && (ready
-          ? <a className="link" data-update-text href={textItHref(draft)}>Text it</a>
+          ? <a className="link" data-update-text href={textItHref(draft)} onClick={() => handedOff('sms')}>Text it</a>
           : <button className="link" data-update-text disabled>Text it</button>)}
       </div>
       {copied && <p className="done" role="status" data-update-copied>{copied}</p>}
@@ -190,7 +198,7 @@ function WentOut({ ev }) {
   );
 }
 
-export default function UpdatesPage({ ev, nav, status }) {
+export default function UpdatesPage({ ev, save, nav, status }) {
   const host = useKitHost();
   // A plan never saved to an account has no updates, questions or opens to read:
   // say so once and ask the server for nothing (no signed-out 401s).
@@ -209,7 +217,7 @@ export default function UpdatesPage({ ev, nav, status }) {
       {nav}
       {status}
       <h3 className="sh">Post an update</h3>
-      <Updates ev={ev} />
+      <Updates ev={ev} save={save} />
       <h3 className="sh">Questions</h3>
       <Questions eventId={ev.id} />
       <Opens eventId={ev.id} />

@@ -80,3 +80,16 @@ test('everything that went out lists what the app sent to guests, with its statu
   await expect(out.locator('[data-went="email-m1"]')).toContainText('You’re invited — Thanksgiving at ours');
   await expect(out.locator('[data-went="email-m1"]')).toContainText('by email');
 });
+
+test('copying the update is recorded for her guests, like the old sheet, and listed as went out', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const { view } = await boot(page);
+  const box = view.getByRole('textbox', { name: 'Your update to every guest' });
+  await box.fill((await box.inputValue()).replace('[Add the update here]', 'Parking is on Elm St after 2.'));
+  await view.locator('[data-update-copy]').click();
+  await expect(view.locator('[data-update-copied]')).toHaveText('Copied. Nothing was sent.');
+  const row = view.locator('[data-went="ledger-Update to everyone"]');
+  await expect(row).toContainText('Your guests');
+  await expect(row).toContainText('Update to everyone');
+  await expect(row).toContainText('copied to send');
+});

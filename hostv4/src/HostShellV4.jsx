@@ -223,7 +223,7 @@ export default function HostShellV4() {
     return frame(
       <div className="gk-app pushed" key={page}>
         {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={(acts) => navbar(PAGE_TITLE.guests, acts)} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
-        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar(PAGE_TITLE.updates)} status={status} />}
+        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.updates)} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.invite)} status={status} onDesign={() => push('invite-design')} />}
         {page === 'invite-design' && <InviteDesignPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE['invite-design'])} status={status} />}
         {page === 'run' && <RunPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.run)} status={status} />}
