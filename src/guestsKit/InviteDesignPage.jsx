@@ -16,6 +16,7 @@ import { inviteDesignEdit, INVITE_LAYOUTS } from '@app/lib/inviteDesign';
 import { INVITE_PALETTES, parseInviteStyle, formatInviteStyle, arrangementsFor, autoInvitePalette, monthPalette, paletteByKey } from '@app/lib/inviteTone';
 import InvitePreview from './InvitePreview.jsx';
 import { readProfile } from './sendKit.jsx';
+import { useKitHost } from './kitHost.js';
 
 function Swatch({ paper, ink, accent, line }) {
   return (
@@ -28,6 +29,7 @@ function Swatch({ paper, ink, accent, line }) {
 }
 
 export default function InviteDesignPage({ ev, save, nav, status }) {
+  const kitHost = useKitHost();
   const suggestion = useMemo(() => suggestedInviteLine(ev), [ev]);
   const profile = useMemo(readProfile, []);
   const [message, setMessage] = useState(String(ev.deckLine || '').trim() || suggestion);
@@ -75,7 +77,9 @@ export default function InviteDesignPage({ ev, save, nav, status }) {
         onChange={(e) => setContact(e.target.value)} onBlur={() => put({ hostContact: contact })} />
       {problem ? <p className="fine warn" data-design-problem>{problem}</p>
         : <p className="fine">Shows as a “Message {first}” link. Your number is never printed on the invite.</p>}
-      <p className="fine">Your photo is added in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+      {kitHost && kitHost.photo
+        ? <p className="fine"><button className="link" data-add-photo onClick={kitHost.photo}>Add a photo</button></p>
+        : <p className="fine">Your photo is added in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
 
       <h3 className="sh">Colors</h3>
       <div className="swatches" role="group" aria-label="Colors">

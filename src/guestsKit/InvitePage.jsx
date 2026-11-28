@@ -18,6 +18,7 @@ import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '
 import SendSheet from './SendSheet.jsx';
 import InvitePreview from './InvitePreview.jsx';
 import { readProfile } from './sendKit.jsx';
+import { useKitHost } from './kitHost.js';
 
 const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const VOICE = { 'as-written': 'As written', tighter: 'Tighter', warmer: 'Warmer', playful: 'Playful', formal: 'Formal' };
@@ -37,6 +38,7 @@ function Seg({ label, value, options, pick }) {
 }
 
 export default function InvitePage({ ev, save, nav, status, onDesign }) {
+  const host = useKitHost();
   const gaps = inviteGaps(ev);
   const saved = savedInviteDraft(ev);
   const voices = useMemo(() => { try { return inviteVoicesFor(ev); } catch { return ['as-written']; } }, [ev]);
@@ -67,7 +69,7 @@ export default function InvitePage({ ev, save, nav, status, onDesign }) {
               </div>
             ))}
           </div>
-          <p className="fine">Add these in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+          {host && host.date && host.venue ? null : <p className="fine">Add these in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
         </>)}
 
         <h3 className="sh">The message they get</h3>
@@ -97,7 +99,9 @@ export default function InvitePage({ ev, save, nav, status, onDesign }) {
       </section>
     </main>
     <div className="action">{gaps.length
-      ? <a className="primary" href="../hostv2/">Add what’s missing in the current app</a>
+      ? (host && host.date && host.venue
+        ? <button className="primary" onClick={(gaps.includes('date') || gaps.includes('time')) ? host.date : host.venue}>{(gaps.includes('date') || gaps.includes('time')) ? 'Set the day and time' : 'Set where it is'}</button>
+        : <a className="primary" href="../hostv2/">Add what’s missing in the current app</a>)
       : <button className="primary" data-open-send onClick={() => setSending(true)}>{ev.invitesSentAt ? 'Send it again' : 'Send the invite'}</button>}</div>
     {sending && <SendSheet ev={ev} draft={body} subject={subject} voice={voice} hostName={(profile && profile.name) || ''} save={save} onDone={() => setSending(false)} />}
   </>);

@@ -124,6 +124,8 @@ const SELF_PINNED = [
   '**/theHeaderWearsT2.spec.mjs',
   // Pins 390x844 and 1194x834 (the Guests kit opens in hostv2, 11/28/2026).
   '**/theGuestsKitOpensInHostv2.spec.mjs',
+  // Pins 390x844 (the kit never sends her elsewhere, 11/28/2026).
+  '**/theGuestsKitStaysInHostv2.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

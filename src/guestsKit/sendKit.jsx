@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@app/lib/supabaseClient';
 import { replyLinkFor } from '@app/lib/inviteSend';
+import { useKitHost } from './kitHost.js';
 
 export const LINK_WHY = {
   unpublished: 'Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves.',
@@ -38,15 +39,19 @@ export function useSendReady(ev) {
 
 /** What stands between her and sending, said plainly with its one way forward; null once ready. */
 export function NotReady({ acct, link, check }) {
+  const host = useKitHost();
   if (acct.state === 'checking') return <p className="fine" role="status">Checking your account…</p>;
-  if (acct.state === 'out') return (<>
+  if (acct.state === 'out') return host && host.openSignIn ? (<>
+    <p className="qhelp">Sending uses your account, so replies come back to this plan.</p>
+    <button className="primary" onClick={host.openSignIn}>Sign in</button>
+  </>) : (<>
     <p className="qhelp">Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here.</p>
     <a className="primary" href="../hostv2/">Sign in in the current app</a>
   </>);
   if (link.state === 'checking' || link.state === 'idle') return <p className="fine" role="status">Checking your reply link…</p>;
   if (link.state !== 'ready') return (<>
-    <p className="qhelp" role="alert" data-link-missing><b>Your reply link isn’t ready.</b> {LINK_WHY[link.reason] || LINK_WHY.unavailable} Nothing can go out without it.</p>
-    {link.reason === 'unpublished' ? <a className="primary" href="../hostv2/">Open it in the current app</a> : <button className="primary" onClick={check}>Try again</button>}
+    <p className="qhelp" role="alert" data-link-missing><b>Your reply link isn’t ready.</b> {link.reason === 'unpublished' && host && host.openSignIn ? 'Your plan isn’t saved to your account yet. Sign in and it saves.' : (LINK_WHY[link.reason] || LINK_WHY.unavailable)} Nothing can go out without it.</p>
+    {link.reason === 'unpublished' ? (host && host.openSignIn ? <button className="primary" onClick={host.openSignIn}>Sign in</button> : <a className="primary" href="../hostv2/">Open it in the current app</a>) : <button className="primary" onClick={check}>Try again</button>}
   </>);
   return null;
 }

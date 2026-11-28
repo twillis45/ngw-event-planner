@@ -33,6 +33,7 @@ import { getLastSyncTime } from '@app/lib/api/syncState';
 import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
 import { questionsWaitingLine } from '@app/lib/guestInbox';
 import { guestPath, guestQuestions, answersLine, guestPathState } from '@app/lib/guestPath';
+import { useKitHost } from './kitHost.js';
 // Re-exported for the page's own tests, which read them from here.
 export { guestQuestions, answersLine };
 
@@ -356,6 +357,7 @@ function GuestSheet({ ev, g, i, save, onDone }) {
 }
 
 export default function GuestsPage({ ev, save, sample, nav, status, onInvite, onUpdates, layout = 'phone' }) {
+  const host = useKitHost();
   const qs = guestQuestions(ev);
   const [count, setCount] = useState(() => Number(ev.guestEstimate) || Number(guestCountFor(ev).count) || 20);
   const [text, setText] = useState('');
@@ -586,8 +588,12 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
                 <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
               </button>
             </div>)}
+            {host && host.qr && host.importList && (<div className="grp" data-more-host>
+              <button className="row gk-go" data-show-qr onClick={() => { setSheet(null); host.qr(); }}><span>Show QR code</span>{chev}</button>
+              <button className="row gk-go" data-import onClick={() => { setSheet(null); host.importList(); }}><span>Import a list</span>{chev}</button>
+            </div>)}
             {shareLine && <p className="fine" role="status" data-share-line>{shareLine}</p>}
-            <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+            {!host && <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
           </div>
         </div>
       )}

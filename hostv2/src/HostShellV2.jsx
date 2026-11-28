@@ -6176,7 +6176,10 @@ export default function HostShellV2() {
         : sheet.focus === 'questions' ? ['guests-questions-anchor']
         : sheet.focus === 'photos' ? ['guests-photos-anchor']
         : sheet.focus === 'updates' ? ['guests-updates-anchor']   // Updates to everyone (11/21/2026)
+        // The list import, opened (the Guests kit's "Import a list", G2c-2a).
+        : sheet.focus === 'import' ? ['guests-import-anchor']
         : ['guests-invites-anchor'];
+      if (sheet.focus === 'import') { setPeopleAdminOpen(true); setCsvOpen(true); }
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
       // FIRST, in the same tick, and let the 120ms timeout find a mounted node.
@@ -7692,13 +7695,14 @@ export default function HostShellV2() {
     openInviteDraft('The RSVP nudge', draftRsvpChase, { sendsNudge: true });
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
-  const showQr = async () => {
+  // `from`: the sheet to return to on close (the Guests kit shows the QR over itself).
+  const showQr = async (from) => {
     const url = await verifiedRsvpUrl();
     if (!url) return;
     try {
       const data = await QRCode.toDataURL(url, { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
       setQrDataUrl(data);
-      setSheet({ kind: 'qr' });
+      setSheet({ kind: 'qr', ...(from && from.kind ? { from } : null) });
     } catch { toast('Couldn’t draw the QR — check and share the link instead.'); }
   };
   const shareInviteLink = async () => {
@@ -11111,7 +11115,8 @@ export default function HostShellV2() {
   };
   // The sign-in that keeps this plan: the "Not saved yet" row and the RSVP
   // check's "Sign in to save" (11/24/2026) open it the same way.
-  const openKeepSignIn = () => { keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); };
+  // `from`: the sheet to return to on close (the Guests kit opens sign-in over itself).
+  const openKeepSignIn = (from) => { keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true, ...(from && from.kind ? { from } : null) }); trackKeepPrompt('device_plan'); };
   const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
     && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
     && !(MOVE_NOTICE ? moveAskedBefore : keepAskedBefore).includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
@@ -17379,6 +17384,24 @@ export default function HostShellV2() {
           backTo={(() => { const f = sheet.from; return f ? (f.kind === 'guests-kit' ? GUESTS_KIT_TITLE[f.page] : f.kind === 'guests' ? GUESTS_KIT_TITLE.guests : f.kind === 'sections' ? 'All sections' : 'Back') : 'Your plan'; })()}
           onBack={closeSheet}
           push={(pg) => setSheet((s) => ({ kind: 'guests-kit', page: pg, from: s && s.kind === 'guests' ? { kind: 'guests-kit', page: 'guests', from: s.from } : s }))}
+          actions={(() => {
+            // hostv2's own sheets for the kit's steps (G2c-2a): each opens over
+            // this page and returns to it, so nothing points to "the current app".
+            const here = sheet.kind === 'guests' ? { kind: 'guests-kit', page: 'guests', from: sheet.from } : sheet;
+            const over = (s) => () => setSheet({ ...s, from: here });
+            return {
+              openSignIn: () => openKeepSignIn(here),
+              date: over({ kind: 'date' }),
+              venue: over({ kind: 'venue' }),
+              photo: over({ kind: 'invite-design' }),
+              qr: () => showQr(here),
+              // The list import and the day's details live on the guest sheet
+              // until G2c-2b brings them into the kit; it opens at that spot.
+              importList: over({ kind: 'guests', focus: 'import' }),
+              sendDetails: over({ kind: 'guests', focus: 'invites' }),
+              previewSrc: (id) => './?invite-preview=' + encodeURIComponent(id),
+            };
+          })()}
           save={(ed) => {
             if (!ed) return false;
             if (!Object.keys(ed.patch || {}).length) { if (ed.msg) toast(ed.msg); return true; }
@@ -28262,12 +28285,12 @@ export default function HostShellV2() {
               // preview counts → merge (email-primary, name-fallback). Nothing
               // writes until the host confirms the preview.
               const csvBlock = !csvOpen ? (
-                <button className="fold-btn" onClick={() => setCsvOpen(true)}>
+                <button className="fold-btn" id="guests-import-anchor" onClick={() => setCsvOpen(true)}>
                   Import a guest list (CSV)
                   <span className="chev" aria-hidden="true">›</span>
                 </button>
               ) : (
-                <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
+                <div className="brow" id="guests-import-anchor" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)', scrollMarginTop: 12 }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>
                     Where is the list from?
                     <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>Close</button>

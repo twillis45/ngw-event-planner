@@ -19,6 +19,7 @@ import {
   useGuestUpdates, useGuestQuestions, updatesRoom, updatesReachLine, updatesLimitLine, updatesFailedLine,
   postingLine, postAndEmailLabel, firstName, inboxWhy, replyHintLine, UPDATE_PLACEHOLDER, replyPlaceholder,
 } from '@app/lib/guestUpdatesKit';
+import { useKitHost } from './kitHost.js';
 
 const when = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
 const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -134,13 +135,16 @@ function Opens({ eventId }) {
 }
 
 export default function UpdatesPage({ ev, nav, status }) {
+  const host = useKitHost();
   // A plan never saved to an account has no updates, questions or opens to read:
   // say so once and ask the server for nothing (no signed-out 401s).
   if (!getLastSyncTime(ev.id)) return (
     <main className="view" data-view="updates">
       {nav}
       {status}
-      <p className="fine" data-updates-signed-out>Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. <a className="link" href="../hostv2/">Open the current app</a></p>
+      {host && host.openSignIn
+        ? <p className="fine" data-updates-signed-out>Updates and guests’ questions need this plan saved to your account. <button className="link" onClick={host.openSignIn}>Sign in</button></p>
+        : <p className="fine" data-updates-signed-out>Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. <a className="link" href="../hostv2/">Open the current app</a></p>}
     </main>
   );
   return (
@@ -152,7 +156,9 @@ export default function UpdatesPage({ ev, nav, status }) {
       <h3 className="sh">Questions</h3>
       <Questions eventId={ev.id} />
       <Opens eventId={ev.id} />
-      <p className="fine">Sending the day’s details is in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+      {host && host.sendDetails
+        ? <p className="fine"><button className="link" data-send-details onClick={host.sendDetails}>Send the day’s details</button></p>
+        : <p className="fine">Sending the day’s details is in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
     </main>
   );
 }
