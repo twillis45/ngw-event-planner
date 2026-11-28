@@ -106,6 +106,8 @@
    the names line up with the group's label. */
 .gk .inset .row.guest { padding-left: 46px; }
 .gk .inset .row.guest .val { display: none; }
+/* A household heading inside an open group (Family · 4); everyone else last. */
+.gk .inset .hh { margin: 0; padding: 10px 16px 4px 46px; font-size: .8125rem; font-weight: 600; color: var(--ink-3); }
 /* Diet and allergies: a row each, what is picked under it as chips that remove it. */
 .gk .gk-chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0 0 12px; padding: 0; }
 .gk .grp.lists { margin-bottom: 12px; }

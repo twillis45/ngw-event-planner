@@ -128,6 +128,7 @@ const SELF_PINNED = [
   '**/theGuestsKitStaysInHostv2.spec.mjs',
   '**/theShareLinkAsksForSignInHere.spec.mjs',
   '**/theOneGuestSheetHasTheRest.spec.mjs',
+  '**/theGuestListSaysWhoIsComing.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

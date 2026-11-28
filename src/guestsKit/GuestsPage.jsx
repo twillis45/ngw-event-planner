@@ -19,7 +19,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { guestCountFor } from '@app/lib/guestCountFor';
 import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { rsvpState } from '@app/lib/rsvp';
-import { filterGuestsByName } from '@app/lib/seatingPlan';
+import { guestRowTags, findGuests, households, partyTotals, FIND_FROM } from '@app/lib/guestRows';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
 import { nudgeRecipients, nudgeRowLine, nudgeDeliveryFor, wasInvited } from '@app/lib/replyNudge';
@@ -44,9 +44,9 @@ const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: '
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
 // GUESTS FOLDS AWAY (owner chose option E, 11/25/2026: "minimize lists and
 // collapse where we can, hide"). The replies, folded into groups that open in
-// place one at a time; a find box only past FIND_AT names.
+// place one at a time; a find box from FIND_FROM names (lib/guestRows: 8,
+// owner 11/28/2026; it was past 20).
 const GROUPS = [['yes', 'Coming'], ['maybe', 'Maybe'], ['pending', 'No reply yet'], ['no', 'Can’t make it']];
-const FIND_AT = 21;
 const chevDown = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
 /** The headcount at a glance: each reply against the plan's number. */
@@ -167,7 +167,7 @@ function AnswersSheet({ ev, save, onDone }) {
 // the way the drag starts, so scrolling never reveals anything. The same
 // actions are on the guest sheet and the iPad's Y/M/X keys.
 const OPEN_AT = 60; const FULL_AT = 200; const BTN = 84;
-function GuestRow({ g, onOpen, onReply, onRemove, selected, open, setOpen }) {
+function GuestRow({ g, tags, onOpen, onReply, onRemove, selected, open, setOpen }) {
   const ref = useRef(null); const st = useRef(null);
   const name = String(g.name || '').trim();
   const rightW = BTN * 2; const leftW = BTN * 3;
@@ -219,7 +219,7 @@ function GuestRow({ g, onOpen, onReply, onRemove, selected, open, setOpen }) {
       </div>
       <button ref={ref} className="row guest" data-guest={g.id} aria-selected={selected || undefined} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { st.current = null; set(rest, true); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
-        <span>{g.name}</span><span className={'val' + (r === 'yes' ? ' ok' : '')}>{REPLY[r]}</span>
+        <span className="nm">{g.name}{tags && tags.length > 0 && <small data-tags>{tags.join(' · ')}</small>}</span><span className={'val' + (r === 'yes' ? ' ok' : '')}>{REPLY[r]}</span>
       </button>
     </div>
   );
@@ -475,10 +475,10 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const indexOf = (g) => guests.findIndex((x) => x === g || (x.id && x.id === g.id));
   const counts = { yes: 0, maybe: 0, pending: 0, no: 0 };
   for (const g of guests) counts[rsvpState(g)] = (counts[rsvpState(g)] || 0) + 1;
-  const finding = named >= FIND_AT && find.trim();
+  const finding = named >= FIND_FROM && find.trim();
   // A remembered group with no one left in it falls back to the default.
   const openGroup = group === null || (group && guests.some((g) => rsvpState(g) === group)) ? group : (layout === 'split' && guests.length ? rsvpState((open != null && guests.find((g) => g.id === open)) || guests[0]) : null);
-  const shown = finding ? filterGuestsByName(guests, find) : openGroup ? guests.filter((g) => rsvpState(g) === openGroup) : guests;
+  const shown = finding ? findGuests(guests, find) : openGroup ? guests.filter((g) => rsvpState(g) === openGroup) : guests;
   const opened = open != null ? guests.find((g) => g.id === open) : null;
   const tablet = layout !== 'phone';
   // SPLIT (UX_13): the detail pane always shows someone once there are names.
@@ -558,7 +558,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       ? <a className="primary" href={action.href}>{action.label}</a>
       : <button className="primary" onClick={action.go}>{action.label}</button>}</div>;
   const row = (g) => (
-    <GuestRow key={g.id || g.name} g={g} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
+    <GuestRow key={g.id || g.name} g={g} tags={guestRowTags(g, guests)} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
       open={swiped && swiped.id === g.id ? swiped.side : null} setOpen={(side) => setSwiped(side ? { id: g.id, side } : null)}
       onReply={(v) => save(rsvpEdit(ev, indexOf(g), v))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
   );
@@ -587,6 +587,11 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
 
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
       {named > 0 && byName && !qs.length && <Headcount counts={counts} of={locked || planned} />}
+      {named > 0 && byName && !qs.length && (() => {
+        const t = partyTotals(guests);
+        const bits = [t.plusOnes ? '+' + t.plusOnes + (t.plusOnes === 1 ? ' plus-one' : ' plus-ones') : '', t.kids ? t.kids + (t.kids === 1 ? ' kid' : ' kids') : ''].filter(Boolean);
+        return bits.length ? <p className="fine" data-party>{bits.join(' · ')}{t.kids ? '. Food sizes kids lighter.' : '.'}</p> : null;
+      })()}
       {/* A question screen stays one question (UX_12: 40 words or fewer); the path returns once it's answered. */}
       {!qs.length && <><h3 className="sh">Your guests, start to finish</h3>{pathEl}</>}
 
@@ -597,7 +602,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       </>)}
 
       {!qs.length && byName && named > 0 && (<>
-        {named >= FIND_AT && <input className="gk-field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
+        {named >= FIND_FROM && <input className="gk-field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
         {finding ? (
           shown.length ? <div className="grp" data-names>{shown.map(row)}</div> : <p className="fine">No one here matches.</p>
         ) : (
@@ -607,7 +612,16 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
                 <button className="row gk-go" data-group={k} aria-expanded={openGroup === k} onClick={() => setGroup(openGroup === k ? null : k)}>
                   <span className={'gk-dot ' + k} aria-hidden="true" /><span className="nm">{l}</span><span className="val">{counts[k]}</span>{openGroup === k ? chevDown : chev}
                 </button>
-                {openGroup === k && <div className="inset" data-names>{shown.map(row)}</div>}
+                {openGroup === k && <div className="inset" data-names>{(() => {
+                  // Read by group (Family, Friends) once any guest has one; everyone else last.
+                  const h = households(shown);
+                  return h ? h.map((x) => (
+                    <Fragment key={'h-' + x.group}>
+                      <p className="hh" data-household={x.group || 'none'}>{x.group || 'Everyone else'} · {x.guests.length}</p>
+                      {x.guests.map(row)}
+                    </Fragment>
+                  )) : shown.map(row);
+                })()}</div>}
               </Fragment>
             ))}
           </div>
