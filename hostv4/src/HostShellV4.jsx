@@ -90,7 +90,7 @@ function BudgetChoices({ bc, pick, setPick }) {
 function HowWeGotThese({ bc, onDone }) {
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label="How we got these" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="How we got these" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>How we got these</h2><button className="link" onClick={onDone}>Done</button></div>
         <p className="fine" data-why-grounding>{bc.ask.grounding}</p>
@@ -254,14 +254,14 @@ export default function HostShellV4() {
         {tab === 'next' && status}
         {tab === 'next' && sb && (
           <section data-next data-budget>
-            <h2 className="q">How much do you want to spend?</h2>
+            <h2 className="gk-q">How much do you want to spend?</h2>
             <BudgetChoices bc={sb} pick={tierPick} setPick={setPick} />
             <p className="fine"><button className="link" onClick={() => setWhy(true)}>How we got these</button></p>
           </section>
         )}
         {tab === 'next' && !sb && (
           <section data-next>
-            {next ? <h2 className="q">{next.ask}</h2> : <h2 className="q">You’re set for now.</h2>}
+            {next ? <h2 className="gk-q">{next.ask}</h2> : <h2 className="gk-q">You’re set for now.</h2>}
             {next && !next.guests && <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>}
           </section>
         )}
@@ -272,7 +272,7 @@ export default function HostShellV4() {
               const val = <span className={'val' + (r.handled ? ' ok' : i === firstOpen ? ' next' : '')}>{r.handled ? 'Done' : i === firstOpen ? 'Next' : 'Later'}</span>;
               // A Guests row opens the Guests page; the rest stay in the current app for now.
               return r.route && r.route.tab === 'Guests'
-                ? <button className="row go" key={r.id} data-plan-row="guests" onClick={() => push('guests')}><span>{r.cueLabel}</span>{val}</button>
+                ? <button className="row gk-go" key={r.id} data-plan-row="guests" onClick={() => push('guests')}><span>{r.cueLabel}</span>{val}</button>
                 : <div className="row" key={r.id}><span>{r.cueLabel}</span>{val}</div>;
             })}
           </section>

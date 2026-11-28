@@ -43,7 +43,7 @@ const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
 // place one at a time; a find box only past FIND_AT names.
 const GROUPS = [['yes', 'Coming'], ['maybe', 'Maybe'], ['pending', 'No reply yet'], ['no', 'Can’t make it']];
 const FIND_AT = 21;
-const chevDown = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const chevDown = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
 /** The headcount at a glance: each reply against the plan's number. */
 function Headcount({ counts, of }) {
@@ -59,7 +59,7 @@ function Headcount({ counts, of }) {
   </>);
 }
 const longDay = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
 function Stepper({ value, onChange, label }) {
   return (
@@ -75,26 +75,26 @@ function Stepper({ value, onChange, label }) {
 
 function Rows({ items }) {
   // The current answer carries a checkmark (a single choice in a list, UX_12 §6).
-  return <div className="grp">{items.map(([label, fn, on]) => <button key={label} className="row go" aria-current={on || undefined} onClick={fn}><span className="nm">{label}</span>{on ? <span className="check" aria-label="Chosen">✓</span> : chev}</button>)}</div>;
+  return <div className="grp">{items.map(([label, fn, on]) => <button key={label} className="row gk-go" aria-current={on || undefined} onClick={fn}><span className="nm">{label}</span>{on ? <span className="check" aria-label="Chosen">✓</span> : chev}</button>)}</div>;
 }
 
 /** One question card. `count` is held by the page, because its answer is the bottom button. */
 export function QuestionCard({ k, ev, count, setCount, save }) {
   if (k === 'count') return (<>
-    <h2 className="q">About how many are coming?</h2>
+    <h2 className="gk-q">About how many are coming?</h2>
     <div className="grp"><Stepper value={count} onChange={setCount} label="guests" /></div>
     <p className="fine">A guess is fine. You can change it later.</p>
   </>);
   if (k === 'mode') return (<>
-    <h2 className="q">Do you want to track who’s coming by name?</h2>
+    <h2 className="gk-q">Do you want to track who’s coming by name?</h2>
     <Rows items={[['Yes, I’ll list names', () => save(modeEdit('list')), ev.guestMode === 'list'], ['No, a headcount is enough', () => save(modeEdit('count')), ev.guestMode === 'count']]} />
   </>);
   if (k === 'plus') return (<>
-    <h2 className="q">Can guests bring someone?</h2>
+    <h2 className="gk-q">Can guests bring someone?</h2>
     <Rows items={[['Yes, plus-ones are welcome', () => save(plusOneEdit('plus_one_ok')), ev.plusOnePolicy === 'plus_one_ok'], ['Not this time', () => save(plusOneEdit('no_plus_ones')), ev.plusOnePolicy === 'no_plus_ones']]} />
   </>);
   if (k === 'kids') return (<>
-    <h2 className="q">Are kids welcome?</h2>
+    <h2 className="gk-q">Are kids welcome?</h2>
     <Rows items={[['Kids are welcome', () => save(kidsEdit('kids_welcome')), ev.kidsPolicy === 'kids_welcome'], ['Adults only', () => save(kidsEdit('adults_only')), ev.kidsPolicy === 'adults_only']]} />
   </>);
   if (k === 'replyBy') return <ReplyByCard ev={ev} save={save} />;
@@ -110,10 +110,10 @@ function ReplyByCard({ ev, save }) {
     let prop = null;
     try { prop = proposeReplyBy(ev); } catch { prop = null; }
     return (<>
-      <h2 className="q">When should replies be in by?</h2>
+      <h2 className="gk-q">When should replies be in by?</h2>
       <div className="grp">
         {prop && prop.iso && !prop.tooClose && (
-          <button className="row go" onClick={() => save(replyByEdit(prop.iso))}>
+          <button className="row gk-go" onClick={() => save(replyByEdit(prop.iso))}>
             <span className="nm">{longDay(prop.iso)}<small>Our suggestion</small>{prop.holiday && <small className="hol" data-holiday>That’s {prop.holiday}. Keep it, or pick another date.</small>}</span>{chev}
           </button>
         )}
@@ -124,9 +124,9 @@ function ReplyByCard({ ev, save }) {
           <input type="date" className="datein" aria-label="Reply-by date" value={picked} onChange={(e) => setPicked(e.target.value)} />
         </label>
         {picked && !problem && (
-          <button className="row go" onClick={() => save(replyByEdit(picked))}><span className="nm">Use {longDay(picked)}</span>{chev}</button>
+          <button className="row gk-go" onClick={() => save(replyByEdit(picked))}><span className="nm">Use {longDay(picked)}</span>{chev}</button>
         )}
-        {String(ev.rsvpDeadline || '').trim() && <button className="row go" onClick={() => save(clearReplyByEdit())}>No reply-by date</button>}
+        {String(ev.rsvpDeadline || '').trim() && <button className="row gk-go" onClick={() => save(clearReplyByEdit())}>No reply-by date</button>}
       </div>
       {picked && problem && <p className="fine" data-problem>{problem}</p>}
       {prop && prop.tooClose && <p className="fine">{prop.why}</p>}
@@ -140,11 +140,11 @@ function AnswersSheet({ ev, save, onDone }) {
   const [count, setCount] = useState(Number(ev.guestEstimate) || 20);
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label="Your answers" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="Your answers" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>Your answers</h2><button className="link" onClick={onDone}>Done</button></div>
         {['count', 'mode', 'plus', 'kids', 'replyBy'].map((k) => (
-          <div key={k} className="card" data-answer={k}>
+          <div key={k} className="gk-card" data-answer={k}>
             <QuestionCard k={k} ev={ev} count={count} setCount={setCount} save={save} />
             {k === 'count' && Number(ev.guestEstimate) !== count && <button className="link" onClick={() => save(countEdit(ev, count))}>Plan for {count}</button>}
           </div>
@@ -224,7 +224,7 @@ function GuestRow({ g, onOpen, onReply, onRemove, selected, open, setOpen }) {
 /** A text field that saves when she leaves it (no line, no save per keystroke). */
 function Field({ label, value, onSave, type = 'text', placeholder, invalid, format }) {
   return (
-    <input className="field" type={type} aria-label={label} placeholder={placeholder || label} defaultValue={value || ''} aria-invalid={invalid || undefined}
+    <input className="gk-field" type={type} aria-label={label} placeholder={placeholder || label} defaultValue={value || ''} aria-invalid={invalid || undefined}
       onBlur={(e) => { const v = format ? format(e.target.value) : e.target.value.trim(); if (format) e.target.value = v; if (v !== String(value || '')) onSave(v); }} />
   );
 }
@@ -240,7 +240,7 @@ function ContactField({ kind, label, value, onSave }) {
   const [left, setLeft] = useState(false);
   const problem = left ? (kind === 'phone' ? phoneProblem(v) : emailProblem(v)) : null;
   return (<>
-    <input className="field" type={kind === 'phone' ? 'tel' : 'email'} inputMode={kind === 'phone' ? 'tel' : 'email'} autoComplete="off"
+    <input className="gk-field" type={kind === 'phone' ? 'tel' : 'email'} inputMode={kind === 'phone' ? 'tel' : 'email'} autoComplete="off"
       aria-label={label} placeholder={label} value={v} aria-invalid={problem ? true : undefined}
       aria-describedby={problem ? 'cp-' + kind : undefined}
       onChange={(e) => setV(kind === 'phone' ? formatPhoneUS(e.target.value) : e.target.value)}
@@ -252,8 +252,8 @@ function ContactField({ kind, label, value, onSave }) {
 function ListRow({ label, on, onOpen, onRemove }) {
   const set = Array.isArray(on) ? on : [];
   return (<>
-    <button className="row go" onClick={onOpen}><span className="nm">{label}</span>{!set.length && <span className="val">None</span>}{chev}</button>
-    {set.length > 0 && <div className="chips wrap picked">{set.map((x) => <button key={x} aria-label={'Remove ' + x} onClick={() => onRemove(x)}>{x} <span aria-hidden="true">✕</span></button>)}</div>}
+    <button className="row gk-go" onClick={onOpen}><span className="nm">{label}</span>{!set.length && <span className="val">None</span>}{chev}</button>
+    {set.length > 0 && <div className="gk-chips wrap picked">{set.map((x) => <button key={x} aria-label={'Remove ' + x} onClick={() => onRemove(x)}>{x} <span aria-hidden="true">✕</span></button>)}</div>}
   </>);
 }
 
@@ -263,7 +263,7 @@ function Checklist({ label, items, on, onTap, onDone, back }) {
     <button className="link back" onClick={onDone}>‹ {back}</button>
     <h3 className="lbl">{label}</h3>
     <div className="grp" role="group" aria-label={label}>
-      {items.map((x) => <button key={x} className="row go" aria-pressed={set.includes(x)} onClick={() => onTap(x)}><span className="nm">{x}</span>{set.includes(x) ? <span className="check" aria-hidden="true">✓</span> : null}</button>)}
+      {items.map((x) => <button key={x} className="row gk-go" aria-pressed={set.includes(x)} onClick={() => onTap(x)}><span className="nm">{x}</span>{set.includes(x) ? <span className="check" aria-hidden="true">✓</span> : null}</button>)}
     </div>
   </>);
 }
@@ -272,7 +272,7 @@ function MealPick({ label, value, onPick }) {
   const v = String(value || '—');
   const opts = MEAL_CHOICES.includes(v) ? MEAL_CHOICES : [...MEAL_CHOICES, v];
   return (
-    <select className="field" aria-label={label} value={v} onChange={(e) => onPick(e.target.value)}>
+    <select className="gk-field" aria-label={label} value={v} onChange={(e) => onPick(e.target.value)}>
       {opts.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
     </select>
   );
@@ -331,7 +331,7 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
         <ContactField kind="phone" label="Phone" value={g.phone} onSave={(v) => field({ phone: v })} />
         <ContactField kind="email" label="Email" value={g.email} onSave={(v) => field({ email: v })} />
         <div className="grp" style={{ marginTop: 16 }}>
-          <button className="row go" data-told aria-pressed={told} onClick={() => save(toldEdit(ev, g.id, name, 'other', new Date().toISOString()))}>
+          <button className="row gk-go" data-told aria-pressed={told} onClick={() => save(toldEdit(ev, g.id, name, 'other', new Date().toISOString()))}>
             <span className="nm">I told {first} myself<small>A note for you. Nothing is sent.</small></span>{told ? <span className="check" aria-label="Done">✓</span> : null}
           </button>
           <button className="row danger" onClick={() => { onDone(); save(removeGuestEdit(ev, i)); }}>Remove from the list</button>
@@ -346,7 +346,7 @@ function GuestSheet({ ev, g, i, save, onDone }) {
   const name = String(g.name || '').trim();
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{name}</h2><button className="link" onClick={onDone}>Done</button></div>
         <GuestDetail ev={ev} g={g} i={i} save={save} onDone={onDone} />
@@ -484,13 +484,13 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {st.val && <span className={'val' + (st.state === 'now' ? ' next' : '')}>{st.val}</span>}
     </>);
     const a = { key: st.k, 'data-step': st.k, 'data-state': st.state, 'aria-current': st.state === 'now' ? 'step' : undefined };
-    return TAP[st.k] ? <button className={'row go step s-' + st.state} {...a} onClick={TAP[st.k]}>{inner}{chev}</button>
+    return TAP[st.k] ? <button className={'row gk-go step s-' + st.state} {...a} onClick={TAP[st.k]}>{inner}{chev}</button>
       : <div className={'row step s-' + st.state} {...a}>{inner}</div>;
   };
   const pathEl = (
     <div className="grp path" data-path aria-label="Your guests, start to finish">
       {path.steps.map(stepRow)}
-      <button className="row go step" data-step="updates" onClick={onUpdates}>
+      <button className="row gk-go step" data-step="updates" onClick={onUpdates}>
         <span className="mark" aria-hidden="true" /><span className="nm">Updates and questions</span>
         {waiting > 0 && <span className="val warn" data-questions-waiting>{questionsWaitingLine(waiting)}</span>}{chev}
       </button>
@@ -509,10 +509,10 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const addBox = (<>
     <label className="lbl" htmlFor="addname">Names, one per line</label>
     <div className="addrow">
-      <textarea className="field" id="addname" rows={text.includes('\n') ? 3 : 1} placeholder="For example: Jamie Lee" value={text} onChange={(e) => setText(e.target.value)} />
+      <textarea className="gk-field" id="addname" rows={text.includes('\n') ? 3 : 1} placeholder="For example: Jamie Lee" value={text} onChange={(e) => setText(e.target.value)} />
       {text.trim() && <button className="link" onClick={add}>Add</button>}
     </div>
-    {couple && <p className="line" data-couple>Couples count as two people. <button className="link" onClick={keepAsWritten}>Keep as written</button></p>}
+    {couple && <p className="gk-line" data-couple>Couples count as two people. <button className="link" onClick={keepAsWritten}>Keep as written</button></p>}
   </>);
   // + and ⋯, beside the title: adding names and everything else, off the page.
   const acts = !qs.length && (
@@ -527,7 +527,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     <section data-guests>
       {planned && !(byName && named > 0 && !qs.length) && <p className="sub">{locked ? 'Locked at ' + locked : 'Planning for ' + planned}{byName && !qs.length ? ' · ' + named + ' named · ' + coming + ' coming' : ''}{sample ? ' · Sample' : ''}</p>}
       {status}
-      {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
+      {qs.length > 0 && <div className="gk-card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
       {named > 0 && byName && !qs.length && <Headcount counts={counts} of={locked || planned} />}
@@ -537,19 +537,19 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {!qs.length && !byName && (<>
         <h3 className="sh">Headcount</h3>
         <div className="grp"><div className="row">Planning around<span className="val">{planned}</span></div>
-          <button className="row go" onClick={() => save(modeEdit('list'))}>Switch to a list of names{chev}</button></div>
+          <button className="row gk-go" onClick={() => save(modeEdit('list'))}>Switch to a list of names{chev}</button></div>
       </>)}
 
       {!qs.length && byName && named > 0 && (<>
-        {named >= FIND_AT && <input className="field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
+        {named >= FIND_AT && <input className="gk-field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
         {finding ? (
           shown.length ? <div className="grp" data-names>{shown.map(row)}</div> : <p className="fine">No one here matches.</p>
         ) : (
           <div className="grp" data-groups>
             {GROUPS.filter(([k]) => counts[k] > 0).map(([k, l]) => (
               <Fragment key={k}>
-                <button className="row go" data-group={k} aria-expanded={openGroup === k} onClick={() => setGroup(openGroup === k ? null : k)}>
-                  <span className={'dot ' + k} aria-hidden="true" /><span className="nm">{l}</span><span className="val">{counts[k]}</span>{openGroup === k ? chevDown : chev}
+                <button className="row gk-go" data-group={k} aria-expanded={openGroup === k} onClick={() => setGroup(openGroup === k ? null : k)}>
+                  <span className={'gk-dot ' + k} aria-hidden="true" /><span className="nm">{l}</span><span className="val">{counts[k]}</span>{openGroup === k ? chevDown : chev}
                 </button>
                 {openGroup === k && <div className="inset" data-names>{shown.map(row)}</div>}
               </Fragment>
@@ -565,7 +565,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
 
       {sheet === 'add' && (
         <div className="scrim" onClick={() => setSheet(null)}>
-          <div className="sheet" role="dialog" aria-label="Add names" onClick={(e) => e.stopPropagation()}>
+          <div className="gk-sheet" role="dialog" aria-label="Add names" onClick={(e) => e.stopPropagation()}>
             <div className="grabber" aria-hidden="true" />
             <div className="sheethead"><h2>Add names</h2><button className="link" onClick={() => setSheet(null)}>Done</button></div>
             {addBox}
@@ -575,13 +575,13 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
 
       {sheet === 'more' && (
         <div className="scrim" onClick={() => setSheet(null)}>
-          <div className="sheet" role="dialog" aria-label="More about guests" onClick={(e) => e.stopPropagation()}>
+          <div className="gk-sheet" role="dialog" aria-label="More about guests" onClick={(e) => e.stopPropagation()}>
             <div className="grabber" aria-hidden="true" />
             <div className="sheethead"><h2>Guests</h2><button className="link" onClick={() => setSheet(null)}>Done</button></div>
             {byName && (<div className="grp" data-more>
-              <button className="row go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
-              {named > 0 && <button className="row go" data-download onClick={download}><span>Download the list</span>{chev}</button>}
-              <button className="row go" role="switch" aria-checked={ev.hostAlerts !== false} data-alerts onClick={() => save(replyAlertsEdit(ev))}>
+              <button className="row gk-go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
+              {named > 0 && <button className="row gk-go" data-download onClick={download}><span>Download the list</span>{chev}</button>}
+              <button className="row gk-go" role="switch" aria-checked={ev.hostAlerts !== false} data-alerts onClick={() => save(replyAlertsEdit(ev))}>
                 <span className="nm">Tell me when someone replies<small>By email and notifications, at most once an hour</small></span>
                 <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
               </button>
@@ -606,14 +606,14 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     <div className={'gsplit ' + layout} data-layout={layout}>
       <div className="listpane">{listPane}</div>
       {layout === 'split' && (
-        <aside className="gdetail" data-detail aria-label="Guest">
+        <aside className="gk-gdetail" data-detail aria-label="Guest">
           {detailGuest
             ? <><h2 className="dhead">{detailGuest.name}</h2><GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys /></>
-            : <p className="empty">{named ? 'Pick a name to see their reply, meal and how to reach them.' : 'Names you add show here, one at a time.'}</p>}
+            : <p className="gk-empty">{named ? 'Pick a name to see their reply, meal and how to reach them.' : 'Names you add show here, one at a time.'}</p>}
         </aside>
       )}
       {layout === 'compact' && detailGuest && (
-        <aside className="gdetail pushedpane" data-detail aria-label={detailGuest.name}>
+        <aside className="gk-gdetail pushedpane" data-detail aria-label={detailGuest.name}>
           <div className="navbar"><button className="backbtn" onClick={() => setOpen(null)} aria-label="Back to Guests"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>Guests</button></div>
           <h2 className="dhead">{detailGuest.name}</h2>
           <GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys />

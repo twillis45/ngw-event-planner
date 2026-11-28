@@ -12,24 +12,25 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/styles.css'), 'utf8');
+// The design language moved to the shared kit (src/guestsKit/kit.css, scoped .gk); the tokens stay in styles.css.
+const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/guestsKit/kit.css'), 'utf8');
 const EDGE = 'max(24px, calc((100% - 680px) / 2))';
 
 describe('one column is centered', () => {
   it('the view pads both sides by the same edge', () => {
-    expect(css).toContain('.tablet.compact .view { padding-left: ' + EDGE + '; padding-right: ' + EDGE + '; }');
+    expect(css).toContain('.gk .tablet.compact .view { padding-left: ' + EDGE + '; padding-right: ' + EDGE + '; }');
   });
   it('the back link, the pane button and the menu button sit on that edge', () => {
-    expect(css).toContain('.tablet.compact .view > .navbar { left: calc(max(24px, (100% - 680px) / 2) - 8px); }');
-    expect(css).toContain('.tablet.compact .action { right: ' + EDGE + '; }');
-    expect(css).toMatch(/\.tablet\.compact \.menubtn \{ left: calc\(max\(24px, \(100% - 680px\) \/ 2\) - 12px/);
+    expect(css).toContain('.gk .tablet.compact .view > .navbar { left: calc(max(24px, (100% - 680px) / 2) - 8px); }');
+    expect(css).toContain('.gk .tablet.compact .action { right: ' + EDGE + '; }');
+    expect(css).toMatch(/\.gk \.tablet\.compact \.menubtn \{ left: calc\(max\(24px, \(100% - 680px\) \/ 2\) - 12px/);
   });
   it('the guest pushed over it centers its 560px column the same way', () => {
-    expect(css).toContain('.tablet.compact .gdetail.pushedpane { padding-left: max(24px, calc((100% - 560px) / 2)); padding-right: max(24px, calc((100% - 560px) / 2)); }');
+    expect(css).toContain('.gk .tablet.compact .gk-gdetail.pushedpane { padding-left: max(24px, calc((100% - 560px) / 2)); padding-right: max(24px, calc((100% - 560px) / 2)); }');
   });
   it('only the compact layout changes', () => {
     const lines = css.split('\n').filter((l) => l.includes('100% - 680px') || l.includes('100% - 560px'));
     expect(lines.length).toBeGreaterThan(0);
-    for (const l of lines) expect(l.startsWith('.tablet.compact ')).toBe(true);
+    for (const l of lines) expect(l.startsWith('.gk .tablet.compact ')).toBe(true);
   });
 });

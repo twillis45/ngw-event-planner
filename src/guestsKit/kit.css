@@ -1,0 +1,312 @@
+/* THE GUESTS KIT'S DESIGN LANGUAGE (owner, 11/27/2026: "Bring the guest
+   workflow and screens from v4 with v2 styling"). One stylesheet for the
+   screens both shells share, scoped under .gk so it can reach nothing else:
+   hostv4 puts .gk on its whole page; hostv2 only on the Guests screens. Class
+   names hostv2 also styles carry a gk- prefix (gk-sheet, gk-card, gk-field…).
+   Every color is a token the shell defines (--raised, --ink-3, --accent…);
+   the fixed ones are --gk-* tokens whose fallbacks are hostv4's own values.
+   Moved from hostv4/src/styles.css; the history is there. */
+.gk .app { position: fixed; inset: 0; max-width: 430px; margin: 0 auto; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.gk .view { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
+.gk .lt { font-size: 1.75rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; margin: 18px 2px 4px; }
+.gk .sub { font-size: .9375rem; color: var(--ink-3); margin: 0 2px 20px; }
+.gk .gk-q { font-size: 1.5rem; font-weight: 700; line-height: 1.2; margin: 6px 2px 10px; }
+.gk .qhelp { font-size: 1rem; color: var(--ink-2); margin: 0 2px 16px; line-height: 1.45; }
+.gk .fine { font-size: .875rem; color: var(--ink-3); margin: 0 2px 14px; }
+.gk .grp { background: var(--raised); border-radius: 12px; overflow: hidden; }
+.gk .row { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 14px; font-size: 1.0625rem; position: relative; }
+.gk .row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); }
+.gk .val { margin-left: auto; color: var(--ink-3); font-size: 1rem; white-space: nowrap; }
+.gk .val.ok { color: var(--ok); }
+.gk .val.next { color: var(--accent); font-weight: 500; }
+.gk .action { padding: 10px 16px 12px; }
+.gk .primary { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; border-radius: 14px; background: var(--accent); color: var(--btn-ink); font-size: 1.0625rem; font-weight: 600; text-decoration: none; transition: transform .12s ease-out; }
+.gk .primary:active { transform: scale(.97); }
+.gk .tabbar { display: flex; justify-content: space-around; border-top: 1px solid var(--hair); padding: 6px 8px max(10px, env(safe-area-inset-bottom, 0px)); }
+.gk .tabbar button { background: none; border: 0; color: var(--ink-3); font: 500 .6875rem var(--sans); display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 46px; min-width: 72px; cursor: pointer; }
+.gk .tabbar button svg { width: 24px; height: 24px; }
+.gk .tabbar button[aria-selected="true"] { color: var(--accent); }
+.gk button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
+/* Choices are rows with a radio (UX_12 §6); the picked row takes a faint tint of the accent. */
+.gk .row.choice { width: 100%; border: 0; background: none; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; }
+.gk .row.choice[aria-checked="true"] { background: var(--gk-tint, rgba(241, 237, 230, .07)); }
+.gk .row.choice:active { opacity: .7; }
+.gk .radio { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink-3); position: relative; }
+.gk [aria-checked="true"] > .radio { border-color: var(--accent); }
+.gk [aria-checked="true"] > .radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+.gk .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; min-width: 44px; text-align: center; }
+/* A link inside a sentence is still a 44px target (live check, 11/26/2026:
+   Undo measured 38×21); the negative margin keeps the sentence's lines even. */
+.gk .fine .link, .gk .done .link, .gk .gk-line .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; margin: -12px -4px; vertical-align: middle; }
+.gk .fine.warn { color: var(--warn); }
+.gk .grp + .fine { margin-top: 12px; }
+.gk .done { font-size: .9375rem; line-height: 1.4; color: var(--ok); margin: 0 2px 12px; }
+.gk .gk-sheet .gk-card { margin-top: 14px; }
+.gk .gk-sheet .gk-card .gk-q { font-size: 1.1875rem; }
+.gk .nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gk .nm small { font-size: .8125rem; color: var(--ink-3); }
+/* A sheet rises from the bottom, shows a grabber and Done (UX_12 §2). */
+.gk .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; animation: gk-fade .25s ease-out; }
+.gk .gk-sheet { width: 100%; max-width: 430px; max-height: 88vh; overflow-y: auto; background: var(--raised-2); border-radius: 14px 14px 0 0; padding: 8px 16px max(20px, env(safe-area-inset-bottom, 0px)); animation: gk-rise .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.gk .gk-sheet .grp { background: var(--raised); }
+.gk .grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--ink-3); opacity: .5; margin: 0 auto 6px; }
+.gk .sheethead { display: flex; align-items: center; justify-content: space-between; }
+.gk .sheethead h2 { font-size: 1.1875rem; margin: 0; }
+.gk .sh { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 2px 8px; }
+.gk .sh h3 { font-size: 1rem; margin: 0; }
+.gk .sh span { color: var(--ink-2); font-size: .9375rem; }
+/* Pushed pages: a back button labeled with where it returns (UX_12 §2). */
+.gk .pushed .view { animation: gk-push .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.gk .navbar { display: flex; align-items: center; min-height: 44px; margin: 4px -6px 0; }
+.gk .backbtn { display: flex; align-items: center; gap: 2px; background: none; border: 0; color: var(--accent); font: 400 1.0625rem var(--sans); min-height: 44px; padding: 0 6px; cursor: pointer; }
+.gk .backbtn svg { width: 22px; height: 22px; }
+.gk .row.gk-go { width: 100%; border: 0; background: none; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; }
+.gk .row.gk-go:active, .gk .row.guest:active { background: var(--raised-2); }
+.gk .gk-chev { width: 18px; height: 18px; color: var(--ink-3); margin-left: auto; flex: none; }
+.gk .row.gk-go .val + .gk-chev { margin-left: 4px; }
+.gk .gk-card { margin-bottom: 8px; }
+.gk .lt + .gk-card, .gk .lt + section .gk-card { margin-top: 14px; }
+.gk [data-guests] > .gk-card:first-child { margin-top: 14px; }
+.gk .check { margin-left: auto; color: var(--accent); font-weight: 600; }
+.gk .lbl { display: block; font-size: .9375rem; font-weight: 600; color: var(--ink-2); margin: 16px 2px 8px; }
+.gk .gk-field { width: 100%; background: var(--raised); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; padding: 12px 14px; font: 1.0625rem var(--sans); resize: none; margin-bottom: 10px; }
+.gk .gk-field:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+/* A placeholder is a hint, never an answer (owner, 11/25/2026; UX_11 rule 2). */
+.gk .gk-field::placeholder { color: var(--ink-3); font-style: italic; opacity: 1; }
+.gk .addrow { display: flex; gap: 12px; align-items: flex-start; }
+.gk .addrow .link { padding: 0 4px; }
+.gk .gk-line { font-size: .9375rem; color: var(--ink-2); margin: 0 2px 12px; }
+.gk .stepper { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; min-height: 64px; }
+.gk .stepper .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gk .stepper .btns { display: flex; gap: 10px; }
+.gk .stepper .btns button { width: 48px; height: 44px; border-radius: 10px; border: 0; background: var(--raised-2); color: var(--ink); font-size: 1.5rem; cursor: pointer; }
+.gk .stepper .btns button:active { transform: scale(.97); }
+.gk .seg { display: flex; background: var(--raised); border-radius: 10px; padding: 3px; gap: 3px; }
+.gk .seg button { flex: 1; min-height: 44px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
+.gk .seg button[aria-pressed="true"] { background: var(--raised-2); color: var(--ink); }
+.gk .gk-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px; scrollbar-width: none; }
+.gk .gk-chips button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--hair); background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
+.gk .gk-chips button[aria-pressed="true"] { background: var(--gk-tint-chip, rgba(241, 237, 230, .1)); color: var(--ink); border-color: transparent; }
+/* GUESTS FOLDS AWAY (owner chose option E, 11/25/2026). */
+.gk .ltrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 4px; }
+.gk .ltrow .lt { margin: 0 auto 0 2px; }
+.gk .pageacts { display: flex; gap: 8px; flex: none; }
+.gk .pageacts .ic { width: 44px; height: 44px; border-radius: 22px; border: 0; background: var(--raised); color: var(--ink); font: 500 1.25rem var(--sans); cursor: pointer; }
+.gk .hbar { display: flex; gap: 3px; height: 10px; border-radius: 5px; overflow: hidden; margin: 4px 0 8px; background: var(--raised); }
+.gk .hbar i { display: block; min-width: 4px; }
+.gk .hbar .yes { background: var(--ok); } .gk .hbar .maybe { background: var(--ink-2); } .gk .hbar .pending { background: var(--ink-3); opacity: .55; } .gk .hbar .no { background: var(--warn); opacity: .6; } .gk .hbar .open { background: transparent; }
+.gk .legend { color: var(--ink-3); font-size: .9375rem; margin: 0 0 14px; } .gk .legend b { color: var(--ink); font-weight: 600; }
+.gk .pill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; font: 600 .9375rem var(--sans); cursor: pointer; margin: 0 0 14px; }
+.gk .pill.warn { background: var(--gk-warn-tint, rgba(255, 159, 10, .14)); color: var(--warn); }
+.gk .gk-dot { width: 8px; height: 8px; border-radius: 4px; margin-right: 12px; flex: none; background: var(--ink-3); }
+.gk .gk-dot.yes { background: var(--ok); } .gk .gk-dot.maybe { background: var(--ink-2); } .gk .gk-dot.no { background: var(--warn); }
+/* Inside a group the group names the reply, so the row doesn't repeat it, and
+   the names line up with the group's label. */
+.gk .inset .row.guest { padding-left: 46px; }
+.gk .inset .row.guest .val { display: none; }
+/* Diet and allergies: a row each, what is picked under it as chips that remove it. */
+.gk .gk-chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0 0 12px; padding: 0; }
+.gk .grp.lists { margin-bottom: 12px; }
+.gk .gk-chips.picked { margin: 0; padding: 0 16px 12px; }
+.gk .swipe { position: relative; overflow: hidden; }
+.gk .swipe + .swipe::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); z-index: 1; }
+/* Swipe actions (owner, 11/26/2026): revealed under the row, each a 44px+ button. */
+.gk .acts { position: absolute; top: 0; bottom: 0; display: flex; }
+.gk .acts.right { left: 0; } .gk .acts.left { right: 0; }
+.gk .swipe:not([data-dir="right"]) .acts.right, .gk .swipe:not([data-dir="left"]) .acts.left { visibility: hidden; }
+.gk .acts .a { width: 84px; min-height: 44px; border: 0; font: 600 .8125rem/1.15 var(--sans); padding: 0 6px; cursor: pointer; color: var(--gk-act-ink, #0c0c0e); }
+.gk .acts .a.ok { background: var(--ok); } .gk .acts .a.maybe { background: var(--ink-2); }
+.gk .acts .a.no { background: var(--gk-act-no, #8e8e93); color: var(--gk-act-no-ink, #fff); } .gk .acts .a.none { background: var(--gk-act-none, #48484a); color: var(--ink); } .gk .acts .a.rm { background: var(--warn); }
+.gk .row.guest { width: 100%; border: 0; background: var(--raised); color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; touch-action: pan-y; position: relative; z-index: 1; }
+.gk .row.danger { width: 100%; border: 0; background: none; color: var(--warn); font: inherit; font-size: 1.0625rem; justify-content: center; cursor: pointer; }
+.gk .datein { margin-left: auto; background: none; border: 0; color: var(--accent); font: inherit; min-height: 44px; color-scheme: dark; }
+.gk .hol { color: var(--warn); }
+.gk h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
+/* The invite page. */
+.gk .msg { background: var(--raised); border-radius: 12px; padding: 14px; white-space: pre-wrap; font-size: 1rem; line-height: 1.45; color: var(--ink); margin-top: 10px; overflow-wrap: anywhere; }
+.gk .seg.voices { overflow-x: auto; scrollbar-width: none; }
+.gk .seg.voices button { flex: none; padding: 0 12px; }
+.gk .rule .lbl { margin-top: 14px; }
+.gk .val.warnv { color: var(--warn); }
+.gk .okline { color: var(--ok); }
+/* The send sheet. */
+.gk .sendbody { padding-top: 6px; }
+.gk .sendbody .who { display: flex; flex-direction: column; gap: 2px; margin: 0 2px 12px; font-size: 1rem; }
+.gk .sendbody .who span { color: var(--ink-2); }
+.gk .sendbody .primary { margin: 14px 0 6px; }
+.gk .sendbody > .link { display: block; min-height: 44px; }
+.gk .sendbody .row.one .link { margin-left: 16px; }
+.gk .done.warnline { color: var(--warn); }
+/* Updates and questions. */
+.gk .row.update { align-items: flex-start; }
+.gk .row.update .nm { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gk .thread { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gk .thread li { max-width: 85%; padding: 10px 12px; border-radius: 14px; background: var(--raised); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
+.gk .thread li b { display: block; font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin-bottom: 2px; }
+/* The host's replies are outlined in bone, a guest's stay solid (owner chose
+   option 2, 11/25/2026: the two fills were 1.48:1 apart). */
+.gk .thread li.me { align-self: flex-end; background: transparent; border: 1.5px solid var(--gk-tint-line, rgba(241, 237, 230, .55)); }
+.gk .thread li.me b { color: var(--ink-2); }
+.gk [data-view="updates"] .addrow .link:disabled, .gk .link:disabled { opacity: .45; }
+.gk select.gk-field { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+.gk .gk-field[aria-invalid="true"] { border-color: var(--warn); }
+.gk .switch { flex: none; margin-left: auto; width: 51px; height: 31px; border-radius: 16px; background: var(--raised-2); position: relative; transition: background .2s ease-out; }
+.gk .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: var(--ink); transition: transform .2s cubic-bezier(0.22, 1, 0.36, 1); }
+.gk .switch.on { background: var(--ok); }
+.gk .switch.on::after { transform: translateX(20px); }
+@keyframes gk-push { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gk-rise { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes gk-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gk .primary:active { transform: none; } .gk .gk-sheet, .gk .pushed .view { animation: gk-fade .2s ease-out; } }
+
+/* ── TABLETS (UX_13, owner 11/25/2026): sidebar, pane bars, three panes ───── */
+.gk .tablet { position: fixed; inset: 0; }
+.gk .tablet .tabbar { display: none; }
+.gk .tablet .side { position: absolute; top: 0; bottom: 0; left: 0; width: 260px; background: var(--gk-side, #121214); border-right: 1px solid var(--hair); overflow-y: auto; padding: calc(18px + env(safe-area-inset-top, 0px)) 12px 18px calc(12px + env(safe-area-inset-left, 0px)); z-index: 30; }
+.gk .sidehead h1 { font-size: 1.25rem; margin: 6px 10px 2px; text-wrap: balance; }
+.gk .sidehead .sub { margin: 0 10px 14px; font-size: .875rem; }
+.gk .sidelbl { font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin: 18px 10px 6px; }
+.gk .sidenav { display: flex; flex-direction: column; gap: 2px; }
+.gk .sidenav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 1.0625rem var(--sans); text-align: left; cursor: pointer; }
+.gk .sidenav button svg { width: 22px; height: 22px; flex: none; color: var(--ink-3); }
+.gk .sidenav button[aria-current="page"] { background: var(--gk-tint-strong, rgba(241, 237, 230, .12)); }
+.gk .sidenav button[aria-current="page"] svg { color: var(--accent); }
+.gk .sval { margin-left: auto; color: var(--ink-3); font-size: .875rem; }
+.gk .tablet .side .fine { margin: 18px 10px; }
+.gk .tablet .app { left: 260px; max-width: none; margin: 0; padding-top: 0; }
+/* Each pane has a bar: its back or menu button at the left, its one action at the right (owner: "top of pane"). */
+.gk .tablet .view { padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.gk .tablet .view > * { max-width: 680px; }
+.gk .tablet .view > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.gk .tablet .action { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); right: 16px; padding: 0; z-index: 5; }
+.gk .tablet .primary { width: auto; min-height: 44px; padding: 0 18px; }
+.gk .tablet .view > .lt { margin-top: 0; }
+/* Portrait and split screen: one pane; the sidebar slides in over it. */
+.gk .tablet.compact .app { left: 0; }
+/* CENTERED (owner, 11/26/2026, option B): one column, centered; the back link,
+   the menu button and the pane's button line up with its edges. One edge for
+   all four: max(24px, (width - 680px) / 2). */
+.gk .tablet.compact .view { padding-left: max(24px, calc((100% - 680px) / 2)); padding-right: max(24px, calc((100% - 680px) / 2)); }
+.gk .tablet.compact .view > .navbar { left: calc(max(24px, (100% - 680px) / 2) - 8px); }
+.gk .tablet.compact .action { right: max(24px, calc((100% - 680px) / 2)); }
+.gk .tablet.compact .menubtn { left: calc(max(24px, (100% - 680px) / 2) - 12px + env(safe-area-inset-left, 0px)); }
+/* The guest pushed over it centers its own (560px) column the same way. */
+.gk .tablet.compact .gk-gdetail.pushedpane { padding-left: max(24px, calc((100% - 560px) / 2)); padding-right: max(24px, calc((100% - 560px) / 2)); }
+.gk .tablet.compact .gk-gdetail.pushedpane > .navbar { left: calc(max(24px, (100% - 560px) / 2) - 8px); }
+.gk .tablet.compact .side { transform: translateX(-105%); transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
+.gk .tablet.compact.sideopen .side { transform: none; }
+.gk .sidescrim { display: none; }
+.gk .tablet.compact.sideopen .sidescrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 25; }
+.gk .menubtn { position: fixed; top: calc(6px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--accent); display: flex; align-items: center; justify-content: center; z-index: 6; cursor: pointer; }
+.gk .menubtn svg { width: 22px; height: 22px; }
+/* Guests: the list pane and the guest. */
+.gk .gsplit { display: flex; flex: 1; min-height: 0; height: 100%; }
+.gk .listpane { position: relative; display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gk .gsplit.split .listpane { flex: none; width: 400px; border-right: 1px solid var(--hair); }
+.gk .gsplit.split .listpane .view { padding-left: 16px; padding-right: 16px; }
+.gk .gk-gdetail { flex: 1; min-width: 0; overflow-y: auto; padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.gk .gk-gdetail > * { max-width: 560px; }
+.gk .gk-gdetail.pushedpane { position: absolute; inset: 0; background: var(--bg); z-index: 8; animation: gk-push .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.gk .gk-gdetail.pushedpane > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.gk .dhead { font-size: 1.5rem; font-weight: 700; margin: 0 2px 6px; }
+.gk .gk-empty { color: var(--ink-3); margin: 40px auto; text-align: center; max-width: 34ch; }
+/* Solid, so the swipe labels under a row never show through the selection. */
+.gk .row.guest[aria-selected="true"] { background: var(--gk-selected, #323233); }
+.gk .keys { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ink-3); font-size: .8125rem; margin: 28px 2px 0; }
+.gk kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(--hair); border-radius: 5px; padding: 1px 5px; }
+/* A pointer shows where it is (UX_13 §3). */
+@media (hover: hover) {
+  .gk .row.gk-go:hover, .gk .row.guest:hover, .gk .sidenav button:hover, .gk .row.choice:hover { background: var(--raised-2); }
+  .gk .link:hover { text-decoration: underline; }
+}
+@media (prefers-reduced-motion: reduce) { .gk .tablet.compact .side, .gk .gk-gdetail.pushedpane { transition: none; animation: none; } }
+/* START TO FINISH (owner, 11/26/2026: "Bring the path back"): every step, its
+   state, the lit one = the bottom button. Done is quiet with a check; later is
+   gray text, not faded, so it keeps its contrast. */
+.gk .path { margin-bottom: 20px; }
+.gk .path .mark { flex: 0 0 20px; min-width: 0; max-width: 20px; overflow: visible; text-align: center; color: var(--ok); font-weight: 600; font-size: .9375rem; }
+.gk .path .mark.s-now::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+.gk .path .step.s-now .nm { font-weight: 600; }
+.gk .path .step.s-later .nm, .gk .path .step.s-later .val { color: var(--ink-3); }
+.gk .path .step.s-done .nm { color: var(--ink-2); }
+.gk .val.warn { color: var(--warn); }
+/* THE PAGE THEY OPEN (owner, 11/26/2026): the guest's own invite, framed. */
+.gk .pvframe { position: relative; height: 420px; overflow: hidden; border-radius: 16px; border: 1px solid var(--hair); background: #f4efe6; margin: 4px 0 8px; }
+.gk .pvframe[data-full="1"] { height: min(1400px, 160vh); }
+.gk .pvframe iframe { display: block; width: 100%; height: 100%; border: 0; }
+.gk .pvframe[data-full="0"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(rgba(0,0,0,0), var(--bg)); pointer-events: none; }
+/* DESIGN THIS PAGE (owner, 11/26/2026): palettes as swatch buttons. */
+.gk .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.gk .swb { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px 6px 8px; border: 1px solid var(--hair); border-radius: 12px; background: var(--raised, #1c1c1e); color: var(--ink); font: inherit; font-size: .9375rem; cursor: pointer; }
+.gk .swb[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.gk .swb .sw { width: 40px; height: 29px; flex: none; }
+.gk .swauto { width: 29px; text-align: center; color: var(--accent); }
+.gk .sh span[data-message-count] { color: var(--ink-3); font-weight: 400; font-size: .875rem; }
+/* THE DAY (owner, 11/26/2026: "Start building the day-of screens"). */
+.gk .nowcard { background: var(--raised); border-radius: 12px; padding: 16px; }
+.gk .nowcard .t { color: var(--ink-3); font-size: .9375rem; margin: 0 0 6px; }
+.gk .nowcard .what { font-size: 1.1875rem; font-weight: 600; line-height: 1.3; margin: 0; }
+.gk .nowcard .nx { color: var(--ink-2); font-size: .9375rem; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--hair); }
+.gk .gap { margin-top: 12px; }
+.gk .sub2 { color: var(--ink-2); }
+.gk .row .nm small { display: block; color: var(--ink-3); font-size: .875rem; margin-top: 2px; line-height: 1.35; }
+.gk .row.check { padding-left: 6px; gap: 4px; }
+.gk .tickbtn { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; cursor: pointer; padding: 0; }
+.gk .tickbtn .box { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: inline-flex; align-items: center; justify-content: center; color: var(--btn-ink); font-size: .8125rem; font-weight: 700; }
+.gk .row.check.got .tickbtn .box { background: var(--ok); border-color: var(--ok); }
+.gk .row.check.got .checknm { color: var(--ink-3); }
+.gk .checknm { flex: 1; min-height: 44px; background: none; border: 0; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; padding: 0; }
+.gk .helptext { margin: 0; padding: 4px 14px 14px; color: var(--ink-2); font-size: .9375rem; line-height: 1.5; }
+.gk .run .row { min-height: 44px; padding: 6px 14px; font-size: 1rem; }
+.gk .run .tm { flex: 0 0 74px; color: var(--ink-3); font-size: .875rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gk .run .row.s-done .nm, .gk .run .row.s-done .tm, .gk .run .row.s-past .nm, .gk .run .row.s-past .tm { color: var(--ink-3); }
+.gk .run .row.s-now { background: var(--gk-tint, rgba(241, 237, 230, .07)); }
+.gk .run .row.s-now .nm { font-weight: 600; }
+.gk .run .mk { flex: 0 0 14px; text-align: center; color: var(--ok); font-size: .875rem; }
+.gk .run .mk.s-now::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.gk .counter { position: fixed; inset: 0; background: #000; color: var(--ink); display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top, 0px)) 22px max(24px, env(safe-area-inset-bottom, 0px)); z-index: 50; }
+.gk .counter .ctop { display: flex; justify-content: space-between; align-items: center; color: var(--ink-3); font-size: 1rem; }
+.gk .counter .cclock { font-size: 1.25rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.gk .counter .clbl { color: var(--ink-3); font-size: 1.0625rem; margin: 34px 0 10px; }
+.gk .counter .cbig { font-size: 2.125rem; font-weight: 700; line-height: 1.18; margin: 0; letter-spacing: -.01em; }
+.gk .counter .cnext { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--hair); }
+.gk .counter .cin { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gk .counter .cwhat { font-size: 1.125rem; color: var(--ink-2); margin-top: 6px; line-height: 1.35; }
+.gk .counter .cdone { margin-top: auto; min-height: 76px; font-size: 1.375rem; border-radius: 18px; }
+.gk .counter .cfoot { display: flex; justify-content: center; margin-top: 18px; }
+.gk .counter .cfoot .link { font-size: 1.0625rem; }
+@media (prefers-reduced-motion: reduce) { .gk .counter .cdone:active { transform: none; } }
+
+/* A row that leaves for the current app is a link, but it reads as a row: no
+   underline, the row's own ink (The Day's Before tomorrow and After). */
+.gk a.row { color: inherit; text-decoration: none; }
+/* A row's own action (Your day crew · Send): the link button, at the row's end,
+   after its status when it has one. */
+.gk .row .act { margin-left: auto; padding-left: 12px; white-space: nowrap; }
+.gk .nm small b.ok { color: var(--ok); font-weight: 500; }
+.gk .nm small b.warn { color: var(--warn); font-weight: 500; }
+
+/* Day alerts (B5): the tier is a word, colored to agree with it. */
+.gk .alert .tier { font-weight: 600; margin-right: 4px; }
+.gk .alert.critical .tier { color: var(--danger, #ff6961); }
+.gk .alert.warning .tier { color: var(--warn); }
+.gk .alertgrp { margin-bottom: 12px; }
+/* A row's action never gives up its width to the text beside it, and a link
+   that is a button reads as one (no underline). */
+.gk .row .act { flex-shrink: 0; }
+.gk a.link { text-decoration: none; }
+/* Who's here: a checklist row's action sits level with the name. */
+.gk .row.check .act { align-self: center; }
+
+/* A main button that waits on something (a draft with blanks) reads as waiting. */
+.gk .primary:disabled { opacity: .45; cursor: default; }
+
+/* A choice's per-head sits under its amount (budget question, 11/26/2026). */
+.gk .val small { display: block; font-size: .8125rem; color: var(--ink-3); text-align: right; }
+
+/* A row's action is a 44px target with its word centered in it (measured: the
+   box was centered but the text sat at its top). */
+.gk .row .act { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Reminders in your calendar: the lead switch sits above the list. */
+.gk .gk-sheet .seg { margin: 0 0 14px; }

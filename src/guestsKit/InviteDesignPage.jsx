@@ -59,7 +59,7 @@ export default function InviteDesignPage({ ev, save, nav, status }) {
       </div>
 
       <h3 className="sh">Your message <span data-message-count>{message.length} / {INVITE_MESSAGE_MAX}</span></h3>
-      <textarea className="field" rows={3} aria-label="Your message" maxLength={INVITE_MESSAGE_MAX} value={message}
+      <textarea className="gk-field" rows={3} aria-label="Your message" maxLength={INVITE_MESSAGE_MAX} value={message}
         onChange={(e) => setMessage(e.target.value)} onBlur={() => put({ message })} placeholder={suggestion} />
       <p className="fine">The first thing guests read, under your event’s name.{' '}
         <button className="link" onClick={() => { setMessage(suggestion); put({ message: suggestion }); }}>Start over</button>
@@ -67,10 +67,10 @@ export default function InviteDesignPage({ ev, save, nav, status }) {
 
       <h3 className="sh">Who it’s from</h3>
       <label className="lbl" htmlFor="dz-host">Hosted by</label>
-      <input id="dz-host" className="field" aria-label="Hosted by" maxLength={120} value={host} placeholder="Dana, or Dana & Sam"
+      <input id="dz-host" className="gk-field" aria-label="Hosted by" maxLength={120} value={host} placeholder="Dana, or Dana & Sam"
         onChange={(e) => setHost(e.target.value)} onBlur={() => put({ hostName: host })} />
       <label className="lbl" htmlFor="dz-contact">How guests reach you</label>
-      <input id="dz-contact" className="field" aria-label="How guests reach you" inputMode="email" maxLength={120} value={contact}
+      <input id="dz-contact" className="gk-field" aria-label="How guests reach you" inputMode="email" maxLength={120} value={contact}
         placeholder="A cell phone number or an email" aria-invalid={problem ? true : undefined}
         onChange={(e) => setContact(e.target.value)} onBlur={() => put({ hostContact: contact })} />
       {problem ? <p className="fine warn" data-design-problem>{problem}</p>

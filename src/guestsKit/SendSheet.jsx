@@ -116,7 +116,7 @@ export default function SendSheet({ ev, draft, subject, voice, hostName, save, o
 
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label="Send the invite" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="Send the invite" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>Send the invite</h2><button className="link" onClick={onDone}>Done</button></div>
         <div className="sendbody">{body}</div>

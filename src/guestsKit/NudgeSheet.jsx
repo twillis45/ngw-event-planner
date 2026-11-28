@@ -83,7 +83,7 @@ export default function NudgeSheet({ ev, save, onDone }) {
 
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label="Nudge" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="Nudge" onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{n ? 'Nudge the ' + n + ' who ' + (n === 1 ? 'hasn’t' : 'haven’t') + ' replied' : 'Nobody to nudge'}</h2><button className="link" onClick={onDone}>Done</button></div>
         <div className="sendbody">{body}</div>

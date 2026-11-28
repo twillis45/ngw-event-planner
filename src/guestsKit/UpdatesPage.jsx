@@ -21,7 +21,7 @@ import {
 } from '@app/lib/guestUpdatesKit';
 
 const when = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
-const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 
 function Updates({ eventId }) {
   const u = useGuestUpdates(eventId);
@@ -36,7 +36,7 @@ function Updates({ eventId }) {
   return (<>
     <p className="fine" data-updates-reach>{updatesReachLine(u.emailN)}</p>
     {canPost ? (<>
-      <textarea className="field" rows={3} maxLength={1000} value={draft} onChange={(e) => { setDraft(e.target.value); u.setConfirm(false); }}
+      <textarea className="gk-field" rows={3} maxLength={1000} value={draft} onChange={(e) => { setDraft(e.target.value); u.setConfirm(false); }}
         aria-label="Your update to every guest" placeholder={UPDATE_PLACEHOLDER} />
       <div className="addrow">
         <button className="link" data-update-post disabled={!draft.trim() || u.busy === 'post'} onClick={post}>
@@ -68,14 +68,14 @@ function ThreadSheet({ q, onDone }) {
   const t = open.thread; const f = firstName(t.guest_name);
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label={'Conversation with ' + t.guest_name} onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label={'Conversation with ' + t.guest_name} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{t.guest_name}</h2><button className="link" onClick={onDone}>Done</button></div>
         <ol className="thread" data-thread-open>
           {open.messages.map((m, i) => <li key={i} className={m.author === 'host' ? 'me' : 'them'}><b>{m.author === 'host' ? 'You' : f}</b>{m.body}</li>)}
         </ol>
         {!t.blocked && (<>
-          <textarea className="field" rows={3} maxLength={1000} value={q.draft} onChange={(e) => q.setDraft(e.target.value)}
+          <textarea className="gk-field" rows={3} maxLength={1000} value={q.draft} onChange={(e) => q.setDraft(e.target.value)}
             aria-label={'Your reply to ' + t.guest_name} placeholder={replyPlaceholder(t.guest_name)} />
           <p className="fine" data-reply-email>{replyHintLine(t)}</p>
           <button className="primary" data-reply-send disabled={!!q.busy || !q.draft.trim()} onClick={q.reply}>{q.busy === 'reply' ? 'Sending…' : 'Send your reply'}</button>
@@ -97,7 +97,7 @@ function Questions({ eventId }) {
     {!q.rows.length ? <p className="fine">No questions yet. Guests can ask you one from their invite link; it lands here.</p> : (
       <div className="grp" data-questions>
         {q.rows.map((t) => (
-          <button className="row go" key={t.id} data-thread={t.id} data-unanswered={t.unanswered && !t.blocked ? 'true' : 'false'} onClick={() => q.openThread(t.id)}>
+          <button className="row gk-go" key={t.id} data-thread={t.id} data-unanswered={t.unanswered && !t.blocked ? 'true' : 'false'} onClick={() => q.openThread(t.id)}>
             <span className="nm">{t.guest_name}<small>{t.last_body ? (t.last_author === 'host' ? 'You: ' : '') + t.last_body : ''}</small></span>
             <span className={'val' + (t.unanswered && !t.blocked ? ' next' : '')}>{t.blocked ? 'Blocked' : t.unanswered ? 'Waiting' : 'Answered'}</span>{chev}
           </button>

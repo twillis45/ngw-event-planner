@@ -37,7 +37,7 @@ import { tableNeeds } from '@app/lib/dietRows';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { readProfile, useSendReady, NotReady } from '@app/guestsKit/sendKit.jsx';
 
-const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const chev = <svg className="gk-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());
 // The step's own words, its first clause: "Baste and rotate the bird".
 // The short title of a run step lives in lib/dayOfEdits now (reminders use it too).
@@ -101,7 +101,7 @@ function Sheet({ title, onDone, children }) {
   }, [onDone]);
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{title}</h2><button className="link" onClick={onDone}>Done</button></div>
         {children}
@@ -149,7 +149,7 @@ function HelpSheet({ ev, onDone }) {
       <div className="grp">
         {(plan ? plan.lines : []).map((l) => (
           <div key={l.key}>
-            <button className="row go" aria-expanded={open === l.key} onClick={() => setOpen(open === l.key ? null : l.key)}><span className="nm">{l.label}</span>{chev}</button>
+            <button className="row gk-go" aria-expanded={open === l.key} onClick={() => setOpen(open === l.key ? null : l.key)}><span className="nm">{l.label}</span>{chev}</button>
             {open === l.key && <p className="helptext">{l.text}</p>}
           </div>
         ))}
@@ -221,12 +221,12 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     <div className="grp gap" data-day-weather={wx.arrival ? wx.arrival.kind : 'clear'}>
       <div className="row"><span className="nm">{wx.line}{wx.arrival && <small>{wx.arrival.advice}</small>}</span></div>
       {impact && <div className="row" data-wx-impact><span className="nm">{rainAwareSummary(impact.headline, hasRainPlan)}</span></div>}
-      {impact && !hasRainPlan && <a className="row go" data-wx-rainplan href="../hostv2/"><span className="nm">Set your rain plan<small>Where everyone goes if it rains. In the current app for now.</small></span>{chev}</a>}
+      {impact && !hasRainPlan && <a className="row gk-go" data-wx-rainplan href="../hostv2/"><span className="nm">Set your rain plan<small>Where everyone goes if it rains. In the current app for now.</small></span>{chev}</a>}
       {wx.arrival && wx.arrival.checks.map((c) => (
         <CheckRow key={c.key} item={{ key: c.key, label: c.label, checked: !!ticked[c.key] }}
           onTick={() => save(dayOfTickEdit(ev, c.key, c.label))} onDetail={() => save(dayOfTickEdit(ev, c.key, c.label))} />
       ))}
-      {wx.arrival && <button className="row go" data-wx-note onClick={() => { setCopied(false); setSheet('note'); }}><span className="nm">Weather note to guests</span>{chev}</button>}
+      {wx.arrival && <button className="row gk-go" data-wx-note onClick={() => { setCopied(false); setSheet('note'); }}><span className="nm">Weather note to guests</span>{chev}</button>}
     </div>
   );
   // DAY ALERTS (B5): hostv2's alert engine, any day of the event; the most
@@ -238,7 +238,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     : [];
   const tierWord = (a) => (a.tier === 'critical' ? 'Can’t wait' : 'Watch');
   const alertLine = alerts[0] && (
-    <div className="grp gap alertgrp"><button className={'row go alert ' + alerts[0].tier} data-alert onClick={() => setSheet('alerts')}>
+    <div className="grp gap alertgrp"><button className={'row gk-go alert ' + alerts[0].tier} data-alert onClick={() => setSheet('alerts')}>
       <span className="nm"><b className="tier">{tierWord(alerts[0])}</b> {alerts[0].headline}{alerts.length > 1 && <small>{alerts.length - 1} more</small>}</span>{chev}
     </button></div>
   );
@@ -250,7 +250,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     : null;
   const momentDefault = ((st.nextCue || st.nowCue || ros[0] || {}).time) || '';
   const momentRow = moment && (
-    <div className="grp gap"><button className="row go" data-moment onClick={() => setMomentAt(momentDefault)}>
+    <div className="grp gap"><button className="row gk-go" data-moment onClick={() => setMomentAt(momentDefault)}>
       <span className="nm">Worth a spot: {moment.label}<small>Not on today’s run yet.</small></span>{chev}
     </button></div>
   );
@@ -283,16 +283,16 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
         <p className="qhelp">{vendorRow.category ? vendorRow.category + ' · ' : ''}due {clock12(vendorRow.time)}{vendorSaid(vendorRow) ? ' · ' + vendorSaid(vendorRow) : ''}</p>
         <button className="primary" data-vendor-here onClick={() => { markVendor(vendorRow.id, 'arrived'); setVendorOpen(null); }}>{vendorRow.status === 'arrived' ? 'Not here yet' : 'They’re here'}</button>
         <div className="grp gap">
-          <button className="row go" data-vendor-late onClick={() => { markVendor(vendorRow.id, 'delayed'); setVendorOpen(null); }}><span className="nm">{vendorRow.status === 'delayed' ? 'Not running late' : 'Running late'}<small>Stops the “hasn’t confirmed” alert while you wait.</small></span>{chev}</button>
-          {String(vendorRow.phone || '').replace(/[^+\d]/g, '') && <a className="row go" href={'tel:' + String(vendorRow.phone).replace(/[^+\d]/g, '')}><span className="nm">Call</span>{chev}</a>}
-          <a className="row go" data-vendor-brief href="../hostv2/"><span className="nm">Send the details<small>In the current app, where their brief and its link live.</small></span>{chev}</a>
+          <button className="row gk-go" data-vendor-late onClick={() => { markVendor(vendorRow.id, 'delayed'); setVendorOpen(null); }}><span className="nm">{vendorRow.status === 'delayed' ? 'Not running late' : 'Running late'}<small>Stops the “hasn’t confirmed” alert while you wait.</small></span>{chev}</button>
+          {String(vendorRow.phone || '').replace(/[^+\d]/g, '') && <a className="row gk-go" href={'tel:' + String(vendorRow.phone).replace(/[^+\d]/g, '')}><span className="nm">Call</span>{chev}</a>}
+          <a className="row gk-go" data-vendor-brief href="../hostv2/"><span className="nm">Send the details<small>In the current app, where their brief and its link live.</small></span>{chev}</a>
         </div>
       </Sheet>
     )}
     {moment && momentAt !== null && (
       <Sheet title={moment.label} onDone={() => setMomentAt(null)}>
         <p className="qhelp">{moment.owner ? 'Usually led by: ' + moment.owner + '.' : 'A moment worth a spot on the day.'}{moment.note ? ' ' + moment.note : ''}</p>
-        <input className="field" type="time" aria-label="When" data-moment-time value={momentAt} onChange={(e) => setMomentAt(e.target.value)} />
+        <input className="gk-field" type="time" aria-label="When" data-moment-time value={momentAt} onChange={(e) => setMomentAt(e.target.value)} />
         <button className="primary" data-moment-add onClick={() => { if (save(addMomentEdit(ev, moment, momentAt, now))) setMomentAt(null); }}>Add it to the run</button>
       </Sheet>
     )}
@@ -338,28 +338,28 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   </>);
 
   const runRow = ros.length > 0 && (
-    <button className="row go" data-open-run onClick={onRun}>
+    <button className="row gk-go" data-open-run onClick={onRun}>
       <span className="nm">{st.eventDay ? 'Today’s run' : 'The day’s run'}<small>{ros.length} steps, {clock12(ros[0].time)} to {clock12(ros[ros.length - 1].time)}</small></span>{chev}
     </button>
   );
   const reminders = (() => { try { return dayReminders(ev, now); } catch { return []; } })();
   const remindRow = reminders.length > 0 && (
-    <button className="row go" data-open-remind onClick={() => setSheet('remind')}>
+    <button className="row gk-go" data-open-remind onClick={() => setSheet('remind')}>
       <span className="nm">Reminders in your calendar<small>Each step and arrival, on your phone</small></span>{chev}
     </button>
   );
   // YOUR DAY CREW (B3): one row, with how many helpers have their link.
   const crew = (() => { try { return crewRows(ev); } catch { return []; } })();
   const crewRow = crew.length > 0 && onCrew && (
-    <button className="row go" data-open-crew onClick={onCrew}>
+    <button className="row gk-go" data-open-crew onClick={onCrew}>
       <span className="nm">Your day crew</span><span className="val">{crew.filter((c) => c.linkSent).length} of {crew.length} sent</span>{chev}
     </button>
   );
   // RUNNING LATE (B8): once the day is under way (a step has begun).
   const lateRow = st.started && (st.phase === 'morning' || st.phase === 'under-way') && (
-    <button className="row go" data-late onClick={() => setLate(true)}><span className="nm">Running late?<small>Move the rest of today later, once.</small></span>{chev}</button>
+    <button className="row gk-go" data-late onClick={() => setLate(true)}><span className="nm">Running late?<small>Move the rest of today later, once.</small></span>{chev}</button>
   );
-  const helpRow = <button className="row go" data-help onClick={() => setSheet('help')}><span className="nm">If something goes wrong</span>{chev}</button>;
+  const helpRow = <button className="row gk-go" data-help onClick={() => setSheet('help')}><span className="nm">If something goes wrong</span>{chev}</button>;
   const nowCard = st.nowCue && (
     <div className="nowcard" data-now>
       <p className="t">{st.nowActive ? 'Now · since ' + clock12(st.nowCue.time) : (st.started ? 'Up next · ' : 'Up first · ') + clock12(st.nowCue.time)}</p>
@@ -374,7 +374,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <div className="grp">
         {(more ? list.items : open.slice(0, 3)).map((i) => <CheckRow key={i.key} item={i} onTick={() => tick(i)} onDetail={() => setSheet({ detail: i.key })} />)}
         {!more && list.items.length > 3 && (
-          <button className="row go" data-dayof-more onClick={() => setMore(true)}><span className="nm sub2">{open.length > 3 ? (open.length - 3) + ' more' : 'All ' + list.items.length}{list.done && open.length > 3 ? ', and ' + list.done + ' done' : ''}</span>{chev}</button>
+          <button className="row gk-go" data-dayof-more onClick={() => setMore(true)}><span className="nm sub2">{open.length > 3 ? (open.length - 3) + ' more' : 'All ' + list.items.length}{list.done && open.length > 3 ? ', and ' + list.done + ' done' : ''}</span>{chev}</button>
         )}
       </div>
     </section>
@@ -402,7 +402,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     <section data-whos-here>
       <h3 className="sh">Who’s here · {here.length} of {coming.length}</h3>
       <div className="grp">
-        {here.length > 0 && <button className="row go" data-here-done aria-expanded={hereOpen} onClick={() => setHereOpen(!hereOpen)}><span className="nm">{here.length} here</span><span className="val">{hereOpen ? 'Hide' : 'Show'}</span></button>}
+        {here.length > 0 && <button className="row gk-go" data-here-done aria-expanded={hereOpen} onClick={() => setHereOpen(!hereOpen)}><span className="nm">{here.length} here</span><span className="val">{hereOpen ? 'Hide' : 'Show'}</span></button>}
         {hereOpen && here.map(hereRow)}
         {notYet.map(hereRow)}
       </div>
@@ -446,7 +446,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   if (st.phase === 'after') {
     body = (<>
       <p className="qhelp" data-after>That day is done. Afterward (how many came, the thank-yous) is in the current app for now.</p>
-      <div className="grp"><a className="row go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
+      <div className="grp"><a className="row gk-go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
     </>);
   } else if (st.phase === 'before' && eve) {
     // THE DAY BEFORE (B2, 11/26/2026): tonight's steps, then what the day-before
@@ -465,10 +465,10 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
         <section data-before-tomorrow>
           <h3 className="sh">Before {eve.daysOut === 1 ? 'tomorrow' : 'the day'}</h3>
           <div className="grp">{eve.rows.map((r) => (r.go
-            ? <button key={r.key} className="row go" data-db-row={r.key} onClick={r.go}><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</button>
-            : <a key={r.key} className="row go" data-db-row={r.key} href="../hostv2/"><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</a>))}
+            ? <button key={r.key} className="row gk-go" data-db-row={r.key} onClick={r.go}><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</button>
+            : <a key={r.key} className="row gk-go" data-db-row={r.key} href="../hostv2/"><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</a>))}
           </div>
-          <div className="grp gap"><button className="row go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests<small>The details, a parking note, or an update on their invite.</small></span>{chev}</button></div>
+          <div className="grp gap"><button className="row gk-go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests<small>The details, a parking note, or an update on their invite.</small></span>{chev}</button></div>
           {eve.rows.some((r) => !r.go) && <p className="fine">The store run, vendors, helpers and the rain backup open in the current app for now.</p>}
         </section>
       )}
@@ -488,9 +488,9 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       {momentRow}
       {vendorsSection}
       {weatherCard}
-      <div className="grp gap">{runRow}{remindRow}{crewRow}{lateRow}<button className="row go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests</span>{chev}</button><button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
+      <div className="grp gap">{runRow}{remindRow}{crewRow}{lateRow}<button className="row gk-go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests</span>{chev}</button><button className="row gk-go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
-        ? <div className="grp gap"><button className="row go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
+        ? <div className="grp gap"><button className="row gk-go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
         : listSection}
     </>);
     if (st.nowActive) action = <button className="primary" onClick={finish}>Done, what’s next</button>;
@@ -548,7 +548,7 @@ export function RunPage({ ev, save, now: fixed, nav, status }) {
         })}
       </div>
       {/* Adding, moving or timing a step is in the current app until the run can be edited here. */}
-      <div className="grp gap"><a className="row go" data-edit-run href="../hostv2/"><span className="nm">Change the run in the current app<small>Add, move or time a step.</small></span>{chev}</a></div>
+      <div className="grp gap"><a className="row gk-go" data-edit-run href="../hostv2/"><span className="nm">Change the run in the current app<small>Add, move or time a step.</small></span>{chev}</a></div>
     </main>
     {st.eventDay && st.nowActive && <div className="action"><button className="primary" onClick={() => save(cuesDoneEdit(ev, [st.nowCue.id], 'Done: ' + stepTitle(st.nowCue) + '.'))}>Done, what’s next</button></div>}
   </>);
@@ -643,7 +643,7 @@ export function CrewPage({ ev, save, nav, status }) {
       {rows.length === 0 ? (
         <div data-crew-empty>
           <p className="qhelp">No one has a job yet. Give a step or a dish to someone by name in the current app, and they show up here.</p>
-          <div className="grp"><a className="row go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
+          <div className="grp"><a className="row gk-go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
         </div>
       ) : (<>
         <div className="grp">{rows.map((r) => (
@@ -653,8 +653,8 @@ export function CrewPage({ ev, save, nav, status }) {
           </div>
         ))}</div>
         <div className="grp gap">
-          <button className="row go" data-crew-brief onClick={() => { setBrief(true); setCopied(false); }}><span className="nm">Everyone’s part today<small>One message with each person’s job and time.</small></span>{chev}</button>
-          <a className="row go" data-crew-print href="../hostv2/"><span className="nm">Print the day sheet<small>For the refrigerator. In the current app for now.</small></span>{chev}</a>
+          <button className="row gk-go" data-crew-brief onClick={() => { setBrief(true); setCopied(false); }}><span className="nm">Everyone’s part today<small>One message with each person’s job and time.</small></span>{chev}</button>
+          <a className="row gk-go" data-crew-print href="../hostv2/"><span className="nm">Print the day sheet<small>For the refrigerator. In the current app for now.</small></span>{chev}</a>
         </div>
       </>)}
     </main>
@@ -744,7 +744,7 @@ function TellSheet({ ev, onDone, onUpdates }) {
   if (view) return (
     <Sheet title={view === 'parking' ? 'Parking note' : 'The details'} onDone={onDone}>
       {view === 'brief' && !send.ready ? <NotReady acct={send.acct} link={send.link} check={send.check} /> : (<>
-        <textarea className="field" rows={8} aria-label="The words" data-tell-text value={shown} onChange={(e) => { setDraft(e.target.value); setCopied(false); }} />
+        <textarea className="gk-field" rows={8} aria-label="The words" data-tell-text value={shown} onChange={(e) => { setDraft(e.target.value); setCopied(false); }} />
         {blanks && <p className="fine warn">Fill in the [ ] parts first.</p>}
         <button className="primary" data-tell-copy disabled={blanks} onClick={copy}>{copied ? 'Copied' : 'Copy it'}</button>
         <p className="fine">Paste it into your group text or email. Nothing is sent from here.</p>
@@ -755,9 +755,9 @@ function TellSheet({ ev, onDone, onUpdates }) {
   return (
     <Sheet title="Tell your guests" onDone={onDone}>
       <div className="grp">
-        <button className="row go" data-tell-brief onClick={() => setView('brief')}><span className="nm">Send the details<small>Where, when, what to bring, and their reply link.</small></span>{chev}</button>
-        {hasPlace && <button className="row go" data-tell-parking onClick={() => setView('parking')}><span className="nm">Parking note<small>Where to park and how to find the door.</small></span>{chev}</button>}
-        {onUpdates && <button className="row go" data-tell-updates onClick={() => { onDone(); onUpdates(); }}><span className="nm">Post it to everyone’s invite<small>In Updates; emailed to guests who asked for updates.</small></span>{chev}</button>}
+        <button className="row gk-go" data-tell-brief onClick={() => setView('brief')}><span className="nm">Send the details<small>Where, when, what to bring, and their reply link.</small></span>{chev}</button>
+        {hasPlace && <button className="row gk-go" data-tell-parking onClick={() => setView('parking')}><span className="nm">Parking note<small>Where to park and how to find the door.</small></span>{chev}</button>}
+        {onUpdates && <button className="row gk-go" data-tell-updates onClick={() => { onDone(); onUpdates(); }}><span className="nm">Post it to everyone’s invite<small>In Updates; emailed to guests who asked for updates.</small></span>{chev}</button>}
       </div>
     </Sheet>
   );
