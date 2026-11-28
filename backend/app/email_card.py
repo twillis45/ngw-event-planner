@@ -123,7 +123,15 @@ def _plan(card: dict):
     eyebrow = str(card.get("eyebrow") or "").strip()
     lede = str(card.get("lede") or "").strip()
     title = str(card.get("title") or "").strip()
-    if eyebrow:
+    matte = card.get("theme") == "matte"
+    if eyebrow and matte:
+        # The host's own emails (owner, 11/28/2026): no eyebrow; its news is a plain line.
+        f = _font("sans", 14, 500)
+        for line in _wrap(f, eyebrow, inner):
+            y += 19.6
+            ops.append(("center", line, y - 5, f, "sub"))
+        y -= 10
+    elif eyebrow:
         f = _font("sans", 11, 800)
         text = eyebrow.upper()
         sp = 11 * 0.18
@@ -140,7 +148,7 @@ def _plan(card: dict):
             ops.append(("center", line, y - 5, f, "sub"))
     if title:
         y += 8 if (eyebrow or lede) else 0
-        f = _font("serif", 34, 700)
+        f = _font("sans", 32, 800) if matte else _font("serif", 34, 700)
         for line in _wrap(f, title, inner):
             y += 34 * 1.15
             ops.append(("center", line, y - 9, f, "ink"))
@@ -154,8 +162,12 @@ def _plan(card: dict):
         for i, fact in enumerate(facts):
             cx = PADX + cell_w * i + cell_w / 2
             cy = top + 14
-            lf = _font("sans", 10.5, 800)
-            ops.append(("spaced_at", str(fact.get("label") or "").upper(), cx, cy + 8.5, lf, 10.5 * 0.16))
+            if matte:   # sentence case, like the app's labels
+                lf = _font("sans", 13, 600)
+                ops.append(("spaced_at", str(fact.get("label") or ""), cx, cy + 8.5, lf, 0))
+            else:
+                lf = _font("sans", 10.5, 800)
+                ops.append(("spaced_at", str(fact.get("label") or "").upper(), cx, cy + 8.5, lf, 10.5 * 0.16))
             cy += 10.5 + 6
             for text, is_sub in fact.get("lines") or []:
                 vf = _font("sans", 14.5, 500 if is_sub else 600)

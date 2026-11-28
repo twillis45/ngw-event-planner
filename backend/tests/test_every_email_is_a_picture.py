@@ -203,7 +203,8 @@ def test_with_a_picture_the_email_leads_with_it_and_keeps_its_live_parts(kind, p
     assert pics[ep.card_path(token)][:3] == b"\xff\xd8\xff"               # stored, a JPEG
     # The alt text carries every fact on the card.
     assert _html.unescape(alt) == ef.card_alt(card)
-    for part in [card["eyebrow"], card["title"], *(f"{f['label']}: {f['text']}" for f in card["facts"])]:
+    # (The reply alert has no eyebrow since 11/28/2026: the host's emails wear the app's look.)
+    for part in [p for p in (card["eyebrow"], card["title"]) if p] + [f"{f['label']}: {f['text']}" for f in card["facts"]]:
         assert part in _html.unescape(alt)
     # The picture replaces the HTML card's head, and nothing else.
     assert ">When<" not in out and 'font:700 30px/1.15' not in out

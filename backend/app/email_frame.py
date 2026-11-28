@@ -132,9 +132,13 @@ def hue_for(*words) -> str:
     return SOMBRE_HUE if any(SOMBRE.search(str(w or "")) for w in words) else HUE
 
 
-def label_html(text: str, hue: str) -> str:
+def label_html(text: str, hue: str, matte: bool = False) -> str:
     """A small uppercase label in the hue ("When", "A note from Casey"); the
-    matte theme passes its own label color here."""
+    matte theme passes its own label color here, and sets it in sentence case
+    like the app (UX_12: no all-capitals labels; owner, 11/28/2026)."""
+    if matte:
+        return (f'<div style="margin:0 0 6px;font:600 13px/1.2 {SANS};'
+                f'color:{hue};">{_html.escape(text)}</div>')
     return (f'<div style="margin:0 0 6px;font:800 10.5px/1 {SANS};letter-spacing:.16em;'
             f'text-transform:uppercase;color:{hue};">{_html.escape(text)}</div>')
 
@@ -148,7 +152,7 @@ def paragraphs_html(text: str) -> str:
 def _facts_html(facts, hue, t=None) -> str:
     t = t or THEMES["paper"]
     ink, line = t["ink"], t["line"]
-    cells = [label_html(lab, hue) + (val if t is THEMES["paper"] else val.replace(f"color:{SUB}", f"color:{t['sub']}"))
+    cells = [label_html(lab, hue, t is THEMES["matte"]) + (val if t is THEMES["paper"] else val.replace(f"color:{SUB}", f"color:{t['sub']}"))
              for lab, val, _t in facts]
     width = "50%" if len(cells) == 2 else "100%"
     tds = "".join(
@@ -264,12 +268,19 @@ def frame(*, kind=None, hue=HUE, greeting=None, top_html=None, eyebrow=None, led
         pass      # the picture is its own row of the card, below
     else:
         head = ""
-        if eyebrow:
+        if eyebrow and theme == "matte":
+            # THE HOST'S OWN EMAILS WEAR THE APP'S LOOK (owner, 11/28/2026; UX_12:
+            # no eyebrows): news in the label ("One week to go") is a plain line.
+            head += f'<div style="font:500 14px/1.4 {SANS};color:{sub};">{e(eyebrow)}</div>'
+        elif eyebrow:
             head += (f'<div style="font:800 11px/1 {SANS};letter-spacing:.18em;text-transform:uppercase;'
                      f'color:{hue};">{e(eyebrow)}</div>')
         if lede:
             head += f'<div style="margin:14px 0 0;font:500 14px/1.4 {SANS};color:{sub};">{e(lede)}</div>'
-        if title:
+        if title and theme == "matte":
+            head += (f'<div style="margin:6px 0 0;font:800 30px/1.15 {SANS};letter-spacing:-.02em;'
+                     f'color:{ink};">{e(title)}</div>')
+        elif title:
             head += f'<div style="margin:6px 0 0;font:700 30px/1.15 {SERIF};color:{ink};">{e(title)}</div>'
         if facts:
             head += _facts_html(facts, label, t)
@@ -292,7 +303,7 @@ def frame(*, kind=None, hue=HUE, greeting=None, top_html=None, eyebrow=None, led
 
     hi = (f'<p style="max-width:520px;margin:0 auto 12px;font:500 15px/1.5 {SANS};color:{ink};">{e(greeting)}</p>'
           if greeting else '')
-    note = (f'<div style="max-width:520px;margin:16px auto 0;padding:0 4px;">{label_html(note_label or "", label)}'
+    note = (f'<div style="max-width:520px;margin:16px auto 0;padding:0 4px;">{label_html(note_label or "", label, theme == "matte")}'
             f'<div style="font:400 15px/1.6 {SANS};color:{ink};">{note_html}</div></div>' if note_html else '')
     foot = t["foot"]
     stop = f' <a href="{e(stop_url)}" style="color:{foot};">{e(stop_label)}</a>.' if stop_url else ''
@@ -328,7 +339,7 @@ def frame(*, kind=None, hue=HUE, greeting=None, top_html=None, eyebrow=None, led
 
     lines = [greeting or "", ""]
     if eyebrow:
-        lines.append(eyebrow.upper())
+        lines.append(eyebrow if theme == "matte" else eyebrow.upper())
     if text_title or title:
         lines.append(text_title or title)
     lines.append("")
