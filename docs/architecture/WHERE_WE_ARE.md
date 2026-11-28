@@ -1,5 +1,15 @@
 # Where We Are -- live status board
 
+## November 28, 2026 — hostv2 becomes the redesign, and Guests moves into one shared kit
+
+After the Thanksgiving pass, the owner paused hostv4 and moved the redesign into hostv2 itself, choosing "A with T2": the Studio Matte surfaces with a steel accent, a light theme beside the dark one, and display type at weight 800 with the chosen figure shown large. hostv4 stays deployed as the reference for the UX_12 structure. Before the pause, its last pieces landed: the invite framed, Design this page, one shared builder for a new event from a sentence, The Day's weather, and one count of open steps. The Day was then checked for every type: every one of 47 has its own moments, the day-of list shows on the morning itself, and the day-of batch added rain backup, shopping marked bought, the day's calendar, and the day-of push window. The budget question came to hostv2 from cited prices only.
+
+Guests became a shared kit (`src/guestsKit/`) that hostv2 mounts behind `?guests=kit`, so the redesign is built once and the old page stays reachable until the kit has everything. Three fixes followed from looking at it live: no line in the kit sends a host to "the current app"; the saved line sits in the page instead of a toast over it; and "Replies N of M" counts guests who replied or got a shared link, so it no longer read 0 of 0. A synced plan can now be deleted; the plan stays gone only once the account confirms.
+
+On 11/28 the signed-in pass ran on the live site for the first time in this stretch: a real sign-in on the demo account, steps 1–7 at phone dark, phone light and iPad, including a real guest reply and the reply-alert email arriving. Sign-in needed the owner to request the code himself, since the bot check blocks a scripted request.
+
+Open at the end of the day, five PRs in order: the one-guest sheet; the host emails in the app's look; the list that says who is coming (tags, households, totals); the rest of the list's questions (kids count, turnout, same guest, not told yet); and one import sheet. Next is the invite and the updates inside the kit, then the kit as the default.
+
 ## November 26, 2026 (Thanksgiving, after midnight) — the path comes back, the column centers, and The Day is checked for every type
 
 The owner looked at the folded Guests page and said we had condensed too far, so the steps came back: "Your guests, start to finish", every step on the page with the current one lit, and the lit step computed from the same place as the bottom button so the two can never disagree. A rotation pass across thirteen iOS and Android devices found the iPad-upright column pinned left with up to 300 pixels empty beside it; he chose to center it, and the back link and button now sit on its edges. A live check found signed-out pages asking the server for things it could only refuse, so the API layer now answers "signed out" itself; the first version of that broke the test build, which has no account system, and was narrowed to builds that do. Phone and email now format as they're typed and say plainly what's wrong, in both versions.
