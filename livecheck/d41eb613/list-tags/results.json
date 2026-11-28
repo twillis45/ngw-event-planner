@@ -1,0 +1,174 @@
+[
+ {
+  "vp": "390x844-dark",
+  "rows": {
+   "g1": "+1 Sam Pine",
+   "g2": "2 kids · Vegetarian",
+   "g3": "Peanut allergy",
+   "g4": "with Eli",
+   "g5": "with Di",
+   "g6": "",
+   "g7": "",
+   "g8": "",
+   "g9": ""
+  },
+  "households": [
+   "Family · 2",
+   "Work · 1",
+   "Everyone else · 6"
+  ],
+  "party": "+1 plus-one · 2 kids. Food sizes kids lighter.",
+  "find": true,
+  "search": {
+   "Sam": "g1",
+   "work": "g3",
+   "ada.pine@": "g1",
+   "moss": "g4,g5"
+  },
+  "errs": [],
+  "sideways": 0,
+  "checks": {
+   "adaPlus": true,
+   "boKidsDiet": true,
+   "cyAllergy": true,
+   "couple": true,
+   "households": true,
+   "party": true,
+   "find": true,
+   "byPlusOne": true,
+   "byGroup": true,
+   "byEmail": true,
+   "byName": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "390x844-light",
+  "rows": {
+   "g1": "+1 Sam Pine",
+   "g2": "2 kids · Vegetarian",
+   "g3": "Peanut allergy",
+   "g4": "with Eli",
+   "g5": "with Di",
+   "g6": "",
+   "g7": "",
+   "g8": "",
+   "g9": ""
+  },
+  "households": [
+   "Family · 2",
+   "Work · 1",
+   "Everyone else · 6"
+  ],
+  "party": "+1 plus-one · 2 kids. Food sizes kids lighter.",
+  "find": true,
+  "search": {
+   "Sam": "g1",
+   "work": "g3",
+   "ada.pine@": "g1",
+   "moss": "g4,g5"
+  },
+  "errs": [],
+  "sideways": 0,
+  "checks": {
+   "adaPlus": true,
+   "boKidsDiet": true,
+   "cyAllergy": true,
+   "couple": true,
+   "households": true,
+   "party": true,
+   "find": true,
+   "byPlusOne": true,
+   "byGroup": true,
+   "byEmail": true,
+   "byName": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "1194x834-dark",
+  "rows": {
+   "g1": "+1 Sam Pine",
+   "g2": "2 kids · Vegetarian",
+   "g3": "Peanut allergy",
+   "g4": "with Eli",
+   "g5": "with Di",
+   "g6": "",
+   "g7": "",
+   "g8": "",
+   "g9": ""
+  },
+  "households": [
+   "Family · 2",
+   "Work · 1",
+   "Everyone else · 6"
+  ],
+  "party": "+1 plus-one · 2 kids. Food sizes kids lighter.",
+  "find": true,
+  "search": {
+   "Sam": "g1",
+   "work": "g3",
+   "ada.pine@": "g1",
+   "moss": "g4,g5"
+  },
+  "errs": [],
+  "sideways": 0,
+  "checks": {
+   "adaPlus": true,
+   "boKidsDiet": true,
+   "cyAllergy": true,
+   "couple": true,
+   "households": true,
+   "party": true,
+   "find": true,
+   "byPlusOne": true,
+   "byGroup": true,
+   "byEmail": true,
+   "byName": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "1440x900-dark",
+  "rows": {
+   "g1": "+1 Sam Pine",
+   "g2": "2 kids · Vegetarian",
+   "g3": "Peanut allergy",
+   "g4": "with Eli",
+   "g5": "with Di",
+   "g6": "",
+   "g7": "",
+   "g8": "",
+   "g9": ""
+  },
+  "households": [
+   "Family · 2",
+   "Work · 1",
+   "Everyone else · 6"
+  ],
+  "party": "+1 plus-one · 2 kids. Food sizes kids lighter.",
+  "find": true,
+  "search": {
+   "Sam": "g1",
+   "work": "g3",
+   "ada.pine@": "g1",
+   "moss": "g4,g5"
+  },
+  "errs": [],
+  "sideways": 0,
+  "checks": {
+   "adaPlus": true,
+   "boKidsDiet": true,
+   "cyAllergy": true,
+   "couple": true,
+   "households": true,
+   "party": true,
+   "find": true,
+   "byPlusOne": true,
+   "byGroup": true,
+   "byEmail": true,
+   "byName": true
+  },
+  "ok": true
+ }
+]

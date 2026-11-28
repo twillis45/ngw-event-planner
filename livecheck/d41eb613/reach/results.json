@@ -1,0 +1,87 @@
+[
+ {
+  "vp": "390x844",
+  "blocked": [],
+  "errs": [],
+  "button": "Add how to reach them",
+  "focus": {
+   "tag": "INPUT",
+   "type": "tel",
+   "label": "Phone"
+  },
+  "sheetText": "Gus Bay Done Reply Coming Maybe No No reply Meal Meal not answered Standard Vegetarian Vegan Pescatarian Gluten-Free Die",
+  "firstUnreachable": "Gus Bay",
+  "planUnchanged": true,
+  "sideways": 0,
+  "buttonWithOneReachable": "Nudge the one who hasn’t replied",
+  "ok": true
+ },
+ {
+  "vp": "834x1194",
+  "blocked": [],
+  "errs": [],
+  "button": "Add how to reach them",
+  "focus": {
+   "tag": "INPUT",
+   "type": "tel",
+   "label": "Phone"
+  },
+  "sheetText": "Your plan Guests ＋ ⋯ 4 coming · 2 maybe · 3 no reply · 1 can’t make it · of 12 Your guests, start to finish ✓ Your answe",
+  "firstUnreachable": null,
+  "planUnchanged": true,
+  "sideways": 0,
+  "buttonWithOneReachable": "Nudge the one who hasn’t replied",
+  "ok": true
+ },
+ {
+  "vp": "1024x1366",
+  "blocked": [],
+  "errs": [],
+  "button": "Add how to reach them",
+  "focus": {
+   "tag": "INPUT",
+   "type": "tel",
+   "label": "Phone"
+  },
+  "sheetText": "Your plan Guests ＋ ⋯ 4 coming · 2 maybe · 3 no reply · 1 can’t make it · of 12 Your guests, start to finish ✓ Your answe",
+  "firstUnreachable": null,
+  "planUnchanged": true,
+  "sideways": 0,
+  "buttonWithOneReachable": "Nudge the one who hasn’t replied",
+  "ok": true
+ },
+ {
+  "vp": "1194x834",
+  "blocked": [],
+  "errs": [],
+  "button": "Add how to reach them",
+  "focus": {
+   "tag": "INPUT",
+   "type": "tel",
+   "label": "Phone"
+  },
+  "sheetText": "Your plan Guests ＋ ⋯ 4 coming · 2 maybe · 3 no reply · 1 can’t make it · of 12 Your guests, start to finish ✓ Your answe",
+  "firstUnreachable": null,
+  "planUnchanged": true,
+  "sideways": 0,
+  "buttonWithOneReachable": "Nudge the one who hasn’t replied",
+  "ok": true
+ },
+ {
+  "vp": "1440x900",
+  "blocked": [],
+  "errs": [],
+  "button": "Add how to reach them",
+  "focus": {
+   "tag": "INPUT",
+   "type": "tel",
+   "label": "Phone"
+  },
+  "sheetText": "Your plan Guests ＋ ⋯ 4 coming · 2 maybe · 3 no reply · 1 can’t make it · of 12 Your guests, start to finish ✓ Your answe",
+  "firstUnreachable": null,
+  "planUnchanged": true,
+  "sideways": 0,
+  "buttonWithOneReachable": "Nudge the one who hasn’t replied",
+  "ok": true
+ }
+]
