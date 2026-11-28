@@ -1,0 +1,210 @@
+{
+ "phase": "host390d",
+ "steps": [
+  {
+   "name": "0-signed-in",
+   "ok": true,
+   "signedIn": true,
+   "plans": 2,
+   "testPlan": true,
+   "title": "E2E_TEST_ Thanksgiving (signed-in check)\n▾",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "1-questions-path",
+   "ok": true,
+   "asked": [
+    "Plan for 3",
+    "Not this time",
+    "Adults only",
+    "Wednesday, December 9 Our suggestion"
+   ],
+   "pathRows": [
+    "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+    "✓ Names 3 named",
+    "Your invite Not sent yet",
+    "Replies After the invite",
+    "The count After Dec 9",
+    "Updates and questions"
+   ],
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "2-your-invite",
+   "ok": true,
+   "view": "invite",
+   "notReady": null,
+   "voices": [
+    "As written",
+    "Tighter",
+    "Warmer",
+    "Playful",
+    "Formal"
+   ],
+   "frames": [
+    {
+     "src": "../hostv2/?invite-preview=E2E_TEST_signed-tg",
+     "h": 418,
+     "loaded": "AN INVITATION DEC 2026 E2E_TEST_ Thanksgiving (signed-in check) It wouldn’t be the same without you WHEN Saturday, Decem"
+    }
+   ],
+   "text": "Guests Your invite The message they get As written Tighter Warmer Playful Formal You’re invited! We’re gathering for the holidays and hope you’ll join us. Saturday, December 19 · 3:00 PM our place, 123 Example St, Springfield, VA 22150 Tap to let us know if you can make it: [your reply link goes here] — Vida Reyes The reply link goes in when it’s sent. Save this version The page they open What a guest sees when they tap the link. Nothing is sent from here. See the full invite Design this page La",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "3-send-sheet",
+   "ok": true,
+   "sheet": "Send the invite Done Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Nothing can go out without it. Open it in the current app",
+   "sheetButtons": [
+    "Done",
+    "Open it in the current app"
+   ],
+   "tapped": null,
+   "after": null,
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "4-share-link",
+   "ok": true,
+   "menu": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the current app",
+   "menuButtons": [
+    "Done",
+    "Share the link",
+    "Download the list",
+    "Tell me when someone replies By email and notifications, at most once an hour",
+    "Open the current app"
+   ],
+   "afterShare": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+   "linkShape": null,
+   "sharedVia": "none",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "6-notify-toggle",
+   "ok": true,
+   "before": "true",
+   "after": "false",
+   "sheet": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "5-updates-questions",
+   "ok": true,
+   "view": "updates",
+   "text": "Guests Updates and questions Post an update It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed. Post the update 3 of 3 left today · 20 of 20 left for this event Questions No questions yet. Guests can ask you one from their invite link; it lands here. Who opened the invite No one has opened the invite link yet. Sending the day’s details is in the current app for now. Open the current app",
+   "after": {
+    "tapped": true,
+    "view": "Guests Updates and questions Post an update It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed. Post the update 3 of 3 left today · 20 of 20 left for this event That didn’t post. Try again. Questions No questions yet. Guests can ask you one from their invite link; it lands here. Who opened the invite No one has opened the invite link yet. Sending the day’s details is in the current app for now. Open the current app",
+    "sheet": "Guests Updates and questions Post an update It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed. Post the update 3 of 3 left today · 20 of 20 left for this event That didn’t post. Try again. Questions No questions yet. Guests can ask you one from their invite link; it lands here. Who opened the invite No one has opened the invite link yet. Sending the day’s details is in the current app for now. Open the current app"
+   },
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "ALLOW POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings [test plan]",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "ALLOW POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings [test plan]",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/invite-opens",
+  "GET  ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/announcements",
+  "BLOCK POST ngw-events-api.onrender.com/api/events/E2E_TEST_signed-tg/announcements"
+ ],
+ "nav": []
+}

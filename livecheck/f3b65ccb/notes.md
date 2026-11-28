@@ -59,3 +59,37 @@ Requests:
 
 The same reply-by toast also covers part of the send sheet's text at 390 for its ~6 s (screenshot `signedout/390x844-light/03-3-send-invite.jpg`).
 Not covered (needs an account): the email-vs-text list, the real send, the reply link, the notify toggle saving, and a guest reply.
+
+## Signed-in Guests pass (demo account, owner-approved 11/28): `signedin-kit.cjs`, partial
+Ran ~5:40–6:15 AM EST on f3b65ccb (#322 was not live yet), 390 dark. Signed in with a link the owner requested and verified himself; the session is kept only outside the repo. The account address, link and code are not recorded anywhere here.
+Rules: writes were allowed only when every plan in the request was the E2E_TEST_ plan, plus Supabase auth. Anything that could reach a person (communication, invite, nudge, sms, email, send, broadcast) was aborted. sms:/mailto: clicks were stopped. share/clipboard/window.open were stubbed.
+
+### Incident, contained
+The first run seeded the test plan into this browser, but after loading from the account the app opened the account's other plan, "My Friendsgiving". Steps 1–6 ran against that plan in the browser:
+- answers set: no +1s, adults only, a reply-by date;
+- "Tell me when someone replies" switched off;
+- "Post the update" tapped, which stopped at its "email can’t be taken back" confirmation.
+
+Its saves were blocked by the write rule. A server read afterwards shows "My Friendsgiving" still last updated 2026-11-19 02:09 UTC, so it is unchanged. That browser was discarded. Fixes: every run now starts from the sign-in token only, picks the test plan through the plan picker, and checks it is on the test plan before every step.
+
+### Results on the test plan (390 dark)
+| Step | Result |
+|---|---|
+| 1 Questions → path | ok. Path: "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9", "✓ Names 3 named", "Your invite Not sent yet", "Replies After the invite", "The count After Dec 9", "Updates and questions". Signed in, Replies/The count rows show; signed out they did not. |
+| 2 Your invite | ok. Five voices. The preview frame loads the guest page (`?invite-preview=<id>`) showing the test plan. |
+| 3 Send sheet | Not reached: "Your reply link isn’t ready. Your plan isn’t saved to your account yet…". Cause: the seeded test plan had no `rsvpCode`. The app gives one at creation (`mintRsvpToken`), and the kit builds the link from it. A probe artifact, not a product bug. Adding a code through the cache did not stick (the app reloads the account's copy). |
+| 4 ⋯ More → Share the link | Same reason: "isn’t ready". Nothing shared or copied. |
+| 5 Updates and questions | ok. "Post an update … No guest has asked for email yet, so nobody is emailed." "Post the update" sent `POST /api/events/<test id>/announcements`, which was BLOCKED. The screen then said "That didn’t post. Try again." The questions list loaded from the server: "No questions yet". "Who opened the invite: No one has opened the invite link yet." |
+| 6 Notify switch | It flips (true → false) and the plan PATCH was allowed. Not reloaded to confirm it persisted. |
+| 7 Guest reply | Not run (no reply link). |
+| Cleanup | Test plan deleted through the picker: `DELETE rest/v1/events` (test plan). A server read confirms only "My Friendsgiving" remains, unchanged. |
+
+### Requests (all signed-in runs)
+- Blocked: `POST sentry envelope`, `POST /api/cohosts/claim`, `POST /api/events/<test id>/announcements`, and `PATCH rest/v1/events` / `POST rest/v1/studio_settings` whenever they carried other plans.
+- Allowed: `POST`/`PATCH`/`DELETE rest/v1/events` (test plan only) and Supabase auth.
+- Also allowed: `POST rest/v1/studio_settings`, because its body named the test plan. It is the account's settings row, most likely the last-opened plan. This was wider than "test plan only" and should be noted.
+- Page errors 0, sideways 0, sms/mailto 0, share/clip 0 on the test plan.
+
+### Observations for the product
+- On a browser where the account's plans load from the cloud (a second device), the plan picker shows "Rename" but no "Delete this event" for those plans. Delete appears only for plans in that browser's own list (`_custom`).
+- To finish steps 3, 4 and 7: create the test plan through the app's Create flow so it gets an `rsvpCode`, then rerun. That needs a new sign-in link once this session lapses.
