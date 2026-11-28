@@ -58,16 +58,20 @@ export const nudgedRecently = (guest, now) => {
  * Who the nudge goes to, and how. `email` and `text` are the guests it will
  * reach (a good address gets the email; only a phone goes in the text queue);
  * `recentlyNudged` were skipped by the 3-day rule; `invited` / `answered` are
- * the evidence the board shows. Empty for a headcount-only event.
+ * the evidence the board shows. Empty for a headcount-only event. With
+ * `only` (a guest id), that guest alone, whenever she was last nudged.
  */
-export function nudgeRecipients(event, now) {
+export function nudgeRecipients(event, now, { only } = {}) {
   const out = { email: [], text: [], unreachable: [], recentlyNudged: 0, invited: 0, answered: 0 };
   if (!event || !showsReplyTracking(event)) return out;
   for (const g of Array.isArray(event.guests) ? event.guests : []) {
+    // `only`: one guest the host chose by name (the guest sheet's "Nudge Ava",
+    // 11/28/2026). Same rule for how; the 3-day spacing is the batch's, not hers.
+    if (only != null && (!g || g.id !== only)) continue;
     if (!g || g.id == null || !wasInvited(event, g)) continue;
     out.invited += 1;
     if (rsvpHasResponded(g)) { out.answered += 1; continue; }
-    if (nudgedRecently(g, now)) { out.recentlyNudged += 1; continue; }
+    if (only == null && nudgedRecently(g, now)) { out.recentlyNudged += 1; continue; }
     const email = String(g.email || '').trim();
     const phone = digitsOf(g.phone);
     const who = { id: g.id, name: String(g.name || '').trim() };

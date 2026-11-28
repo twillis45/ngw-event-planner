@@ -22,7 +22,10 @@ import { rsvpState } from '@app/lib/rsvp';
 import { filterGuestsByName } from '@app/lib/seatingPlan';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
-import { nudgeRecipients } from '@app/lib/replyNudge';
+import { nudgeRecipients, nudgeRowLine, nudgeDeliveryFor, wasInvited } from '@app/lib/replyNudge';
+import { renamedGuestPatch } from '@app/lib/guestMerge';
+import { guestHelperRoles } from '@app/lib/helperResponsibility';
+import { isCommApiConfigured, listSentMessages } from '@app/lib/commApi';
 import NudgeSheet from './NudgeSheet.jsx';
 import LockSheet from './LockSheet.jsx';
 import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
@@ -279,14 +282,43 @@ function MealPick({ label, value, onPick }) {
   );
 }
 
+// How the last email nudge went, from the server's own report (lib/commApi,
+// the read the old sheet made): only for a guest nudged by email, on a plan
+// saved to an account, so a signed-out plan asks the server for nothing.
+function useSentMail(ev, g) {
+  const [mail, setMail] = useState(null);
+  const emailed = /email/.test(String((g && g.nudgedVia) || ''));
+  useEffect(() => {
+    if (!emailed || !isCommApiConfigured() || !getLastSyncTime(ev.id)) { setMail(null); return undefined; }
+    let dead = false;
+    listSentMessages(ev.id).then((r) => { if (!dead) setMail(r); }).catch(() => {});
+    return () => { dead = true; };
+  }, [ev.id, emailed]);
+  return mail;
+}
+
 // ONE GUEST (feature map: guest sheet). Every change is a lib/guestEdits edit,
 // the ones hostv2's guest editor saves: reply, meal and needs, their +1 (when
 // plus-ones are welcome), children (when kids are welcome), how to reach them,
 // "I told them myself" (a record only), remove.
-export function GuestDetail({ ev, g, i, save, onDone, keys }) {
+export function GuestDetail({ ev, g, i, save, onDone, keys, onNudge }) {
   const r = rsvpState(g);
   const name = String(g.name || '').trim();
   const first = name.split(/\s+/)[0] || 'them';
+  // THE REST OF ONE GUEST (G2c-2b-1, owner 11/28/2026; UX_12 §8a): rename in
+  // place, call / text / email, a group, nudge her alone, "Helping with".
+  const digits = String(g.phone || '').replace(/\D/g, '');
+  const email = String(g.email || '').trim();
+  const roles = (() => { try { return guestHelperRoles(ev, g.id); } catch { return []; } })();
+  const groups = [...new Set((ev.guests || []).map((x) => String((x && x.group) || '').trim()).filter(Boolean))];
+  const canNudge = !!onNudge && r === 'pending' && wasInvited(ev, g) && (!!email || digits.length >= 7);
+  const sentMail = useSentMail(ev, g);
+  const nudgeLine = nudgeRowLine(g, nudgeDeliveryFor(g, sentMail));
+  const rename = (el) => {
+    const p = renamedGuestPatch(g, el.value);
+    if (!p) { el.value = g.name || ''; return; }
+    save(guestFieldEdit(ev, i, p, (name || 'This guest') + ' is now ' + p.name + '.'));
+  };
   const kids = Number(g.kids) || 0;
   const plusOk = ev.plusOnePolicy === 'plus_one_ok' || !!String(g.plusOne || '').trim();
   const kidsOk = ev.kidsPolicy === 'kids_welcome' || kids > 0;
@@ -296,6 +328,23 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
   const toggle = (f) => (x) => save(listToggleEdit(ev, i, f, x, name));
   if (list) return <Checklist label={list === 'diets' ? 'Diet' : 'Allergies'} items={list === 'diets' ? DIET_RULES : ALLERGENS} on={g[list]} onTap={toggle(list)} onDone={() => setList(null)} back={first} />;
   return (<>
+        <input key={g.id + '|' + name} className="gk-field" aria-label="Name" defaultValue={name} autoComplete="off"
+          onBlur={(e) => rename(e.currentTarget)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
+        {roles.length > 0 && <p className="fine" data-helping>Helping with: {roles.map((x) => x.label).join(', ')}</p>}
+        {(digits || email) && (
+          <div className="seg reach" role="group" aria-label={'Reach ' + first}>
+            {digits && <a href={'tel:' + digits} aria-label={'Call ' + first}>Call</a>}
+            {digits && <a href={'sms:' + digits} aria-label={'Text ' + first}>Text</a>}
+            {email && <a href={'mailto:' + encodeURIComponent(email)} aria-label={'Email ' + first}>Email</a>}
+          </div>
+        )}
+        {canNudge && (
+          <div className="grp">
+            <button className="row gk-go" data-nudge-one onClick={() => onNudge(g.id)}>
+              <span className="nm">Nudge {first}{nudgeLine && <small>{nudgeLine}</small>}</span>{chev}
+            </button>
+          </div>
+        )}
         <h3 className="lbl">Reply</h3>
         <div className="seg" role="group" aria-label="Reply">
           {['yes', 'maybe', 'no', 'pending'].map((k) => <button key={k} aria-pressed={r === k} onClick={() => save(rsvpEdit(ev, i, RSVP_VALUE[k]))}>{k === 'pending' ? 'No reply' : k === 'no' ? 'No' : REPLY[k]}</button>)}
@@ -331,6 +380,9 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
         <h3 className="lbl">How to reach them</h3>
         <ContactField kind="phone" label="Phone" value={g.phone} onSave={(v) => field({ phone: v })} />
         <ContactField kind="email" label="Email" value={g.email} onSave={(v) => field({ email: v })} />
+        <input className="gk-field" aria-label="Group" placeholder="Group: family, friends, work…" list="gk-groups" defaultValue={g.group || ''} autoComplete="off"
+          onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(g.group || '')) field({ group: v }); }} />
+        <datalist id="gk-groups">{groups.map((x) => <option key={x} value={x} />)}</datalist>
         <div className="grp" style={{ marginTop: 16 }}>
           <button className="row gk-go" data-told aria-pressed={told} onClick={() => save(toldEdit(ev, g.id, name, 'other', new Date().toISOString()))}>
             <span className="nm">I told {first} myself<small>A note for you. Nothing is sent.</small></span>{told ? <span className="check" aria-label="Done">✓</span> : null}
@@ -343,14 +395,14 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
 
 // On a phone, one guest is a sheet (UX_12); on an iPad it is the detail pane,
 // or a pushed page in portrait (UX_13). The same detail in each.
-function GuestSheet({ ev, g, i, save, onDone }) {
+function GuestSheet({ ev, g, i, save, onDone, onNudge }) {
   const name = String(g.name || '').trim();
   return (
     <div className="scrim" onClick={onDone}>
       <div className="gk-sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
         <div className="sheethead"><h2>{name}</h2><button className="link" onClick={onDone}>Done</button></div>
-        <GuestDetail ev={ev} g={g} i={i} save={save} onDone={onDone} />
+        <GuestDetail ev={ev} g={g} i={i} save={save} onDone={onDone} onNudge={onNudge} />
       </div>
     </div>
   );
@@ -366,6 +418,8 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [open, setOpen] = useState(null);
   const [answers, setAnswers] = useState(false);
   const [sheet, setSheet] = useState(null); // 'nudge' | 'lock' | 'add' | 'more'
+  const [nudgeOnly, setNudgeOnly] = useState(null); // a guest id: the guest sheet's "Nudge Ava"
+  const nudgeOne = (id) => { if (layout === 'phone') setOpen(null); setNudgeOnly(id); };
   // The one open group. undefined: not yet chosen (on an iPad split, the
   // selected guest's group opens, so the selection is in view); null: all closed.
   // Remembered per plan in this browser, never in the plan (owner, 11/26/2026:
@@ -598,8 +652,9 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
         </div>
       )}
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
+      {nudgeOnly != null && <NudgeSheet ev={ev} save={save} only={nudgeOnly} onDone={() => setNudgeOnly(null)} />}
       {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
-      {opened && layout === 'phone' && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} />}
+      {opened && layout === 'phone' && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} onNudge={nudgeOne} />}
     </section>
     </main>
     {actionEl}
@@ -614,7 +669,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {layout === 'split' && (
         <aside className="gk-gdetail" data-detail aria-label="Guest">
           {detailGuest
-            ? <><h2 className="dhead">{detailGuest.name}</h2><GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys /></>
+            ? <><h2 className="dhead">{detailGuest.name}</h2><GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys onNudge={nudgeOne} /></>
             : <p className="gk-empty">{named ? 'Pick a name to see their reply, meal and how to reach them.' : 'Names you add show here, one at a time.'}</p>}
         </aside>
       )}
@@ -622,7 +677,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
         <aside className="gk-gdetail pushedpane" data-detail aria-label={detailGuest.name}>
           <div className="navbar"><button className="backbtn" onClick={() => setOpen(null)} aria-label="Back to Guests"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>Guests</button></div>
           <h2 className="dhead">{detailGuest.name}</h2>
-          <GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys />
+          <GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys onNudge={nudgeOne} />
         </aside>
       )}
     </div>

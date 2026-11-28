@@ -18,11 +18,13 @@ import { useSendReady, NotReady, readProfile } from './sendKit.jsx';
 
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 
-export default function NudgeSheet({ ev, save, onDone }) {
+export default function NudgeSheet({ ev, save, onDone, only = null }) {
   const { acct, link, ready, check } = useSendReady(ev);
   const profile = useMemo(readProfile, []);
   // Who it goes to is fixed when the sheet opens, as hostv2's is.
-  const [r] = useState(() => nudgeRecipients(ev));
+  const [r] = useState(() => nudgeRecipients(ev, undefined, only != null ? { only } : undefined));
+  // One guest the host chose (the guest sheet): her name heads it.
+  const oneName = only != null ? String(((ev.guests || []).find((g) => g && g.id === only) || {}).name || '').trim() : '';
   const [step, setStep] = useState('idle'); // idle | sending | done
   const [progress, setProgress] = useState([0, 0]);
   const [result, setResult] = useState(null);
@@ -83,9 +85,9 @@ export default function NudgeSheet({ ev, save, onDone }) {
 
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="gk-sheet" role="dialog" aria-label="Nudge" onClick={(e) => e.stopPropagation()}>
+      <div className="gk-sheet" role="dialog" aria-label="Nudge" data-nudge-only={only != null ? only : undefined} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
-        <div className="sheethead"><h2>{n ? 'Nudge the ' + n + ' who ' + (n === 1 ? 'hasn’t' : 'haven’t') + ' replied' : 'Nobody to nudge'}</h2><button className="link" onClick={onDone}>Done</button></div>
+        <div className="sheethead"><h2>{oneName && n ? 'Nudge ' + oneName.split(/\s+/)[0] : n ? 'Nudge the ' + n + ' who ' + (n === 1 ? 'hasn’t' : 'haven’t') + ' replied' : 'Nobody to nudge'}</h2><button className="link" onClick={onDone}>Done</button></div>
         <div className="sendbody">{body}</div>
       </div>
     </div>

@@ -60,8 +60,13 @@ describe('guests ask one thing at a time', () => {
   it('the guest sheet edits one guest through the shared builders hostv2 uses', () => {
     for (const fn of ['guestFieldEdit(', 'mealEdit(', 'toldEdit(', 'rsvpEdit(', 'removeGuestEdit(']) expect(src).toContain(fn);
     expect(src).not.toMatch(/kidsCount:|guestTold:/);
-    // Nothing on the sheet sends: "I told them myself" is a record only.
-    expect(src).not.toMatch(/sms:|mailto:|tel:/);
+    // Nothing on the sheet sends: "I told them myself" is a record only. The
+    // one exception is Call, Text and Email (owner, 11/28/2026; UX_12 §8a),
+    // which only OPEN the phone's own apps: exactly three bare links, her
+    // number or address and no words filled in, in the reach row.
+    expect(src.match(/\b(sms|mailto|tel):/g)).toEqual(['tel:', 'sms:', 'mailto:']);
+    expect(src).not.toMatch(/[?&](body|subject)=/);
+    expect(src).toMatch(/className="seg reach"[\s\S]{0,400}'tel:'[\s\S]{0,200}'sms:'[\s\S]{0,200}'mailto:'/);
   });
 
   it('changes a plan only through lib/guestEdits', () => {

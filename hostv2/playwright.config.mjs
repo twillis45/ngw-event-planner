@@ -127,6 +127,7 @@ const SELF_PINNED = [
   // Pins 390x844 (the kit never sends her elsewhere, 11/28/2026).
   '**/theGuestsKitStaysInHostv2.spec.mjs',
   '**/theShareLinkAsksForSignInHere.spec.mjs',
+  '**/theOneGuestSheetHasTheRest.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
