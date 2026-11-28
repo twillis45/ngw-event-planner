@@ -4,6 +4,8 @@
 // sheet showed and searched the same fields (HostShellV2's roster); the kit
 // reads them from here.
 import { plusOneLabel, plusOneCount } from './plusOneCount';
+import { sizingRange, attendanceBand } from './playbooks';
+import { wasInvited } from './replyNudge';
 
 /** The find box shows from this many names (owner, 11/28/2026: from 8, was 21). */
 export const FIND_FROM = 8;
@@ -60,4 +62,32 @@ export function partyTotals(guests) {
   let plusOnes = 0; let kids = 0;
   for (const g of guests || []) { if (!g) continue; plusOnes += plusOneCount(g); kids += Number(g.kids) || 0; }
   return { plusOnes, kids };
+}
+
+/**
+ * The turnout line (owner, 11/28/2026, call B): "Likely 3–5 on the day." from
+ * the replies (sizingRange, the one sized-for reader), with its reason (the
+ * reply band's own words) for one tap down. Null without a range, or when a
+ * planned count outranks a short list (that is the plan, not a turnout).
+ */
+export function turnoutLine(event) {
+  let sized = null; let band = null;
+  try { sized = sizingRange(event); band = attendanceBand(event); } catch { return null; }
+  if (!sized || sized.plannedOverRoster || !sized.spread || !band || !band.because) return null;
+  return { line: 'Likely ' + sized.label + ' on the day.', why: band.because };
+}
+
+/**
+ * Who you can reach and hasn't had the invite (render screen 1, #5): a phone or
+ * an email, and no invite record of any kind (emailed or texted, or told by
+ * hand: replyNudge wasInvited). Only after an invite went out with per-guest
+ * records; a link shared with none went to the whole list (the Replies rule).
+ */
+export function notToldYet(event) {
+  const guests = (Array.isArray(event && event.guests) ? event.guests : []).filter(Boolean);
+  if (!event || !event.invitesSentAt || !guests.some((g) => wasInvited(event, g))) return null;
+  const reach = (g) => !!(String(g.email || '').trim() || String(g.phone || '').replace(/\D/g, '').length >= 7);
+  const count = guests.filter((g) => reach(g) && !wasInvited(event, g)).length;
+  if (!count) return null;
+  return { count, line: count + ' you can reach ' + (count === 1 ? 'hasn’t' : 'haven’t') + ' had the invite yet.' };
 }

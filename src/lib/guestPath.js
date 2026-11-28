@@ -53,6 +53,9 @@ export function guestQuestions(ev) {
   // Unset or cleared (Undo writes null back) is unanswered: the question returns.
   if (ev.plusOnePolicy == null) q.push('plus');
   if (ev.kidsPolicy == null) q.push('kids');
+  // How many are kids: a headcount plan with kids welcome (owner, 11/28/2026,
+  // call A). The field the old sheet's stepper wrote; the food engine reads it.
+  if (ev.guestMode === 'count' && ev.kidsPolicy === 'kids_welcome' && ev.kidsCount == null) q.push('kidsCount');
   // Too close for an honest reply-by date (owner's Thanksgiving, 11/25/2026:
   // the party was the next day), the question has no answer, so it isn't asked.
   if (!String(ev.rsvpDeadline || '').trim()) {
@@ -70,6 +73,7 @@ const ANSWER = {
   mode: (ev) => (ev.guestMode === 'count' ? 'by headcount' : 'by name'),
   plus: (ev) => (ev.plusOnePolicy === 'plus_one_ok' ? '+1s welcome' : 'no +1s'),
   kids: (ev) => (ev.kidsPolicy === 'kids_welcome' ? 'kids welcome' : 'adults only'),
+  kidsCount: (ev) => (ev.guestMode === 'count' && ev.kidsPolicy === 'kids_welcome' && ev.kidsCount != null ? (Number(ev.kidsCount) ? ev.kidsCount + ' kids' : 'no kids') : ''),
   replyBy: (ev) => (String(ev.rsvpDeadline || '').trim() ? 'replies by ' + new Date(String(ev.rsvpDeadline).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'no reply-by date'),
 };
 export const answersLine = (ev) => Object.keys(ANSWER).map((k) => ANSWER[k](ev)).filter(Boolean).join(' · ');
