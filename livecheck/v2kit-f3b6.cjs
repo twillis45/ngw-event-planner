@@ -14,6 +14,8 @@ const ev = { id: 'E2E_TEST_v2kit', name: 'E2E_TEST_ Dinner', type: 'Dinner Party
     const vp = `${w}x${h}-${scheme}`; const r = { vp, steps: [], errs: [], blocked: [] }; const dir = path.join(OUT, vp); fs.mkdirSync(dir, { recursive: true }); let n = 0;
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: touch, colorScheme: scheme, timezoneId: 'America/New_York' });
     await ctx.route('**/*', (rt) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(rt.request().method()) ? (r.blocked.push(rt.request().url().split('?')[0]), rt.abort()) : rt.continue());
+    // hostv2 takes its theme from localStorage['ngw-theme'], not prefers-color-scheme.
+    await ctx.addInitScript((sc) => { try { localStorage.setItem('ngw-theme', sc); } catch {} }, scheme);
     await ctx.addInitScript(() => { try { Object.defineProperty(navigator, 'share', { value: async () => {}, configurable: true }); Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true }); } catch {} window.open = () => null; });
     const p = await ctx.newPage(); p.setDefaultTimeout(8000); p.on('pageerror', (e) => r.errs.push(String(e.message).slice(0, 160))); await p.clock.setFixedTime(new Date('2026-11-28T10:00:00-05:00'));
     const step = async (name, fn) => { const s = { name, ok: true }; try { Object.assign(s, (await fn()) || {}); } catch (e) { s.ok = false; s.error = String(e.message).split('\n')[0].slice(0, 300); }

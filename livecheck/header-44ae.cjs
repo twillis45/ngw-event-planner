@@ -15,6 +15,8 @@ const ev = { id: 'E2E_TEST_h44', name: 'E2E_TEST_ Thanksgiving at the Lanes', ty
     await ctx.route('**/*', (rt) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(rt.request().method()) ? (blocked.push(rt.request().url().split('?')[0]), rt.abort()) : rt.continue());
     await ctx.route('**/api/weather/geocode**', (rt) => rt.fulfill({ json: { result: { lat: 38.8, lon: -77.2 } } }));
     await ctx.route('**/api/weather/onecall**', (rt) => rt.fulfill({ json: { timezone_offset: -18000, hourly: [], daily: [0, 1, 2, 3, 4, 5, 6, 7].map((d) => ({ dt: Math.floor(new Date(plus(d) + 'T12:00:00-05:00').getTime() / 1000), ...RAIN })) } }));
+    // hostv2 takes its theme from localStorage['ngw-theme'], not prefers-color-scheme.
+    await ctx.addInitScript((sc) => { try { localStorage.setItem('ngw-theme', sc); } catch {} }, scheme);
     await ctx.addInitScript(() => { try { Object.defineProperty(navigator, 'share', { value: async () => {}, configurable: true }); Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true }); } catch {} window.open = () => null; });
     const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160))); await p.clock.setFixedTime(NOW);
     await p.goto(B); await p.evaluate((e) => { localStorage.clear(); localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1'); localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id); }, ev);

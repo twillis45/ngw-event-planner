@@ -1,0 +1,600 @@
+[
+ {
+  "vp": "390x844-dark",
+  "steps": [
+   {
+    "name": "1-questions-path",
+    "ok": true,
+    "asked": [
+     "About how many are coming? → Plan for 3",
+     "Can guests bring someone? → Not this time",
+     "Are kids welcome? → Adults only",
+     "When should replies be in by? → Wednesday, December 9 Our suggestion"
+    ],
+    "pathRows": [
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions"
+    ],
+    "buttons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Review your invite"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "2-your-invite",
+    "ok": true,
+    "view": "invite",
+    "notReadyNote": null,
+    "frames": [
+     {
+      "src": "../hostv2/?invite-preview=E2E_TEST_so-tg",
+      "w": 356,
+      "h": 418
+     }
+    ],
+    "voices": [
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal"
+    ],
+    "text": "Guests Your invite The message they get As written Tighter Warmer Playful Formal You’re invited! We’re gathering for the holidays and hope you’ll join us. Saturday, December 19 · 3:00 PM our place, 123 Example St, Springfield, VA 22150 Tap to let us know if you can make it: [your reply link goes here] The reply link goes in when it’s sent. Save this version The page they open What a guest sees when they tap the link. Nothing is sent from here. See the full invite Design this page Layout, your message, who it’s from, colors Rules Plus-ones Welcome Not this time Kids Welcome Adults only Ask for ",
+    "buttons": [
+     "Guests",
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal",
+     "Save this version",
+     "See the full invite",
+     "Design this page Layout, your message, who it’s from, colors",
+     "Welcome",
+     "Not this time",
+     "Welcome",
+     "Adults only",
+     "Yes",
+     "No",
+     "None",
+     "No gifts, please",
+     "Registry link",
+     "Send the invite"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "3-send-invite",
+    "ok": true,
+    "clickNote": null,
+    "sheet": {
+     "text": "Send the invite Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app",
+     "buttons": [
+      "Done",
+      "Sign in in the current app"
+     ]
+    },
+    "tapped": null,
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "4-more-share-qr",
+    "ok": true,
+    "menuButtons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Done",
+     "Share the link",
+     "Download the list",
+     "Tell me when someone replies By email and notifications, at most once an hour",
+     "Open the current app",
+     "Review your invite"
+    ],
+    "menu": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the current app",
+    "shareTapped": true,
+    "afterShare": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "shared": [],
+    "copied": [],
+    "opened": [],
+    "qrTapped": false,
+    "qr": {
+     "links": [],
+     "img": []
+    },
+    "afterQr": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "openedAfterQr": [],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "5-updates-questions",
+    "ok": true,
+    "opened": true,
+    "view": "updates",
+    "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "sheet": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "buttons": [
+     "Guests",
+     "Open the current app"
+    ],
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "reads": [
+   "GET ngw-events-api.onrender.com/api/food-prices",
+   "GET ngw-events-api.onrender.com/api/capabilities",
+   "GET ngw-events-api.onrender.com/api/shopping/instacart/status",
+   "FRAME https://twillis45.github.io/ngw-event-planner/hostv2/"
+  ],
+  "http4xx": []
+ },
+ {
+  "vp": "390x844-light",
+  "steps": [
+   {
+    "name": "1-questions-path",
+    "ok": true,
+    "asked": [
+     "About how many are coming? → Plan for 3",
+     "Can guests bring someone? → Not this time",
+     "Are kids welcome? → Adults only",
+     "When should replies be in by? → Wednesday, December 9 Our suggestion"
+    ],
+    "pathRows": [
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions"
+    ],
+    "buttons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Review your invite"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "2-your-invite",
+    "ok": true,
+    "view": "invite",
+    "notReadyNote": null,
+    "frames": [
+     {
+      "src": "../hostv2/?invite-preview=E2E_TEST_so-tg",
+      "w": 356,
+      "h": 418
+     }
+    ],
+    "voices": [
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal"
+    ],
+    "text": "Guests Your invite The message they get As written Tighter Warmer Playful Formal You’re invited! We’re gathering for the holidays and hope you’ll join us. Saturday, December 19 · 3:00 PM our place, 123 Example St, Springfield, VA 22150 Tap to let us know if you can make it: [your reply link goes here] The reply link goes in when it’s sent. Save this version The page they open What a guest sees when they tap the link. Nothing is sent from here. See the full invite Design this page Layout, your message, who it’s from, colors Rules Plus-ones Welcome Not this time Kids Welcome Adults only Ask for ",
+    "buttons": [
+     "Guests",
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal",
+     "Save this version",
+     "See the full invite",
+     "Design this page Layout, your message, who it’s from, colors",
+     "Welcome",
+     "Not this time",
+     "Welcome",
+     "Adults only",
+     "Yes",
+     "No",
+     "None",
+     "No gifts, please",
+     "Registry link",
+     "Send the invite"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "3-send-invite",
+    "ok": true,
+    "clickNote": null,
+    "sheet": {
+     "text": "Send the invite Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app",
+     "buttons": [
+      "Done",
+      "Sign in in the current app"
+     ]
+    },
+    "tapped": null,
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "4-more-share-qr",
+    "ok": true,
+    "menuButtons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Done",
+     "Share the link",
+     "Download the list",
+     "Tell me when someone replies By email and notifications, at most once an hour",
+     "Open the current app",
+     "Review your invite"
+    ],
+    "menu": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the current app",
+    "shareTapped": true,
+    "afterShare": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "shared": [],
+    "copied": [],
+    "opened": [],
+    "qrTapped": false,
+    "qr": {
+     "links": [],
+     "img": []
+    },
+    "afterQr": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "openedAfterQr": [],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "5-updates-questions",
+    "ok": true,
+    "opened": true,
+    "view": "updates",
+    "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "sheet": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "buttons": [
+     "Guests",
+     "Open the current app"
+    ],
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "reads": [
+   "GET ngw-events-api.onrender.com/api/food-prices",
+   "GET ngw-events-api.onrender.com/api/capabilities",
+   "GET ngw-events-api.onrender.com/api/shopping/instacart/status",
+   "FRAME https://twillis45.github.io/ngw-event-planner/hostv2/"
+  ],
+  "http4xx": []
+ },
+ {
+  "vp": "1194x834-dark",
+  "steps": [
+   {
+    "name": "1-questions-path",
+    "ok": true,
+    "asked": [
+     "About how many are coming? → Plan for 3",
+     "Can guests bring someone? → Not this time",
+     "Are kids welcome? → Adults only",
+     "When should replies be in by? → Wednesday, December 9 Our suggestion"
+    ],
+    "pathRows": [
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions"
+    ],
+    "buttons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Mark Ada Pine coming",
+     "Mark Ada Pine maybe",
+     "Mark Ada Pine can’t make it",
+     "Mark Ada Pine no reply",
+     "Remove Ada Pine",
+     "Ada Pine",
+     "Mark Bo Reed coming",
+     "Mark Bo Reed maybe",
+     "Mark Bo Reed can’t make it",
+     "Mark Bo Reed no reply",
+     "Remove Bo Reed",
+     "Bo Reed",
+     "Mark Cy Lark coming",
+     "Mark Cy Lark maybe",
+     "Mark Cy Lark can’t make it",
+     "Mark Cy Lark no reply",
+     "Remove Cy Lark",
+     "Cy Lark",
+     "Review your invite",
+     "Coming",
+     "Maybe",
+     "No",
+     "No reply",
+     "Diet None",
+     "Allergies None",
+     "[input text \"Anything else, if any\"]",
+     "[input tel \"Phone\"]",
+     "[input email \"Email\"]",
+     "I told Ada myself A note for you. Nothing is sent.",
+     "Remove from the list"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "2-your-invite",
+    "ok": true,
+    "view": "invite",
+    "notReadyNote": null,
+    "frames": [
+     {
+      "src": "../hostv2/?invite-preview=E2E_TEST_so-tg",
+      "w": 678,
+      "h": 418
+     }
+    ],
+    "voices": [
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal"
+    ],
+    "text": "Guests Your invite The message they get As written Tighter Warmer Playful Formal You’re invited! We’re gathering for the holidays and hope you’ll join us. Saturday, December 19 · 3:00 PM our place, 123 Example St, Springfield, VA 22150 Tap to let us know if you can make it: [your reply link goes here] The reply link goes in when it’s sent. Save this version The page they open What a guest sees when they tap the link. Nothing is sent from here. See the full invite Design this page Layout, your message, who it’s from, colors Rules Plus-ones Welcome Not this time Kids Welcome Adults only Ask for ",
+    "buttons": [
+     "Guests",
+     "As written",
+     "Tighter",
+     "Warmer",
+     "Playful",
+     "Formal",
+     "Save this version",
+     "See the full invite",
+     "Design this page Layout, your message, who it’s from, colors",
+     "Welcome",
+     "Not this time",
+     "Welcome",
+     "Adults only",
+     "Yes",
+     "No",
+     "None",
+     "No gifts, please",
+     "Registry link",
+     "Send the invite"
+    ],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "3-send-invite",
+    "ok": true,
+    "clickNote": null,
+    "sheet": {
+     "text": "Send the invite Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app",
+     "buttons": [
+      "Done",
+      "Sign in in the current app"
+     ]
+    },
+    "tapped": null,
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "4-more-share-qr",
+    "ok": true,
+    "menuButtons": [
+     "Your plan",
+     "＋",
+     "⋯",
+     "✓ Your answers about 3 · by name · no +1s · adults only · replies by Dec 9",
+     "✓ Names 3 named",
+     "Your invite Not sent yet",
+     "Updates and questions",
+     "No reply yet 3",
+     "Mark Ada Pine coming",
+     "Mark Ada Pine maybe",
+     "Mark Ada Pine can’t make it",
+     "Mark Ada Pine no reply",
+     "Remove Ada Pine",
+     "Ada Pine",
+     "Mark Bo Reed coming",
+     "Mark Bo Reed maybe",
+     "Mark Bo Reed can’t make it",
+     "Mark Bo Reed no reply",
+     "Remove Bo Reed",
+     "Bo Reed",
+     "Mark Cy Lark coming",
+     "Mark Cy Lark maybe",
+     "Mark Cy Lark can’t make it",
+     "Mark Cy Lark no reply",
+     "Remove Cy Lark",
+     "Cy Lark",
+     "Done",
+     "Share the link",
+     "Download the list",
+     "Tell me when someone replies By email and notifications, at most once an hour",
+     "Open the current app",
+     "Review your invite",
+     "Coming",
+     "Maybe",
+     "No",
+     "No reply",
+     "Diet None",
+     "Allergies None",
+     "[input text \"Anything else, if any\"]",
+     "[input tel \"Phone\"]",
+     "[input email \"Email\"]",
+     "I told Ada myself A note for you. Nothing is sent.",
+     "Remove from the list"
+    ],
+    "menu": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the current app",
+    "shareTapped": true,
+    "afterShare": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "shared": [],
+    "copied": [],
+    "opened": [],
+    "qrTapped": false,
+    "qr": {
+     "links": [],
+     "img": []
+    },
+    "afterQr": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Your reply link isn’t ready. Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves. Importing a list and the QR code are in the current app for now. Open the current app",
+    "openedAfterQr": [],
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   },
+   {
+    "name": "5-updates-questions",
+    "ok": true,
+    "opened": true,
+    "view": "updates",
+    "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "sheet": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+    "buttons": [
+     "Guests",
+     "Open the current app"
+    ],
+    "after": null,
+    "sideways": 0,
+    "out": {
+     "share": [],
+     "clip": [],
+     "open": [],
+     "nav": []
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "reads": [
+   "GET ngw-events-api.onrender.com/api/food-prices",
+   "GET ngw-events-api.onrender.com/api/capabilities",
+   "GET ngw-events-api.onrender.com/api/shopping/instacart/status",
+   "FRAME https://twillis45.github.io/ngw-event-planner/hostv2/"
+  ],
+  "http4xx": []
+ }
+]
