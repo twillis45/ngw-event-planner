@@ -70,8 +70,11 @@ export function photoStatusLabel(status) {
 }
 
 /** The host's line when photos wait for approval, else null. */
+/** How many guest photos wait for the host's approval. */
+export const photosWaitingCount = (photos) => (Array.isArray(photos) ? photos : []).filter((p) => p && p.status === 'pending').length;
+
 export function photosWaitingLine(photos) {
-  const n = (Array.isArray(photos) ? photos : []).filter((p) => p && p.status === 'pending').length;
+  const n = photosWaitingCount(photos);
   if (!n) return null;
   return n === 1 ? '1 guest photo waiting for you to approve' : `${n} guest photos waiting for you to approve`;
 }
