@@ -64,7 +64,7 @@ const txt = (p, sel) => p.locator(sel).first().innerText().then((t) => t.replace
       if (k === 'plus') { seen.push('plus'); await p.getByRole('button', { name: /plus-ones are welcome/ }).click(); await p.waitForTimeout(300); k = await qOf(); }
       if (k === 'kids') { seen.push('kids'); await p.getByRole('button', { name: /Kids are welcome/ }).click(); await p.waitForTimeout(300); k = await qOf(); }
       let replyRow = null;
-      if (k === 'replyBy') { replyRow = await txt(p, '[data-question] .row.go'); seen.push('replyBy'); await p.locator('[data-question] .row.go').first().click(); await p.waitForTimeout(300); k = await qOf(); }
+      if (k === 'replyBy') { replyRow = await txt(p, '[data-question] .row.gk-go, [data-question] .row.go'); seen.push('replyBy'); await p.locator('[data-question] .row.gk-go, [data-question] .row.go').first().click(); await p.waitForTimeout(300); k = await qOf(); }
       if (k) throw new Error('question still open: ' + k);
       if (seen.length !== 5) throw new Error('asked ' + seen.length + ' questions: ' + seen.join(', '));
       if (!/Christmas/i.test(replyRow || '')) throw new Error('reply-by row does not name Christmas: ' + replyRow);

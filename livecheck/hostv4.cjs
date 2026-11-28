@@ -36,8 +36,8 @@ async function floors(p, touch) {
 const screen = (p) => p.evaluate(() => {
   const vis = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
   const t = (s) => { const e = document.querySelector(s); return e && vis(e) ? e.innerText.replace(/\s+/g, ' ').trim() : null; };
-  const words = (document.querySelector('.app') || document.body).innerText.split(/\s+/).filter((w) => /[A-Za-z0-9$]/.test(w)).length;
-  return { h1: t('h1'), sub: t('.sub'), q: t('.q'), budget: !!document.querySelector('[data-budget]'),
+  const words = (document.querySelector('.gk-app, .app') || document.body).innerText.split(/\s+/).filter((w) => /[A-Za-z0-9$]/.test(w)).length;
+  return { h1: t('h1'), sub: t('.sub'), q: t('.gk-q, .q'), budget: !!document.querySelector('[data-budget]'),
     choices: [...document.querySelectorAll('[role=radio]')].map((e) => e.innerText.replace(/\s+/g, ' ').trim() + (e.getAttribute('aria-checked') === 'true' ? ' ✓' : '')),
     primary: [...document.querySelectorAll('.primary')].filter(vis).map((e) => e.innerText.trim() + (e.getAttribute('href') ? ' → ' + e.getAttribute('href') : '')),
     done: t('[data-done]'), alert: t('[role=alert]'), sample: t('[data-sample]'), words };
