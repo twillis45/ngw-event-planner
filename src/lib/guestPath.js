@@ -81,6 +81,12 @@ export const answersLine = (ev) => Object.keys(ANSWER).map((k) => ANSWER[k](ev))
  */
 export function guestPathState(ev, { now = new Date(), waiting = 0 } = {}) {
   const guests = Array.isArray(ev.guests) ? ev.guests : [];
+  // Who had the invite (live signed-in check, 11/28/2026: "Replies 0 of 0" beside
+  // "Coming 1"). A guest who replied had it. An invite that went out with no
+  // per-guest record at all (the link, shared) went to the whole list.
+  const answered = (g) => rsvpState(g) !== 'pending';
+  const anyRecord = guests.some((g) => wasInvited(ev, g));
+  const hadIt = (g) => wasInvited(ev, g) || answered(g) || (!!ev.invitesSentAt && !anyRecord);
   const named = guests.length;
   const pad = (n) => String(n).padStart(2, '0');
   const today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
@@ -96,8 +102,8 @@ export function guestPathState(ev, { now = new Date(), waiting = 0 } = {}) {
     locked: ev.guestMode === 'count' ? Number(ev.guestCount) || 0 : 0,
     toNudge: nudgeCount(reach),
     noReach: reach.unreachable.length,
-    replied: guests.filter((g) => wasInvited(ev, g) && rsvpState(g) !== 'pending').length,
-    invited: guests.filter((g) => wasInvited(ev, g)).length,
+    replied: guests.filter((g) => hadIt(g) && answered(g)).length,
+    invited: guests.filter(hadIt).length,
     waiting,
     deadline: ev.rsvpDeadline,
   };

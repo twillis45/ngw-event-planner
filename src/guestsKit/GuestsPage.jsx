@@ -27,7 +27,7 @@ import NudgeSheet from './NudgeSheet.jsx';
 import LockSheet from './LockSheet.jsx';
 import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
 import { downloadCSV } from '@app/lib/download';
-import { LINK_WHY } from './sendKit.jsx';
+import { linkWhy } from './sendKit.jsx';
 import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
 import { getLastSyncTime } from '@app/lib/api/syncState';
 import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
@@ -381,7 +381,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const shareLink = async () => {
     setShareLine('Checking your reply link…');
     let x; try { x = await replyLinkFor(ev); } catch { x = { url: '', reason: 'unavailable' }; }
-    if (!x.url) { setShareLine('Your reply link isn’t ready. ' + (LINK_WHY[x.reason] || LINK_WHY.unavailable)); return; }
+    if (!x.url) { setShareLine({ text: 'Your reply link isn’t ready. ' + linkWhy(x.reason, host), signIn: x.reason === 'unpublished' && !!(host && host.openSignIn) }); return; }
     const text = 'You’re invited to ' + (ev.name || 'our event') + '. RSVP here: ' + x.url;
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
@@ -592,7 +592,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
               <button className="row gk-go" data-show-qr onClick={() => { setSheet(null); host.qr(); }}><span>Show QR code</span>{chev}</button>
               <button className="row gk-go" data-import onClick={() => { setSheet(null); host.importList(); }}><span>Import a list</span>{chev}</button>
             </div>)}
-            {shareLine && <p className="fine" role="status" data-share-line>{shareLine}</p>}
+            {shareLine && <p className="fine" role="status" data-share-line>{typeof shareLine === 'string' ? shareLine : <>{shareLine.text}{shareLine.signIn && <> <button className="link" onClick={() => { setSheet(null); host.openSignIn(); }}>Sign in</button></>}</>}</p>}
             {!host && <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
           </div>
         </div>
