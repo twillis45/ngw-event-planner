@@ -12,14 +12,14 @@
 // nudges, locking the count, updates) says so and opens the current app.
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, listToggleEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, listToggleEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit, kidsCountEdit, sameGuestEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, cleanEmail, phoneProblem, emailProblem } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { guestCountFor } from '@app/lib/guestCountFor';
 import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { rsvpState } from '@app/lib/rsvp';
-import { guestRowTags, findGuests, households, partyTotals, FIND_FROM } from '@app/lib/guestRows';
+import { guestRowTags, findGuests, households, partyTotals, FIND_FROM, turnoutLine, notToldYet } from '@app/lib/guestRows';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
 import { nudgeRecipients, nudgeRowLine, nudgeDeliveryFor, wasInvited } from '@app/lib/replyNudge';
@@ -101,8 +101,28 @@ export function QuestionCard({ k, ev, count, setCount, save }) {
     <h2 className="gk-q">Are kids welcome?</h2>
     <Rows items={[['Kids are welcome', () => save(kidsEdit('kids_welcome')), ev.kidsPolicy === 'kids_welcome'], ['Adults only', () => save(kidsEdit('adults_only')), ev.kidsPolicy === 'adults_only']]} />
   </>);
+  if (k === 'kidsCount') return <KidsCountCard ev={ev} save={save} />;
   if (k === 'replyBy') return <ReplyByCard ev={ev} save={save} />;
   return null;
+}
+
+// HOW MANY ARE KIDS (owner, 11/28/2026, call A): a headcount plan with kids
+// welcome; the food plan sizes kids lighter.
+function KidsCountCard({ ev, save }) {
+  const of = Math.max(0, Number(guestCountFor(ev).count) || 0);
+  const [n, setN] = useState(0);
+  return (<>
+    <h2 className="gk-q">How many of your {of} are kids?</h2>
+    <div className="grp"><div className="stepper">
+      <span className="num" aria-live="polite" data-kids-count>{n}</span>
+      <span className="btns">
+        <button aria-label="Fewer kids" onClick={() => setN((x) => Math.max(0, x - 1))}>−</button>
+        <button aria-label="More kids" onClick={() => setN((x) => (of ? Math.min(of, x + 1) : x + 1))}>+</button>
+      </span>
+    </div></div>
+    <div className="grp"><button className="row gk-go" data-kids-save onClick={() => save(kidsCountEdit(ev, n))}><span className="nm">{n ? 'That’s ' + n + (n === 1 ? ' kid' : ' kids') : 'No kids'}</span>{chev}</button></div>
+    <p className="fine">The food plan sizes kids lighter.</p>
+  </>);
 }
 
 // The proposal's reasoning is one tap down (UX_12 §1.4), so the screen stays a question.
@@ -476,6 +496,14 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const counts = { yes: 0, maybe: 0, pending: 0, no: 0 };
   for (const g of guests) counts[rsvpState(g)] = (counts[rsvpState(g)] || 0) + 1;
   const finding = named >= FIND_FROM && find.trim();
+  const turnout = ev.invitesSentAt ? turnoutLine(ev) : null;
+  const [whyTurnout, setWhyTurnout] = useState(false);
+  const sameAsks = guests.filter((g) => g.maybeSameAs && guests.some((x) => x.id === g.maybeSameAs));
+  const untold = notToldYet(ev);
+  // Who sits where at 8 or more names (its own page, UX_12 §8a); guest photos
+  // from the event day (the old sheet's rule). Each opens the host's own page.
+  const seatingRow = !!(host && host.seating) && named >= FIND_FROM;
+  const photosRow = !!(host && host.photos) && (() => { const d = String(ev.date || '').slice(0, 10); if (!d) return false; const n = new Date(); const t = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); return d <= t; })();
   // A remembered group with no one left in it falls back to the default.
   const openGroup = group === null || (group && guests.some((g) => rsvpState(g) === group)) ? group : (layout === 'split' && guests.length ? rsvpState((open != null && guests.find((g) => g.id === open)) || guests[0]) : null);
   const shown = finding ? findGuests(guests, find) : openGroup ? guests.filter((g) => rsvpState(g) === openGroup) : guests;
@@ -592,6 +620,21 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
         const bits = [t.plusOnes ? '+' + t.plusOnes + (t.plusOnes === 1 ? ' plus-one' : ' plus-ones') : '', t.kids ? t.kids + (t.kids === 1 ? ' kid' : ' kids') : ''].filter(Boolean);
         return bits.length ? <p className="fine" data-party>{bits.join(' · ')}{t.kids ? '. Food sizes kids lighter.' : '.'}</p> : null;
       })()}
+      {/* THE REST OF THE LIST (G2c-2b-2b; owner, 11/28/2026; UX_12 §8a, render screen 1). */}
+      {named > 0 && byName && !qs.length && turnout && (
+        <p className="fine" data-turnout>{turnout.line} {whyTurnout ? <span data-turnout-why>{turnout.why}.</span> : <button className="link" onClick={() => setWhyTurnout(true)}>How we got this</button>}</p>
+      )}
+      {!qs.length && byName && sameAsks.map((row) => {
+        const who = guests.find((x) => x.id === row.maybeSameAs);
+        return (
+          <div className="grp" key={'same-' + row.id} data-same={row.id} role="group" aria-label={'Is ' + row.name + ' ' + who.name + '?'}>
+            <div className="row"><span className="nm">“{row.name}” replied. Is that {who.name}?</span></div>
+            <button className="row gk-go" data-same-yes onClick={() => save(sameGuestEdit(ev, row.id, true))}><span className="nm">Same person</span>{chev}</button>
+            <button className="row gk-go" data-same-no onClick={() => save(sameGuestEdit(ev, row.id, false))}><span className="nm">Different people</span>{chev}</button>
+          </div>
+        );
+      })}
+      {!qs.length && byName && untold && <p className="fine warn" data-untold>{untold.line}</p>}
       {/* A question screen stays one question (UX_12: 40 words or fewer); the path returns once it's answered. */}
       {!qs.length && <><h3 className="sh">Your guests, start to finish</h3>{pathEl}</>}
 
@@ -627,6 +670,13 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
           </div>
         )}
       </>)}
+
+      {!qs.length && byName && named > 0 && (seatingRow || photosRow) && (
+        <div className="grp" data-links>
+          {seatingRow && <button className="row gk-go" data-seating onClick={host.seating}><span className="nm">Who sits where<small>{named} names</small></span>{chev}</button>}
+          {photosRow && <button className="row gk-go" data-photos onClick={host.photos}><span className="nm">Photos from guests</span>{chev}</button>}
+        </div>
+      )}
 
       {!qs.length && byName && !named && (<>
         <p className="fine">Add who’s coming, one name per line.</p>

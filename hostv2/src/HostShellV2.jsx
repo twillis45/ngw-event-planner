@@ -17419,6 +17419,10 @@ export default function HostShellV2() {
               // The list import and the day's details live on the guest sheet
               // until G2c-2b brings them into the kit; it opens at that spot.
               importList: over({ kind: 'guests', focus: 'import' }),
+              // Who sits where keeps its own page (UX_12 §8a); guest photos sit
+              // with the old sheet's updates until G2c-2b-5 brings them in.
+              seating: over({ kind: 'seating' }),
+              photos: over({ kind: 'guests', focus: 'updates' }),
               sendDetails: over({ kind: 'guests', focus: 'invites' }),
               previewSrc: (id) => './?invite-preview=' + encodeURIComponent(id),
             };

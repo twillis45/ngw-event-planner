@@ -1,3 +1,4 @@
+import { guestCountFor } from './guestCountFor';
 // ─── GUEST EDITS — built once, saved by both host shells (11/25/2026) ────────
 // hostv4's Guests page changes a plan exactly the way hostv2's does, so each
 // change is built here and saved by the shell (patchEvent in hostv2,
@@ -6,7 +7,7 @@
 // when there is nothing to change. The lines are hostv2's, word for word.
 import { MEALS } from './dietOptions';
 import { detectCoupleNames } from './guestSplit';
-import { repeatedGuestNames } from './guestMerge';
+import { repeatedGuestNames, confirmSameGuest, keepSeparateGuest } from './guestMerge';
 import { kidsCountAfterRoster } from './kidsCountAfterRoster';
 import { confirmedRsvpCovers } from './confirmedCovers';
 import { guestToldMap, isTold, recordTold, clearTold } from './guestTold';
@@ -87,6 +88,17 @@ export function plusOneEdit(v) {
 }
 
 /** Are kids welcome? 'kids_welcome', 'adults_only' or null (not set). */
+/** How many of a headcount plan's guests are kids (kidsCount), never above the count. */
+export function kidsCountEdit(event, n) {
+  const of = Math.max(0, Number(guestCountFor(event).count) || 0);
+  const k = Math.max(0, Math.round(Number(n) || 0));
+  const kids = of ? Math.min(of, k) : k;
+  return {
+    patch: { kidsCount: kids },
+    msg: kids ? kids + ' of your ' + of + ' are kids. The food plan sizes them lighter.' : 'No kids. The food plan sizes everyone as adults.',
+  };
+}
+
 export function kidsEdit(v) {
   return {
     patch: { kidsPolicy: v },
@@ -236,4 +248,19 @@ export function checkInEdit(event, guestId, at) {
     patch: { guests: list.map((x) => (x && x.id === guestId ? { ...x, checkedIn: on ? (at || new Date().toISOString()) : null } : x)) },
     msg: on ? first + ' is here.' : first + ' isn’t checked in.',
   };
+}
+
+/**
+ * "Same person?" for a reply signed differently (guestMerge, as the old sheet
+ * did): same folds the reply onto the guest's row; different keeps both.
+ */
+export function sameGuestEdit(event, rowId, same) {
+  const gs0 = (event && event.guests) || [];
+  const row = gs0.find((g) => g && g.id === rowId) || {};
+  const who = gs0.find((g) => g && g.id === row.maybeSameAs) || {};
+  if (same) {
+    const gs = confirmSameGuest(gs0, rowId);
+    return { patch: { guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, msg: 'The reply is on ' + (who.name || 'their') + '’s row now.' };
+  }
+  return { patch: { guests: keepSeparateGuest(gs0, rowId) }, msg: (row.name || 'They') + ' stay on the list as a separate guest.' };
 }
