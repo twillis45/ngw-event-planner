@@ -7,7 +7,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 const [STATE, OUTD, PHASE] = process.argv.slice(2);
 const U0 = 'https://twillis45.github.io/ngw-event-planner/hostv2/?noanalytics=1'; let U = U0;
 let ID = (() => { try { return require('fs').readFileSync(require('path').join(process.argv[3], '.testid'), 'utf8').trim(); } catch { return 'E2E_TEST_signed-tg'; } })();
-const known = new Set(); // plan ids already in the account, read from its own GETs
+const known = new Set(); let eventsRead = false; // plan ids already in the account, read from its own GETs
 const PEOPLE = /communication|\/invite|nudge|\/sms|\/email|\/send|broadcast|\/text|announcement|\/updates?\b|\/post\b/i;
 const ev = { id: ID, name: 'E2E_TEST_ Thanksgiving (signed-in check)', type: 'Thanksgiving', date: '2026-12-19', startTime: '15:00', startTimeSource: 'host', venue: 'Our place', venueAddress: '123 Example St, Springfield, VA 22150', venueKind: 'home', guestMode: 'list', vendors: [], budget: [], timeline: [],
   guests: [{ id: 'g1', name: 'Ada Pine', email: 'ada.pine@example.com', rsvp: 'pending' }, { id: 'g2', name: 'Bo Reed', email: 'bo.reed@example.com', rsvp: 'pending' }, { id: 'g3', name: 'Cy Lark', phone: '(202) 555-0102', rsvp: 'pending' }] };
@@ -28,7 +28,7 @@ let PRIV = /$^/; // set from the session's own address at run time, so the addre
     const qid = (qs.match(/id=eq\.([^&]+)/) || [])[1]; if (qid) ids.push(qid);
     const isEvents = /supabase\.co$/.test(u.host) && /^\/rest\/v1\/events$/.test(u.pathname);
     const mine = isEvents ? (ids.length > 0 && ids.every((i) => i === ID)) : (u.pathname.includes('/' + ID + '/') || u.pathname.endsWith('/' + ID));
-    const fresh = PHASE === 'create' && isEvents && known.size > 0 && ids.length > 0 && ids.every((i) => !known.has(i)) && /E2E_TEST_|Thanksgiving/.test(body);
+    const fresh = PHASE === 'create' && isEvents && eventsRead && ids.length > 0 && ids.every((i) => !known.has(i)) && /E2E_TEST_|Thanksgiving/.test(body);
     let ok = false;
     if (/sentry\.io/.test(u.host)) ok = false;
     else if (/studio_settings/.test(u.pathname)) ok = false;
@@ -45,7 +45,7 @@ let PRIV = /$^/; // set from the session's own address at run time, so the addre
     window.open = (u) => { window.__out.open.push(String(u)); return null; };
     document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a[href]'); if (a && /^(sms|mailto):/i.test(a.getAttribute('href'))) { window.__out.nav.push(a.getAttribute('href').split('?')[0]); e.preventDefault(); } }, true); }, scheme);
   const p = await ctx.newPage(); p.setDefaultTimeout(10000);
-  p.on('response', async (x) => { try { if (/rest\/v1\/events/.test(x.url()) && x.request().method() === 'GET') for (const row of [].concat(await x.json())) if (row && row.id) known.add(row.id); } catch {} }); p.on('pageerror', (e) => r.errs.push(String(e.message).slice(0, 160))); let n = 0;
+  p.on('response', async (x) => { try { if (/rest\/v1\/events/.test(x.url()) && x.request().method() === 'GET') { eventsRead = true; for (const row of [].concat(await x.json())) if (row && row.id) known.add(row.id); } } catch {} }); p.on('pageerror', (e) => r.errs.push(String(e.message).slice(0, 160))); let n = 0;
   const shot = async (name) => { const t = await p.evaluate(() => document.body.innerText).catch(() => ''); if (PRIV.test(t)) return 'skipped (shows the account address)'; await p.screenshot({ path: path.join(OUT, String(++n).padStart(2, '0') + '-' + name + '.jpg'), type: 'jpeg', quality: 60 }); return 'saved'; };
   const scrub = (x) => JSON.parse(JSON.stringify(x).replace(/[A-Za-z0-9._%+-]+@gmail\.com/gi, '[account]').replace(/\?rsvp=[A-Za-z0-9_-]+/g, '?rsvp=…'));
   const step = async (name, fn) => { const s = { name, ok: true }; try { Object.assign(s, (await fn()) || {}); } catch (e) { s.ok = false; s.error = String(e.message).split('\n')[0].slice(0, 300); }
@@ -106,7 +106,7 @@ let PRIV = /$^/; // set from the session's own address at run time, so the addre
   }
   if (PHASE === 'create') {
     await p.goto(U + '&elegant=1', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(3500);
-    await step('c0-create', async () => { if (!known.size) throw new Error('account plans not read yet; refusing to create');
+    await step('c0-create', async () => { if (!eventsRead) throw new Error('account plans not read yet; refusing to create');
       await p.locator('[data-tt-bar]').getByRole('button', { name: 'Create', exact: true }).click(); await p.waitForTimeout(1200);
       const box = p.getByPlaceholder(/Try:/).first(); await box.fill('E2E_TEST_ Thanksgiving at our place for 12, December 19 at 3pm'); await box.press('Enter'); await p.waitForTimeout(6000);
       let t = (await p.locator('body').innerText()).replace(/\s+/g, ' ');
@@ -162,6 +162,27 @@ let PRIV = /$^/; // set from the session's own address at run time, so the addre
       await inp.fill('123 Example St, Springfield, VA 22150'); await p.locator('.sheet button, [role=dialog] button').filter({ hasText: /^Save$/ }).first().click(); await p.waitForTimeout(3500);
       const e = await p.evaluate((id) => { const all = [...JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]'), ...JSON.parse(localStorage.getItem('ngw-events') || '[]')]; const x = all.find((y) => y && y.id === id); return x ? { venue: x.venue, venueAddress: x.venueAddress || null } : null; }, ID);
       return { labels, plan: e }; });
+  }
+  if (PHASE === 'del325') { // #325: a fresh browser (the plan loads only from the account) deletes it from the plan list
+    await p.goto(U); await p.evaluate(() => { localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1'); });
+    await p.goto(U + '&elegant=1', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(3500);
+    await step('d1-plan-loads-from-account', async () => { const st = await p.evaluate((id) => ({ customs: JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').map((x) => x && x.id), cache: JSON.parse(localStorage.getItem('ngw-events') || '[]').map((x) => x && x.id) }), ID);
+      if (!st.cache.includes(ID)) throw new Error('test plan not loaded from the account :: ' + JSON.stringify(st)); return { inCustoms: st.customs.includes(ID), inCache: true }; });
+    await step('d2-delete-from-list', async () => { await p.locator('[data-tt-title]').first().click(); await p.waitForTimeout(900);
+      const rows = await p.evaluate(() => { const d = [...document.querySelectorAll('[role=dialog], .sheet')].filter((e) => e.getBoundingClientRect().width > 0).pop(); return d ? [...d.querySelectorAll('button')].filter((e) => e.getBoundingClientRect().width > 0).map((e) => (e.getAttribute('aria-label') || '') + ' | ' + e.innerText.replace(/\s+/g, ' ').trim()).slice(0, 12) : []; });
+      const del = p.locator('[role=dialog] button, .sheet button').filter({ hasText: /Delete/ }).and(p.locator('[aria-label^="Delete E2E_TEST_"], :text("Delete this event")')).first();
+      const byLabel = p.locator('[aria-label="Delete ' + ev.name + '"]'); const target = (await byLabel.count()) ? byLabel.first() : del;
+      if (!(await target.count())) throw new Error('no Delete for the synced test plan :: ' + JSON.stringify(rows));
+      await target.click(); await p.waitForTimeout(700);
+      const ask = await p.evaluate(() => { const d = [...document.querySelectorAll('[role=dialog], .sheet')].filter((e) => e.getBoundingClientRect().width > 0).pop(); return d ? (d.innerText.match(/Delete[^\n]{0,80}\?/) || [null])[0] : null; });
+      const sure = p.locator('[aria-label="Delete ' + ev.name + ' for good"]'); const sure2 = p.locator('[role=dialog] button, .sheet button').filter({ hasText: /^Delete it$/ });
+      if (await sure.count()) await sure.first().click(); else if (await sure2.count()) await sure2.first().click(); else throw new Error('no confirm :: ' + JSON.stringify(rows));
+      await p.waitForTimeout(6000); return { rowsBefore: rows, asked: ask }; });
+    await step('d3-gone-after-reload', async () => { await p.goto(U + '&elegant=1', { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(4000);
+      const st = await p.evaluate((id) => ({ customs: JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').map((x) => x && x.id).includes(id), cache: JSON.parse(localStorage.getItem('ngw-events') || '[]').map((x) => x && x.id).includes(id), title: (document.querySelector('[data-tt-title]') || {}).innerText || null }), ID);
+      await p.locator('[data-tt-title]').first().click().catch(() => {}); await p.waitForTimeout(800);
+      const listed = await p.evaluate((n) => document.body.innerText.includes(n), ev.name);
+      if (st.customs || st.cache || listed) throw new Error('still there after reload :: ' + JSON.stringify({ ...st, listed })); return { ...st, listed }; });
   }
   if (PHASE === 'code') { // a plan made in the app gets an rsvpCode at creation (mintRsvpToken); the seeded test plan lacked one
     await pickTest();
