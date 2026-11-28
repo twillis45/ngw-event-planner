@@ -6,6 +6,9 @@
 import { plusOneLabel, plusOneCount } from './plusOneCount';
 import { sizingRange, attendanceBand } from './playbooks';
 import { wasInvited } from './replyNudge';
+import { inviteRecipients, greetingName } from './inviteBatch';
+import { guestToldMap } from './guestTold';
+import { invitesOut } from './taskEngine';
 
 /** The find box shows from this many names (owner, 11/28/2026: from 8, was 21). */
 export const FIND_FROM = 8;
@@ -90,4 +93,29 @@ export function notToldYet(event) {
   const count = guests.filter((g) => reach(g) && !wasInvited(event, g)).length;
   if (!count) return null;
   return { count, line: count + ' you can reach ' + (count === 1 ? 'hasn’t' : 'haven’t') + ' had the invite yet.' };
+}
+
+/**
+ * The guests added after the invite went out (UX_12 §8a, render screen 4):
+ * reachable, not declined, never invited, once the invite is out (recorded as
+ * sent, a reply, or any guest it reached). { count, label, line }, or null.
+ * The old sheet's "Invite N new guests" reads this too, so both say the same.
+ */
+export function lateInvite(event) {
+  if (!event) return null;
+  const r = inviteRecipients(event.guests, guestToldMap(event));
+  const all = [...r.email, ...r.text];
+  if (!all.length) return null;
+  const out = !!invitesOut(event) || (Array.isArray(event.guests) ? event.guests : []).some((g) => g && wasInvited(event, g));
+  if (!out) return null;
+  const names = all.map((x) => x.name || 'A guest');
+  const who = names.length === 1 ? names[0] + ' was'
+    : (names.length === 2 ? names.join(' and ') : names.slice(0, 2).join(', ') + ' and ' + (names.length - 2) + ' more') + ' were';
+  const how = r.email.length && r.text.length ? 'by email or text' : r.email.length ? 'by email' : 'by text';
+  const gets = all.length === 1 ? (greetingName(all[0].name) || 'a guest') + ' gets' : 'They get';
+  return {
+    count: all.length,
+    label: all.length === 1 ? 'Invite 1 new guest' : 'Invite ' + all.length + ' new guests',
+    line: who + ' added after your invite went out. ' + gets + ' the same message ' + how + '.',
+  };
 }

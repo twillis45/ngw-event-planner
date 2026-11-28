@@ -141,6 +141,7 @@
 .gk .sendbody > .link { display: block; min-height: 44px; }
 .gk .sendbody .row.one .link { margin-left: 16px; }
 .gk .done.warnline { color: var(--warn); }
+.gk [data-copy-invite] .link { margin-left: auto; min-height: 44px; padding: 0 4px; }
 /* Updates and questions. */
 .gk .row.update { align-items: flex-start; }
 .gk .row.update .nm { white-space: pre-wrap; overflow-wrap: anywhere; }

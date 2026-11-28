@@ -116,6 +116,21 @@ const monthDay = (iso) => {
   return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 };
 
+/** What went out, in one line: "Nov 24 · email to 9, text to 3"; '' until something did. */
+export function sentSummary(event) {
+  const sent = event && event.invitesSentMessage;
+  if (!sent || !str(sent.body).trim()) return '';
+  const n = { email: 0, text: 0, you: 0 };
+  for (const g of sentRecipients(event)) {
+    const c = g.channel.toLowerCase();
+    if (c.includes('email')) n.email += 1;
+    if (c.includes('text')) n.text += 1;
+    if (!c.includes('email') && !c.includes('text')) n.you += 1;
+  }
+  const ways = [n.email && 'email to ' + n.email, n.text && 'text to ' + n.text, n.you && 'by you to ' + n.you].filter(Boolean).join(', ');
+  return [monthDay(sent.at), ways].filter(Boolean).join(' · ');
+}
+
 /** The "Invite message" row's line: { kind: 'none' | 'saved' | 'sent', line }. */
 export function draftStatus(event) {
   const sent = event && event.invitesSentMessage;

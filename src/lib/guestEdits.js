@@ -137,6 +137,18 @@ export function addressesEdit(v) {
 }
 
 /** The gift note: null (none), 'no_gifts', 'registry', or a kept older mode. Its detail stays when the mode does. */
+/**
+ * The gift note's choices. A gift wish stored before these three (a donation, a
+ * potluck, a chip-in) is shown as its own chosen option, so nothing she set
+ * looks lost (owner, 11/28/2026, call D); picking another replaces it.
+ */
+export const LEGACY_GIFT = { charity: 'A donation', potluck: 'Potluck', contribution: 'Chip in' };
+export const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
+export function giftChoices(mode) {
+  return [['None', null], ['No gifts, please', 'no_gifts'], ['Registry link', 'registry'],
+    ...(LEGACY_GIFT[mode] ? [[LEGACY_GIFT[mode], mode]] : [])];
+}
+
 export function giftEdit(event, v) {
   const gw = (event && event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
   return {

@@ -15,10 +15,7 @@
 // shown as its own selected chip rather than hidden; picking another replaces it.
 //
 // Chips are outlined; the selected one has a green outline and a check, no fill.
-import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '@app/lib/guestEdits';
-
-const LEGACY_GIFT = { charity: 'A donation', potluck: 'Potluck', contribution: 'Chip in' };
-const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
+import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit, LEGACY_GIFT, GIFT_DETAIL } from '@app/lib/guestEdits';
 
 export default function InviteRules({ event, patchEvent, note }) {
   const ev = event || {};
