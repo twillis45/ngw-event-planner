@@ -132,6 +132,7 @@ const SELF_PINNED = [
   '**/theGuestListAsksTheRest.spec.mjs',
   '**/theKitImportsAList.spec.mjs',
   '**/theKitInviteKeepsItsWords.spec.mjs',
+  '**/theKitUpdateIsWrittenFromThePlan.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
