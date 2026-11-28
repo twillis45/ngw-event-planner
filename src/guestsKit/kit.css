@@ -184,6 +184,12 @@
 .gk .tablet .view > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
 .gk .tablet .action { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); right: 16px; padding: 0; z-index: 5; }
 .gk .tablet .primary { width: auto; min-height: 44px; padding: 0 18px; }
+/* The bar's button ends before the back link and wraps a long label beside it,
+   never over it (seen 11/28/2026: "Nudge the 2 who haven't replied" covered
+   "‹ Your plan" by 46px in the 400px guest list). 160px = the back link's 16px
+   inset, its widest label, and a 12px gap. */
+.gk .tablet .action { max-width: calc(100% - 160px); }
+.gk .tablet .action .primary { padding: 6px 18px; line-height: 1.25; text-align: center; }
 .gk .tablet .view > .lt { margin-top: 0; }
 /* Portrait and split screen: one pane; the sidebar slides in over it. */
 .gk .tablet.compact .gk-app { left: 0; }
