@@ -1,0 +1,374 @@
+[
+ {
+  "vp": "390x844-dark",
+  "top": {
+   "back": [
+    10,
+    4,
+    122,
+    48
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    16,
+    780,
+    374,
+    832
+   ],
+   "overlap": false,
+   "overlapPx": 0
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "390x844-light",
+  "top": {
+   "back": [
+    10,
+    4,
+    122,
+    48
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    16,
+    780,
+    374,
+    832
+   ],
+   "overlap": false,
+   "overlapPx": 0
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "834x1194-dark",
+  "top": {
+   "back": [
+    69,
+    6,
+    181,
+    50
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    455,
+    8,
+    757,
+    52
+   ],
+   "overlap": false,
+   "overlapPx": 0
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": true
+  },
+  "ok": true
+ },
+ {
+  "vp": "1024x1366-dark",
+  "top": {
+   "back": [
+    217,
+    6,
+    329,
+    50
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    282,
+    8,
+    584,
+    52
+   ],
+   "overlap": true,
+   "overlapPx": 46
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": false
+  },
+  "ok": false
+ },
+ {
+  "vp": "1194x834-dark",
+  "top": {
+   "back": [
+    217,
+    6,
+    329,
+    50
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    282,
+    8,
+    584,
+    52
+   ],
+   "overlap": true,
+   "overlapPx": 46
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": false
+  },
+  "ok": false
+ },
+ {
+  "vp": "1440x900-dark",
+  "top": {
+   "back": [
+    241,
+    6,
+    353,
+    50
+   ],
+   "primary": "Nudge the 2 who haven’t replied",
+   "primaryBox": [
+    306,
+    8,
+    608,
+    52
+   ],
+   "overlap": true,
+   "overlapPx": 46
+  },
+  "sheet": {
+   "name": "Ada Pine",
+   "links": [
+    "Call=tel:2025550101",
+    "Text=sms:2025550101",
+    "Email=mailto:ada.pine%40example.com"
+   ],
+   "group": {
+    "list": "gk-groups",
+    "placeholder": "Group: family, friends, work…"
+   },
+   "datalist": [
+    "Family",
+    "Work"
+   ],
+   "nudge": "Nudge Ada",
+   "helping": 0
+  },
+  "renamed": {
+   "name": "Ada Pine-Smith",
+   "kept": {
+    "aka": [
+     "ada pine"
+    ]
+   }
+  },
+  "errs": [],
+  "blocked": [
+   "POST /api/4511496830255104/envelope/"
+  ],
+  "sideways": 0,
+  "checks": {
+   "name": true,
+   "call": true,
+   "text": true,
+   "email": true,
+   "group": true,
+   "nudge": true,
+   "rename": true,
+   "noOverlap": false
+  },
+  "ok": false
+ }
+]
