@@ -13,7 +13,7 @@ const ID = 'gk-upd';
 const EV = {
   id: ID, name: 'Thanksgiving at ours', type: 'Thanksgiving', createdAt: '2026-11-20',
   date: dateIn(20), startTime: '15:00', startTimeSource: 'host', venue: 'Pine Street Commons', venueCity: 'Springfield, VA',
-  guestMode: 'list', guestEstimate: 14, guestCountSource: 'host', rsvpDeadline: dateIn(10), invitesSentAt: '2026-11-24T15:00:00.000Z',
+  guestMode: 'list', guestEstimate: 14, guestCountSource: 'host', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'kids_welcome', rsvpDeadline: dateIn(10), invitesSentAt: '2026-11-24T15:00:00.000Z',
   vendors: [], budget: [], timeline: [],
   guests: [{ id: 'g0', name: 'Rosa Lane', email: 'rosa@example.com', rsvp: 'Yes', invitedAt: '2026-11-24T15:00:00.000Z', invitedVia: 'email' }],
 };
