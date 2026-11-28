@@ -47,6 +47,19 @@ describe('"our place" only for her home', () => {
     expect(placeLine(ev)).toBe('our place, 12 Elm St, Bowie, MD');
     expect(draftInvite(ev, null).body).toContain('our place, 12 Elm St, Bowie, MD');
   });
+  // A host at home who typed her street as the place's name got it twice:
+  // "12 Elm St, 12 Elm St, Springfield, VA" (seen 11/28/2026 rendering the kit's invite).
+  test('a home named by its street prints the street once', () => {
+    const ev = { ...BASE, venue: '12 Elm St', venueKind: 'home', venueCity: 'Springfield, VA' };
+    expect(placeLine(ev)).toBe('12 Elm St, Springfield, VA');
+    const named = { ...BASE, venue: '12 Elm St', venueKind: 'home', venueStreet: '12 Elm St', venueCity: 'Springfield, VA' };
+    expect(placeLine(named)).toBe('12 Elm St, Springfield, VA');
+    expect(draftInvite(ev, null).body).not.toContain('12 Elm St, 12 Elm St');
+  });
+  test('a named home still keeps its name and its street', () => {
+    const ev = { ...BASE, venue: 'Mom’s house', venueKind: 'home', venueStreet: '12 Elm St', venueCity: 'Bowie, MD' };
+    expect(placeLine(ev)).toBe('Mom’s house, 12 Elm St, Bowie, MD');
+  });
 });
 
 describe('the host line', () => {
