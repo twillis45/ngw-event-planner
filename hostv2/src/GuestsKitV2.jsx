@@ -13,6 +13,7 @@ import InviteDesignPage from '@app/guestsKit/InviteDesignPage.jsx';
 import UpdatesPage from '@app/guestsKit/UpdatesPage.jsx';
 import { useEffect, useState } from 'react';
 import { useLayout } from '@app/guestsKit/layout.js';
+import { KitHostContext } from '@app/guestsKit/kitHost.js';
 import '@app/guestsKit/kit.css';
 import './guestsKitSkin.css';
 
@@ -28,8 +29,9 @@ const back = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6
  * @param {Function} p.push      open a page over this one
  * @param {Function} p.onBack    back one page (closeSheet)
  * @param {boolean} p.sample     a sample plan
+ * @param {object} p.actions     hostv2's own sheets for the kit's steps (kitHost.js), so nothing points elsewhere
  */
-export default function GuestsKitV2({ event, page, backTo, save, push, onBack, sample }) {
+export default function GuestsKitV2({ event, page, backTo, save, push, onBack, sample, actions }) {
   const layout = useLayout();
   // hostv2's section rail (wide screens) stays the left column, as the approved
   // iPad render drew it: the layer starts at its right edge. No rail, no offset.
@@ -57,9 +59,11 @@ export default function GuestsKitV2({ event, page, backTo, save, push, onBack, s
     </div>
   );
   return (
-    <div className="gk gk-v2" data-guests-kit={page} role="dialog" aria-modal="true" aria-label={TITLE[page]} style={left ? { left } : undefined}>
-      {layout === 'phone' ? body : <div className={'tablet ' + layout} data-layout={layout}>{body}</div>}
-    </div>
+    <KitHostContext.Provider value={actions || null}>
+      <div className="gk gk-v2" data-guests-kit={page} role="dialog" aria-modal="true" aria-label={TITLE[page]} style={left ? { left } : undefined}>
+        {layout === 'phone' ? body : <div className={'tablet ' + layout} data-layout={layout}>{body}</div>}
+      </div>
+    </KitHostContext.Provider>
   );
 }
 
