@@ -35,6 +35,7 @@ Before that, 2026-11-02 (sixtieth entry:
   - #328: row tags, households, party totals, find from 8 names (based on #326);
   - #329: the kids-count question (call A), the turnout line (call B), same guest, not told yet, seating and photos rows (based on #328);
   - #330: one Import sheet in the kit, the old sheet on the same `lib/guestImport` (based on #329; CI pending).
+- **Pricing (owner, 11/28):** keep the free plan and the $39 pass. The "free week" model and the $49 test from the 11/18 marketing board are not adopted.
 - **Next:** G2c-2b step 4 (Your invite: edit, copy, What went out, "Invite the N new guests", older gift choices, call D), step 5 (updates, the day's details, Everything that went out, Photos), then G2c-2c: the kit becomes the default, `?guests=old` kept one release, and the old `?people=1` extras retired (call C).
 - 🔴 **Trap: `npm run -s e2e:build` does nothing from the repo root.** Run it from `hostv2/`, with `PW_CHROMIUM=/opt/pw-browsers/chromium`.
 - 🔴 **Trap: the session disk fills up and every browser crashes** (120 "failures" in one run). Remove clean, pushed worktrees; rerun with 3 workers.
