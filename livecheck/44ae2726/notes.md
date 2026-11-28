@@ -25,3 +25,7 @@ Probes that select a renamed class and will need updating:
 - `hostv4.cjs:40` reads `.q` → `.gk-q`
 - `hostv4-guests.cjs:67` reads `[data-question] .row.go` → `.row.gk-go`
 The `.sheet` / `.card` uses in `day-31b2.cjs`, `vendors-remind-f60e.cjs` and `hostv4-day-9009.cjs` are on The Day or hostv2, not the Guests kit; they stay unless those screens adopt the kit.
+
+## Ahead of #321 (G2c-1)
+- hostv4's frame `.app` → `.gk-app`. Only `hostv4.cjs:39` selects it on hostv4 (it falls back to `body`, so it won't fail, but it would read the whole page). Switch to `.gk-app, .app` when #321 is live. The `.app` uses in `run.cjs` and `drinks-7a23.cjs` are hostv2's frame and stay.
+- New surface: hostv2 `?guests=kit`. Plan: phone one pane; 834 compact; 1194 / 1440 three panes, with the kit layer starting at `.srail`'s right edge; Back walks back one page at a time. Without the flag, Guests is still the old sheet.
