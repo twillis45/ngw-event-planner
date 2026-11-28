@@ -40,9 +40,12 @@ describe('Guests folds away', () => {
   });
   // 8 under #272; 10 once the path came back (owner, 11/26/2026): +, ⋯, four
   // tappable steps (answers, names, invite, updates), three groups, the button.
-  it('keeps the page to 10 controls or fewer, and one bottom button', () => {
+  // The find box shows from 8 names since 11/28/2026 (owner: "Approved, go with
+  // your recommendations", UX_12 §8a); the rest of the page keeps to 10.
+  it('keeps the page to 10 controls or fewer, plus the find box, and one bottom button', () => {
     mount(ten);
-    expect(qa('button, input, textarea, select, a').length).toBeLessThanOrEqual(10);
+    expect(q('#findguest')).not.toBeNull();
+    expect(qa('button, input, textarea, select, a').filter((el) => el.id !== 'findguest').length).toBeLessThanOrEqual(10);
     expect(qa('.primary').length).toBe(1);
   });
   it('opens one group at a time, in place', () => {
@@ -78,11 +81,11 @@ describe('Guests folds away', () => {
     expect(q('[data-group]')).toBeNull();
     expect(q('.primary').textContent).toBe('Add names');
   });
-  it('offers find only past 20 names', () => {
-    mount(ten);
+  it('offers find from 8 names (owner, 11/28/2026; it was past 20)', () => {
+    const list = (n) => ({ ...answered, guests: Array.from({ length: n }, (_, k) => ({ id: 'm' + k, name: 'Guest ' + k, rsvp: '' })) });
+    mount(list(7));
     expect(q('#findguest')).toBeNull();
-    const many = { ...answered, guests: Array.from({ length: 21 }, (_, k) => ({ id: 'm' + k, name: 'Guest ' + k, rsvp: '' })) };
-    mount(many);
+    mount(list(8));
     expect(q('#findguest')).not.toBeNull();
   });
   // The live-check session, 11/26/2026: signed out, guest-threads came back 401
