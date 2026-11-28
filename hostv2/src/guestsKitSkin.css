@@ -1,0 +1,53 @@
+/* THE GUESTS KIT IN HOSTV2'S COLORS (owner, 11/27/2026: "Bring the guest
+   workflow and screens from v4 with v2 styling"). The kit's screens and their
+   design language are shared with hostv4 (src/guestsKit/kit.css, scoped .gk);
+   this file only maps the kit's tokens to hostv2's own, light and dark, and
+   frames the layer. Nothing here restyles a component. */
+
+/* The layer: over the board and its sheets (z 40), under hostv2's line with
+   its Undo (.toast, z 60), so a change always says so on screen. */
+.gk.gk-v2{ position:fixed; inset:0; z-index:45; background:var(--bg); color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased; overflow:hidden; }
+
+/* The kit's tokens, in hostv2's palette. */
+.gk.gk-v2{
+  --raised: var(--card);
+  --raised-2: color-mix(in srgb, var(--card) 92%, var(--ink));
+  --hair: var(--line);
+  --ink-2: color-mix(in srgb, var(--ink) 74%, var(--bg));
+  --ink-3: var(--muted);
+  /* The accent: a link, the step that is now, a picked radio. The button is steel. */
+  --accent: var(--steel-soft);
+  --btn-ink: var(--on-steel);
+  --gk-tint: var(--steel-tint);
+  --gk-tint-chip: var(--steel-tint);
+  --gk-tint-strong: color-mix(in srgb, var(--steel-soft) 22%, transparent);
+  --gk-tint-line: color-mix(in srgb, var(--steel-soft) 60%, transparent);
+  --gk-warn-tint: color-mix(in srgb, var(--warn) 16%, transparent);
+  --gk-selected: color-mix(in srgb, var(--steel) 26%, var(--card));
+  --gk-side: var(--bg);
+  --gk-act-ink: var(--bg);
+  --gk-act-no: var(--muted);
+  --gk-act-no-ink: var(--bg);
+  --gk-act-none: color-mix(in srgb, var(--card) 70%, var(--ink));
+  color-scheme: dark;
+}
+:root[data-theme="light"] .gk.gk-v2{ color-scheme: light; }
+:root[data-theme="light"] .gk.gk-v2 .datein{ color-scheme: light; }
+
+/* The step's one button is hostv2's steel button (the cue's own gradient and edge). */
+.gk.gk-v2 .primary{ background:var(--cta-grad); color:var(--on-steel); box-shadow:0 3px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="dark"] .gk.gk-v2 .primary{ box-shadow:0 0 0 1px color-mix(in srgb, var(--steel-soft) 55%, transparent), 0 3px 0 var(--steel-dark), 0 9px 22px -9px var(--shadow-60), inset 0 1px 0 var(--hair-14); }
+
+/* hostv2 has its own places (the rail, the bottom bar), so the kit's iPad
+   frame starts at the left edge: no hostv4 sidebar to sit beside. */
+/* The kit's frame fills the layer, not the screen, so the layer's own edge
+   (beside hostv2's rail) is the frame's edge. */
+.gk.gk-v2 .tablet, .gk.gk-v2 .gk-app{ position:absolute; }
+.gk.gk-v2 .tablet .gk-app{ left:0; }
+.gk.gk-v2 .gk-app{ max-width:430px; }
+.gk.gk-v2 .tablet .gk-app{ max-width:none; }
+
+/* The question in T2's size (owner, 11/27/2026: "T2 applied version is fine";
+   UX_12 A + T2): 28 / 800, tracking at the -0.02em floor. */
+.gk.gk-v2 .gk-q{ font-size:28px; font-weight:800; letter-spacing:-.02em; line-height:1.12; }
+.gk.gk-v2 .lt{ letter-spacing:-.02em; }

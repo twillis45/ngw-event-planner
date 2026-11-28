@@ -221,7 +221,7 @@ export default function HostShellV4() {
       {acts ? <div className="ltrow"><h1 className="lt">{title}</h1>{acts}</div> : <h1 className="lt">{title}</h1>}
     </>);
     return frame(
-      <div className="app pushed" key={page}>
+      <div className="gk-app pushed" key={page}>
         {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={(acts) => navbar(PAGE_TITLE.guests, acts)} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
         {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar(PAGE_TITLE.updates)} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.invite)} status={status} onDesign={() => push('invite-design')} />}
@@ -237,14 +237,14 @@ export default function HostShellV4() {
   if (counter) return <CounterMode ev={ev} save={saveEdit} onLeave={() => setCounter(false)} />;
   // THE DAY (11/26/2026): its own page, with its own title, button and sheets.
   if (tab === 'day') return frame(
-    <div className="app">
+    <div className="gk-app">
       <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} onGuests={() => push('guests')} onCrew={() => push('crew')} onUpdates={() => push('updates')} />
       {tabbar}
     </div>
   );
 
   return frame(
-    <div className="app">
+    <div className="gk-app">
       <main className="view" data-tab={tab}>
         <h1 className="lt">{tab === 'plan' ? 'Your plan' : ev.name}</h1>
         <p className="sub">{sample && tab !== 'plan' ? 'Sample · ' : ''}{tab === 'plan' ? ev.name + (date ? ' · ' + date : '') : date}{holiday && tab !== 'plan' ? ' · ' + holiday : ''}</p>

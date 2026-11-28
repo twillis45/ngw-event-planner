@@ -634,6 +634,16 @@
       },
       "home": "elsewhere",
       "where": "The Day"
+    },
+    {
+      "id": "guests-kit",
+      "feature": "The Guests page as the shared kit’s screens (src/guestsKit, the ones hostv4 shows), in hostv2’s colors",
+      "anchor": {
+        "file": "src/GuestsKitV2.jsx",
+        "contains": "export default function GuestsKitV2"
+      },
+      "home": "guestsPage",
+      "where": "The whole Guests page, while ?guests=kit is on (G2c-1, 11/28/2026)"
     }
   ],
   "guestFacing": {
@@ -721,7 +731,8 @@
       "undoLastCsvImport": "csv-undo",
       "unseatGuest": "seating",
       "verifiedRsvpUrl": "rsvp-link",
-      "writeGuest": "guest-name"
+      "writeGuest": "guest-name",
+      "guestsKitPage": "guests-kit"
     }
   }
 }
