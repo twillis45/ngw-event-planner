@@ -122,6 +122,8 @@ const SELF_PINNED = [
   '**/theBudgetQuestionWearsT2.spec.mjs',
   // Pins 390x844 and 1440x900 (the header wears T2, 11/27/2026).
   '**/theHeaderWearsT2.spec.mjs',
+  // Pins 390x844 and 1194x834 (the Guests kit opens in hostv2, 11/28/2026).
+  '**/theGuestsKitOpensInHostv2.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

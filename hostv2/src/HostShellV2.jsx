@@ -125,6 +125,7 @@ import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import ContactInput from './ContactInput.jsx';
+import GuestsKitV2, { GUESTS_KIT_TITLE } from './GuestsKitV2.jsx';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
@@ -1456,8 +1457,13 @@ export default function HostShellV2() {
   // ONE door either way, so the Duplicate Surface Rule holds: the directory
   // still has exactly one Guests row.
   let peopleMode = false;
+  // THE GUESTS KIT (G2c-1, 11/28/2026): ?guests=kit opens Guests as the shared
+  // kit's screens (GuestsKitV2). The old sheet stays the default until its
+  // specs are ported (G2c-2); the switch is the one door either way.
+  let guestsKitOn = false;
   try {
     const q = new URLSearchParams(window.location.search);
+    guestsKitOn = q.get('guests') === 'kit';
     splashHold = q.has('splashhold');
     splashForceFull = q.has('splashfull');
     // Elegant is THE chosen hero direction (grounded-action loop) and is now the
@@ -6461,6 +6467,11 @@ export default function HostShellV2() {
   // history entry when an overlay opens; Back pops it and we close the overlay.
   // If it's closed another way (Close button, a deep-link route), we consume the
   // pushed entry so the history stack stays balanced.
+  // The Guests kit's page, when the switch is on (G2c-1): its own pages, or the
+  // plain Guests door (not a focused one: photos, questions stay on the sheet).
+  const guestsKitPage = !guestsKitOn || !sheet ? null
+    : sheet.kind === 'guests-kit' ? sheet.page
+      : (sheet.kind === 'guests' && !sheet.focus && !peopleMode) ? 'guests' : null;
   const overlayOpen = !!sheet || paletteOpen;
   const overlayPushedRef = useRef(false);
   useEffect(() => {
@@ -17360,8 +17371,23 @@ export default function HostShellV2() {
         </div>
       </div>
 
+      {/* ── THE GUESTS KIT (G2c-1): Guests as the shared kit's screens. Each page is
+          a sheet of kind 'guests-kit' whose `from` is the page before it, so Back
+          (the kit's own, Escape, the phone's) walks back through closeSheet. ── */}
+      {guestsKitPage && (
+        <GuestsKitV2 event={event} page={guestsKitPage} sample={!eventIsTheHostsOwn}
+          backTo={(() => { const f = sheet.from; return f ? (f.kind === 'guests-kit' ? GUESTS_KIT_TITLE[f.page] : f.kind === 'guests' ? GUESTS_KIT_TITLE.guests : f.kind === 'sections' ? 'All sections' : 'Back') : 'Your plan'; })()}
+          onBack={closeSheet}
+          push={(pg) => setSheet((s) => ({ kind: 'guests-kit', page: pg, from: s && s.kind === 'guests' ? { kind: 'guests-kit', page: 'guests', from: s.from } : s }))}
+          save={(ed) => {
+            if (!ed) return false;
+            if (!Object.keys(ed.patch || {}).length) { if (ed.msg) toast(ed.msg); return true; }
+            patchEvent(ed.patch, ed.msg);
+            return true;
+          }} />
+      )}
       {/* ── Deep-link landing sheet: routes land on the exact row ── */}
-      {sheet && (
+      {sheet && !guestsKitPage && (
         <>
           <div className="sheet-scrim" onClick={closeSheet} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
