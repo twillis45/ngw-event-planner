@@ -12,6 +12,11 @@ export const LINK_WHY = {
   'not-configured': 'Replies aren’t switched on for this app.',
   unavailable: 'We couldn’t reach your reply page. Check your connection and try again.',
 };
+// Why the reply link isn't ready, in the host's words. Inside hostv2 (a host
+// that can open its own sign-in) the unsaved plan asks her to sign in here.
+export const linkWhy = (reason, host) => (reason === 'unpublished' && host && host.openSignIn
+  ? 'Your plan isn’t saved to your account yet. Sign in and it saves.'
+  : (LINK_WHY[reason] || LINK_WHY.unavailable));
 
 export function readProfile() { try { return JSON.parse(window.localStorage.getItem('ngw-profile')) || null; } catch { return null; } }
 
@@ -50,7 +55,7 @@ export function NotReady({ acct, link, check }) {
   </>);
   if (link.state === 'checking' || link.state === 'idle') return <p className="fine" role="status">Checking your reply link…</p>;
   if (link.state !== 'ready') return (<>
-    <p className="qhelp" role="alert" data-link-missing><b>Your reply link isn’t ready.</b> {link.reason === 'unpublished' && host && host.openSignIn ? 'Your plan isn’t saved to your account yet. Sign in and it saves.' : (LINK_WHY[link.reason] || LINK_WHY.unavailable)} Nothing can go out without it.</p>
+    <p className="qhelp" role="alert" data-link-missing><b>Your reply link isn’t ready.</b> {linkWhy(link.reason, host)} Nothing can go out without it.</p>
     {link.reason === 'unpublished' ? (host && host.openSignIn ? <button className="primary" onClick={host.openSignIn}>Sign in</button> : <a className="primary" href="../hostv2/">Open it in the current app</a>) : <button className="primary" onClick={check}>Try again</button>}
   </>);
   return null;
