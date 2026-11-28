@@ -15,6 +15,7 @@ import { listAnnouncements, postAnnouncement, removeAnnouncement, isAnnouncement
 import { isGuestMessagesApiConfigured, fetchGuestThreads, fetchGuestThread, replyToGuestThread, blockGuestThread } from './api/guestMessages';
 import { sortThreads, questionsWaiting } from './guestInbox';
 import { track as trackEvent, EVENTS as ANALYTICS } from './analytics';
+import { draftGuestUpdate } from './doItForMe';
 
 const guests = (n) => `${n} guest${n === 1 ? '' : 's'}`;
 const gets = (n) => (n === 1 ? 'gets' : 'get');   // "1 guest gets", "2 guests get"
@@ -43,6 +44,12 @@ export const postAndEmailLabel = (emailN) => `Post and email ${guests(emailN)}`;
 export const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'this guest';
 // Placeholders never pass for an answer (owner, 11/25/2026; UX_11 rule 2): the
 // update box's example is marked as one, and the reply box says what to do.
+/** The update written from the plan's facts: the old sheet's "Update everyone" draft. */
+export function updateFromPlan(event, profile) {
+  try { return draftGuestUpdate(event, {}, profile).body || ''; } catch { return ''; }
+}
+/** Her messages app, open on these words with no recipient: she picks who. Nothing is sent. */
+export const textItHref = (body) => 'sms:?&body=' + encodeURIComponent(String(body || ''));
 export const UPDATE_PLACEHOLDER = 'For example: Parking is on Elm after 5.';
 export const replyPlaceholder = (name) => 'Write your reply to ' + firstName(name);
 export const inboxWhy = (reason, what) => (reason === 'signed-out'

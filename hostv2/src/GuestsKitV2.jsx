@@ -62,7 +62,7 @@ export default function GuestsKitV2({ event, page, backTo, save, push, onBack, s
       {page === 'guests' && <GuestsPage key={event.id} ev={event} save={save} sample={sample} nav={(acts) => navbar(TITLE.guests, acts)} status={line} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
       {page === 'invite' && <InvitePage key={event.id} ev={event} save={save} nav={navbar(TITLE.invite)} status={line} onDesign={() => push('invite-design')} />}
       {page === 'invite-design' && <InviteDesignPage key={event.id} ev={event} save={save} nav={navbar(TITLE['invite-design'])} status={line} />}
-      {page === 'updates' && <UpdatesPage key={event.id} ev={event} nav={navbar(TITLE.updates)} status={line} />}
+      {page === 'updates' && <UpdatesPage key={event.id} ev={event} save={save} nav={navbar(TITLE.updates)} status={line} />}
     </div>
   );
   return (
