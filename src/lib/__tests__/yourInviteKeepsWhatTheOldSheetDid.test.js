@@ -9,7 +9,8 @@ import { lateInvite } from '../guestRows';
 import { sentSummary } from '../inviteMessageDraft';
 import { giftChoices, GIFT_DETAIL } from '../guestEdits';
 
-const at = '2026-11-24T15:00:00.000Z';
+// Local noon, so the day is Nov 24 in any time zone (CI runs jest at UTC-11 and UTC+14).
+const at = new Date(2026, 10, 24, 12).toISOString();
 const sentEvent = (extra = []) => ({
   invitesSentAt: at,
   guests: [
