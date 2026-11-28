@@ -1,0 +1,622 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "01-open-guests",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 4 no reply, 2 can’t make it, of 12",
+    "groups": [
+     {
+      "k": "yes",
+      "open": false,
+      "h": 52,
+      "w": 358,
+      "text": "Coming 4"
+     },
+     {
+      "k": "maybe",
+      "open": false,
+      "h": 52,
+      "w": 358,
+      "text": "Maybe 2"
+     },
+     {
+      "k": "pending",
+      "open": false,
+      "h": 52,
+      "w": 358,
+      "text": "No reply yet 4"
+     },
+     {
+      "k": "no",
+      "open": false,
+      "h": 52,
+      "w": 358,
+      "text": "Can’t make it 2"
+     }
+    ],
+    "layout": null,
+    "threads": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-each-group-flips",
+    "ok": true,
+    "out": [
+     "yes: open alone, 4 rows",
+     "maybe: open alone, 2 rows",
+     "pending: open alone, 4 rows",
+     "no: open alone, 2 rows"
+    ],
+    "stored": "none",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-open-survives-reload",
+    "ok": true,
+    "stored": "maybe",
+    "open": [
+     "maybe"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-closed-survives-reload",
+    "ok": true,
+    "stored": "none",
+    "open": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-more-sheet",
+    "ok": true,
+    "text": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the cur",
+    "sheetFloors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-add-sheet",
+    "ok": true,
+    "addname": 1,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "threads": [],
+  "planUnchanged": true
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "01-open-guests",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 4 no reply, 2 can’t make it, of 12",
+    "groups": [
+     {
+      "k": "yes",
+      "open": false,
+      "h": 52,
+      "w": 680,
+      "text": "Coming 4"
+     },
+     {
+      "k": "maybe",
+      "open": false,
+      "h": 52,
+      "w": 680,
+      "text": "Maybe 2"
+     },
+     {
+      "k": "pending",
+      "open": false,
+      "h": 52,
+      "w": 680,
+      "text": "No reply yet 4"
+     },
+     {
+      "k": "no",
+      "open": false,
+      "h": 52,
+      "w": 680,
+      "text": "Can’t make it 2"
+     }
+    ],
+    "layout": null,
+    "threads": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-each-group-flips",
+    "ok": true,
+    "out": [
+     "yes: open alone, 4 rows",
+     "maybe: open alone, 2 rows",
+     "pending: open alone, 4 rows",
+     "no: open alone, 2 rows"
+    ],
+    "stored": "none",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-open-survives-reload",
+    "ok": true,
+    "stored": "maybe",
+    "open": [
+     "maybe"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-closed-survives-reload",
+    "ok": true,
+    "stored": "none",
+    "open": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-more-sheet",
+    "ok": true,
+    "text": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the cur",
+    "sheetFloors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-add-sheet",
+    "ok": true,
+    "addname": 1,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "threads": [],
+  "planUnchanged": true
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "01-open-guests",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 4 no reply, 2 can’t make it, of 12",
+    "groups": [
+     {
+      "k": "yes",
+      "open": true,
+      "h": 52,
+      "w": 367,
+      "text": "Coming 4"
+     },
+     {
+      "k": "maybe",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Maybe 2"
+     },
+     {
+      "k": "pending",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "No reply yet 4"
+     },
+     {
+      "k": "no",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Can’t make it 2"
+     }
+    ],
+    "layout": null,
+    "threads": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-each-group-flips",
+    "ok": true,
+    "out": [
+     "yes: open alone, 4 rows",
+     "maybe: open alone, 2 rows",
+     "pending: open alone, 4 rows",
+     "no: open alone, 2 rows"
+    ],
+    "stored": "none",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-open-survives-reload",
+    "ok": true,
+    "stored": "maybe",
+    "open": [
+     "maybe"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-closed-survives-reload",
+    "ok": true,
+    "stored": "none",
+    "open": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-more-sheet",
+    "ok": true,
+    "text": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the cur",
+    "sheetFloors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-add-sheet",
+    "ok": true,
+    "addname": 1,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "threads": [],
+  "planUnchanged": true
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "01-open-guests",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 4 no reply, 2 can’t make it, of 12",
+    "groups": [
+     {
+      "k": "yes",
+      "open": true,
+      "h": 52,
+      "w": 367,
+      "text": "Coming 4"
+     },
+     {
+      "k": "maybe",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Maybe 2"
+     },
+     {
+      "k": "pending",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "No reply yet 4"
+     },
+     {
+      "k": "no",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Can’t make it 2"
+     }
+    ],
+    "layout": null,
+    "threads": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-each-group-flips",
+    "ok": true,
+    "out": [
+     "yes: open alone, 4 rows",
+     "maybe: open alone, 2 rows",
+     "pending: open alone, 4 rows",
+     "no: open alone, 2 rows"
+    ],
+    "stored": "none",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-open-survives-reload",
+    "ok": true,
+    "stored": "maybe",
+    "open": [
+     "maybe"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-closed-survives-reload",
+    "ok": true,
+    "stored": "none",
+    "open": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-more-sheet",
+    "ok": true,
+    "text": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the cur",
+    "sheetFloors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-add-sheet",
+    "ok": true,
+    "addname": 1,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "threads": [],
+  "planUnchanged": true
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "01-open-guests",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 4 no reply, 2 can’t make it, of 12",
+    "groups": [
+     {
+      "k": "yes",
+      "open": true,
+      "h": 52,
+      "w": 367,
+      "text": "Coming 4"
+     },
+     {
+      "k": "maybe",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Maybe 2"
+     },
+     {
+      "k": "pending",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "No reply yet 4"
+     },
+     {
+      "k": "no",
+      "open": false,
+      "h": 52,
+      "w": 367,
+      "text": "Can’t make it 2"
+     }
+    ],
+    "layout": null,
+    "threads": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "02-each-group-flips",
+    "ok": true,
+    "out": [
+     "yes: open alone, 4 rows",
+     "maybe: open alone, 2 rows",
+     "pending: open alone, 4 rows",
+     "no: open alone, 2 rows"
+    ],
+    "stored": "none",
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "03-open-survives-reload",
+    "ok": true,
+    "stored": "maybe",
+    "open": [
+     "maybe"
+    ],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "04-closed-survives-reload",
+    "ok": true,
+    "stored": "none",
+    "open": [],
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "05-more-sheet",
+    "ok": true,
+    "text": "Guests Done Share the link Download the list Tell me when someone replies By email and notifications, at most once an hour Importing a list and the QR code are in the current app for now. Open the cur",
+    "sheetFloors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    },
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   },
+   {
+    "name": "06-add-sheet",
+    "ok": true,
+    "addname": 1,
+    "floors": {
+     "sideways": 0,
+     "smallText": 0,
+     "smallTargets": 0,
+     "smallTargetsEx": []
+    }
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "threads": [],
+  "planUnchanged": true
+ }
+]

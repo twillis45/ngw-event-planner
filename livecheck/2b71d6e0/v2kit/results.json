@@ -1,0 +1,660 @@
+[
+ {
+  "vp": "390x844-dark",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": null,
+    "gk": [
+     0,
+     390
+    ],
+    "listpane": null,
+    "detail": null,
+    "vw": 390,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "one",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 717,
+     "left": 217,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "row-swipe",
+    "ok": true,
+    "dir": "left",
+    "rsvp": "No",
+    "toastGoneAfterMs": 6045,
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "390x844-light",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": null,
+    "gk": [
+     0,
+     390
+    ],
+    "listpane": null,
+    "detail": null,
+    "vw": 390,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "one",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 717,
+     "left": 217,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "row-swipe",
+    "ok": true,
+    "dir": "left",
+    "rsvp": "No",
+    "toastGoneAfterMs": 6040,
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194-dark",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": null,
+    "gk": [
+     0,
+     834
+    ],
+    "listpane": [
+     0,
+     834
+    ],
+    "detail": null,
+    "vw": 834,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "one",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 1017,
+     "left": 439,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "row-swipe",
+    "ok": true,
+    "dir": "left",
+    "rsvp": "No",
+    "toastGoneAfterMs": 6037,
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366-dark",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": [
+     1,
+     201
+    ],
+    "gk": [
+     201,
+     1024
+    ],
+    "listpane": [
+     201,
+     601
+    ],
+    "detail": [
+     601,
+     1024
+    ],
+    "vw": 1024,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "three",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 1188,
+     "left": 534,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "row-swipe",
+    "ok": true,
+    "dir": "left",
+    "rsvp": "No",
+    "toastGoneAfterMs": 6042,
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834-dark",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": [
+     1,
+     201
+    ],
+    "gk": [
+     201,
+     1194
+    ],
+    "listpane": [
+     201,
+     601
+    ],
+    "detail": [
+     601,
+     1194
+    ],
+    "vw": 1194,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "three",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 670,
+     "left": 619,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "row-swipe",
+    "ok": true,
+    "dir": "left",
+    "rsvp": "No",
+    "toastGoneAfterMs": 6099,
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900-dark",
+  "steps": [
+   {
+    "name": "open-guests",
+    "ok": true,
+    "srail": [
+     25,
+     225
+    ],
+    "gk": [
+     225,
+     1440
+    ],
+    "listpane": [
+     225,
+     625
+    ],
+    "detail": [
+     625,
+     1440
+    ],
+    "vw": 1440,
+    "at": {
+     "gk": true,
+     "view": "guests",
+     "h1": "Guests",
+     "hist": 4
+    },
+    "panes": "three",
+    "sideways": 0
+   },
+   {
+    "name": "answer-undo",
+    "ok": true,
+    "pick": "Plan for 2",
+    "undo": {
+     "line": "Planning around 2 now. Undo",
+     "onScreen": true,
+     "top": 800,
+     "left": 1320,
+     "inKit": false
+    },
+    "sideways": 0
+   },
+   {
+    "name": "path-to-invite",
+    "ok": true,
+    "answersLine": "✓ Your answers about 2 · by name · no +1s · adults only · replies by Dec 9",
+    "sideways": 0
+   },
+   {
+    "name": "invite-design",
+    "ok": true,
+    "invite": {
+     "gk": true,
+     "view": "invite",
+     "h1": "Your invite",
+     "hist": 4
+    },
+    "design": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "sideways": 0
+   },
+   {
+    "name": "back-in-page",
+    "ok": true,
+    "seen": [
+     "invite",
+     "guests"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "back-browser",
+    "ok": true,
+    "before": {
+     "gk": true,
+     "view": "invite-design",
+     "h1": "Design this page",
+     "hist": 4
+    },
+    "seen": [
+     "invite",
+     "guests",
+     "kit closed"
+    ],
+    "url": "noanalytics=1&elegant=1&guests=kit",
+    "sideways": 0
+   },
+   {
+    "name": "no-flag-old-sheet",
+    "ok": true,
+    "gk": false,
+    "sheetTitle": "Guest list",
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]
