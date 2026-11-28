@@ -17393,11 +17393,7 @@ export default function HostShellV2() {
         <GuestsKitV2 event={event} page={guestsKitPage} sample={!eventIsTheHostsOwn}
           backTo={(() => { const f = sheet.from; return f ? (f.kind === 'guests-kit' ? GUESTS_KIT_TITLE[f.page] : f.kind === 'guests' ? GUESTS_KIT_TITLE.guests : f.kind === 'sections' ? 'All sections' : 'Back') : 'Your plan'; })()}
           onBack={closeSheet}
-          status={toastMsg ? (
-            <p className={toastTone === 'ok' ? 'done' : 'fine'} role="status" aria-live="polite" data-done>
-              {toastMsg}{toastAction && <> <button className="link" onClick={runToastAction}>{toastAction.label || 'Undo'}</button></>}
-            </p>
-          ) : null}
+          status={toastMsg ? { msg: toastMsg, ok: toastTone === 'ok', action: toastAction ? (toastAction.label || 'Undo') : null, onAction: runToastAction } : null}
           push={(pg) => setSheet((s) => ({ kind: 'guests-kit', page: pg, from: s && s.kind === 'guests' ? { kind: 'guests-kit', page: 'guests', from: s.from } : s }))}
           actions={(() => {
             // hostv2's own sheets for the kit's steps (G2c-2a): each opens over
