@@ -145,6 +145,7 @@ import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcil
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
 import { isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
+import { lateInvite } from '@app/lib/guestRows';
 import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { startTimeReading } from '@app/lib/startTimeFieldsToPersist';
@@ -28508,18 +28509,10 @@ export default function HostShellV2() {
                 const guestsN = (event.guests || []).filter(Boolean);
                 const invited = guestsN.filter((g) => wasInvited(event, g));
                 const replied = invited.filter((g) => rsvpHasResponded(g)).length;
+                const late = lateInvite(event);
                 const send = n > 0
-                  ? (out
-                    ? {
-                      kind: 'new', label: n === 1 ? 'Invite 1 new guest' : `Invite ${n} new guests`,
-                      line: (() => {
-                        const all = [...r.email, ...r.text];
-                        const names = all.map((x) => x.name || 'A guest');
-                        const who = names.length === 1 ? names[0] + ' was' : (names.length === 2 ? names.join(' and ') : names.slice(0, 2).join(', ') + ' and ' + (names.length - 2) + ' more') + ' were';
-                        const how = r.email.length && r.text.length ? 'by email or text' : r.email.length ? 'by email' : 'by text';
-                        return `${who} added after your invite went out. ${all.length === 1 ? callName(all[0].name) + ' gets' : 'They get'} the same message ${how}.`;
-                      })(),
-                    }
+                  ? (out && late
+                    ? { kind: 'new', label: late.label, line: late.line }
                     : { kind: 'first', label: `Invite your guest list (${n})`, line: 'You check it before anything goes. ' + whoGets(r.email, r.text) })
                   : (out && invited.length ? { kind: 'done', line: 'Add someone and this lights up to invite just them.' }
                     : { kind: 'none', line: guestsN.length ? 'Add a phone or email to a guest and this lights up to invite them.' : 'Add your guests and this lights up to invite them.' });
