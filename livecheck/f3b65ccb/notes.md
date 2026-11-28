@@ -28,4 +28,4 @@ None.
 For ~6 s after the last question ("Reply-by date set — your invite and the nudges read it. Undo"), hostv2's toast covers the guest rows:
 - 390: it sits over the "No reply yet" group, just above the "Review your invite" button.
 - 1194: it straddles the list/detail boundary (about 397–797px) over the Bo Reed row.
-A swipe or tap there in that window hits the toast, or opens the guest behind it. hostv4 shows the same answer inline, so it doesn't overlap. (The probe now waits for the toast to clear, so the passing run's screenshots no longer show the overlap; the 1194 overlap is still visible in v2kit/1194x834-dark/07-swipe-back.jpg.)
+A swipe or tap there in that window hits the toast, or opens the guest behind it. hostv4 shows the same answer inline, so it doesn't overlap. (The probe now waits for the toast to clear, so the passing run's screenshots no longer show the overlap; v2kit/1194x834-dark/07-swipe-back.jpg, from an earlier pass, shows the same toast covering the "Your message" box on Design this page.)
