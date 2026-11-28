@@ -133,6 +133,7 @@ const SELF_PINNED = [
   '**/theKitImportsAList.spec.mjs',
   '**/theKitInviteKeepsItsWords.spec.mjs',
   '**/theKitUpdateIsWrittenFromThePlan.spec.mjs',
+  '**/theKitDetailsAndPhotosAreInUpdates.spec.mjs',
 ];
 
 // VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,

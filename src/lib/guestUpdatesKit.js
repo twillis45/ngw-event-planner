@@ -13,9 +13,10 @@
 import { useEffect, useState } from 'react';
 import { listAnnouncements, postAnnouncement, removeAnnouncement, isAnnouncementsApiConfigured } from './api/announcements';
 import { isGuestMessagesApiConfigured, fetchGuestThreads, fetchGuestThread, replyToGuestThread, blockGuestThread } from './api/guestMessages';
-import { sortThreads, questionsWaiting } from './guestInbox';
+import { sortThreads, questionsWaiting, photosWaitingCount } from './guestInbox';
 import { track as trackEvent, EVENTS as ANALYTICS } from './analytics';
 import { draftGuestUpdate } from './doItForMe';
+import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from './api/guestPhotos';
 
 const guests = (n) => `${n} guest${n === 1 ? '' : 's'}`;
 const gets = (n) => (n === 1 ? 'gets' : 'get');   // "1 guest gets", "2 guests get"
@@ -173,4 +174,16 @@ export function useGuestQuestions(eventId, onWaiting) {
   };
   const close = () => { setOpen(null); setLine(''); setErr(''); };
   return { rows, open, draft, setDraft, busy, line, err, openThread, reply, block, close };
+}
+
+/** How many guest photos wait for the host's approval; null until read, or when off. */
+export function usePhotosWaiting(eventId, on) {
+  const [n, setN] = useState(null);
+  useEffect(() => {
+    if (!on || !eventId || !isGuestPhotosApiConfigured()) return undefined;
+    let live = true;
+    fetchEventGuestPhotos(eventId).then((r) => { if (live) setN(r && r.ok ? photosWaitingCount(r.photos) : null); });
+    return () => { live = false; };
+  }, [eventId, on]);
+  return n;
 }

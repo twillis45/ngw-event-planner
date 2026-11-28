@@ -1,5 +1,8 @@
 // hostv4 UPDATES AND QUESTIONS (owner, 11/25/2026: "start the updates and
-// questions flow"). Pushed from Guests. The feature map's updates page, on the
+// questions flow"). Pushed from Guests. Steps 5a and 5b of G2c-2b (owner,
+// 11/28/2026, UX_12 §8a, render screen 5) add the update written from the plan
+// with Copy and Text it, everything that went out, the day's details in the
+// kit, and photos from guests with how many wait. The feature map's updates page, on the
 // steps hostv2 uses (lib/guestUpdatesKit):
 //   - Post an update: on every guest's invite, emailed once to the guests who
 //     asked; 3 a day and 20 per event, shown before she hits them; a second tap
@@ -8,26 +11,28 @@
 //     reply shows on that guest's invite, emailed only if they asked); block;
 //   - Who opened the invite: named only after a guest replied or asked.
 // Each reads its own server route on the account hostv2 signed in, and says
-// when it can't (signed out, not allowed, unavailable). "Send the details" is
-// in the current app for now.
+// when it can't (signed out, not allowed, unavailable).
 import { useEffect, useState } from 'react';
 import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
 import { isGuestMessagesApiConfigured, fetchInviteOpens } from '@app/lib/api/guestMessages';
 import { openedLine, openDayLine } from '@app/lib/guestInbox';
+import { draftGuestBrief } from '@app/lib/doItForMe';
 import { getLastSyncTime } from '@app/lib/api/syncState';
 import {
   useGuestUpdates, useGuestQuestions, updatesRoom, updatesReachLine, updatesLimitLine, updatesFailedLine,
   postingLine, postAndEmailLabel, firstName, inboxWhy, replyHintLine, UPDATE_PLACEHOLDER, replyPlaceholder,
-  updateFromPlan, textItHref,
+  updateFromPlan, textItHref, usePhotosWaiting,
 } from '@app/lib/guestUpdatesKit';
 import { unfilledBlanks } from '@app/lib/guestFacing';
+import { LINK_PLACEHOLDER, withLink } from '@app/lib/inviteMessageDraft';
 import { listSentMessages } from '@app/lib/commApi';
 import { buildMessageTimeline, filterTimeline } from '@app/lib/messageTimeline';
-import { readProfile } from './sendKit.jsx';
+import { readProfile, useSendReady, NotReady } from './sendKit.jsx';
 import { recordHandoff } from '@app/lib/sendLedger';
 
 // What the old draft sheet called this draft; a hand-off is recorded under it.
 const UPDATE_TITLE = 'Update to everyone';
+const BRIEF_TITLE = 'The guest brief';
 import { useKitHost } from './kitHost.js';
 
 const when = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
@@ -198,8 +203,68 @@ function WentOut({ ev }) {
   );
 }
 
+// SEND THE DAY'S DETAILS (render screen 5), in the kit, not the old sheet: the
+// guest brief written from the plan (doItForMe draftGuestBrief, the old sheet's
+// "Send the details") with the checked reply link. Same rules as the update: a
+// blank keeps Copy and Text it off; each hand-off is recorded for her guests.
+function DetailsSheet({ ev, save, onDone }) {
+  const { acct, link, ready, check } = useSendReady(ev);
+  // Until the reply link is checked the draft holds its place (as the old sheet
+  // did) and every hand-off waits; the words can still be read and edited.
+  const written = (() => { try { return draftGuestBrief(ev, readProfile(), { rsvpUrl: link.url || LINK_PLACEHOLDER }).body || ''; } catch { return ''; } })();
+  const [text, setText] = useState(null);
+  const [done, setDone] = useState('');
+  const body = text == null ? written : text;
+  const blanks = unfilledBlanks(body);
+  const others = blanks.filter((b) => b !== LINK_PLACEHOLDER);
+  // What leaves: her words with the checked link where its place is held.
+  const out = withLink(body, link.url);
+  const ok = ready && !!out.trim() && !others.length && !out.includes(LINK_PLACEHOLDER);
+  const handedOff = (channel) => { if (save) save({ patch: { sendLedger: recordHandoff(ev.sendLedger, BRIEF_TITLE, channel, new Date().toISOString(), { kind: 'guests' }) }, msg: null }); };
+  const copy = () => {
+    const yes = () => { setDone('Copied. Nothing was sent.'); handedOff('copy'); };
+    const no = () => setDone('Couldn’t copy here. Select the words and copy them.');
+    try { navigator.clipboard.writeText(out).then(yes, no); } catch { no(); }
+  };
+  return (
+    <div className="scrim" onClick={onDone}>
+      <div className="gk-sheet" role="dialog" aria-label="Send the day’s details" onClick={(e) => e.stopPropagation()}>
+        <div className="grabber" aria-hidden="true" />
+        <div className="sheethead"><h2>Send the day’s details</h2><button className="link" onClick={onDone}>Done</button></div>
+        <div className="sendbody">
+          {!ready && <NotReady acct={acct} link={link} check={check} />}
+          <>
+            <textarea className="gk-field" data-details rows={10} aria-label="The day’s details" value={body} onChange={(e) => { setText(e.target.value); setDone(''); }} />
+            <p className="fine">Written from your plan. Edit it before it goes.</p>
+            {others.length > 0 && <p className="fine warn" data-details-blank>Fill in {others[0]} first, or take it out.</p>}
+            {done && <p className="done" role="status" data-details-copied>{done}</p>}
+            <div className="addrow">
+              <button className="link" data-details-copy disabled={!ok} onClick={copy}>Copy</button>
+              {ok ? <a className="link" data-details-text href={textItHref(out)} onClick={() => handedOff('sms')}>Text it</a>
+                : <button className="link" data-details-text disabled>Text it</button>}
+            </div>
+          </>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// PHOTOS FROM GUESTS (render screen 5): the row and how many wait for her
+// approval (lib/guestUpdatesKit usePhotosWaiting), from the event day on (the
+// old sheet's rule); it opens hostv2's photos, where she approves them. hostv4
+// has no photos yet, so no row there.
+const dayHasCome = (ev) => {
+  const d = String(ev.date || '').slice(0, 10); if (!d) return false;
+  const n = new Date();
+  return d <= n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+};
+
 export default function UpdatesPage({ ev, save, nav, status }) {
+  const [details, setDetails] = useState(false);
   const host = useKitHost();
+  const photosOn = !!(host && host.photos) && dayHasCome(ev) && !!getLastSyncTime(ev.id);
+  const waiting = usePhotosWaiting(ev.id, photosOn);
   // A plan never saved to an account has no updates, questions or opens to read:
   // say so once and ask the server for nothing (no signed-out 401s).
   if (!getLastSyncTime(ev.id)) return (
@@ -222,9 +287,16 @@ export default function UpdatesPage({ ev, save, nav, status }) {
       <Questions eventId={ev.id} />
       <Opens eventId={ev.id} />
       <WentOut ev={ev} />
-      {host && host.sendDetails
-        ? <p className="fine"><button className="link" data-send-details onClick={host.sendDetails}>Send the day’s details</button></p>
-        : <p className="fine">Sending the day’s details is in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>}
+      <div className="grp" data-day-rows>
+        <button className="row gk-go" data-send-details onClick={() => setDetails(true)}><span className="nm">Send the day’s details<small>Parking, what to wear, what to bring</small></span>{chev}</button>
+        {photosOn && (
+          <button className="row gk-go" data-photos-waiting onClick={host.photos}>
+            <span className="nm">Photos from guests</span>
+            {waiting > 0 && <span className="val warn">{waiting} waiting</span>}{chev}
+          </button>
+        )}
+      </div>
+      {details && <DetailsSheet ev={ev} save={save} onDone={() => setDetails(false)} />}
     </main>
   );
 }
