@@ -149,12 +149,13 @@ def compose(kind: str, who: str, event_name: str, answer: str | None = None, eve
     subject = f"{what} — {name}"
     words = f"{what} for {name}."
     html, text = frame(
-        kind="host_alert", hue=hue_for(name), eyebrow="Your plan", title=name,
+        kind="host_alert", hue=hue_for(name), title=name,
         blocks=[(paragraphs_html(words), words)],
         primary=("Open your plan", open_url(event_id)),
         fine=("We send at most one of these an hour for each event, "
               "so anything else that came in is waiting in the app. "
-              "To stop them, open the event's guest list and tap Turn off."),
+              "To stop them, open Guests, tap ⋯ More, and turn off "
+              "\u201cTell me when someone replies.\u201d"),
         footer="Sent by No Guesswork Events.")
     return subject, html, text
 
