@@ -115,7 +115,10 @@ export function placeLine(event) {
   const vf = venueFor(event);
   if (!vf.isHome && p) return p;
   const a = vf.fullAddress;
-  return a ? [p, a].filter(Boolean).join(', ') : p;
+  if (!a) return p;
+  // A home named by its own street ("12 Elm St") prints the street once.
+  if (p && String(a).toLowerCase().startsWith(String(p).trim().toLowerCase())) return a;
+  return [p, a].filter(Boolean).join(', ');
 }
 
 // What to wear, as the host wrote it — only when it is fit for a guest.
