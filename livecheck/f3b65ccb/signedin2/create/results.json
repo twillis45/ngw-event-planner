@@ -1,0 +1,64 @@
+{
+ "phase": "create",
+ "steps": [
+  {
+   "name": "c0-create",
+   "ok": true,
+   "newId": "cust-mx0ahnu2-gan9s4",
+   "known": 1,
+   "title": null,
+   "created": "cust-mx0ahnu2-gan9s4",
+   "text": "Create Plan The Day After YOUR EVENT, STARTED Thanksgiving Hosting This is Thanksgiving dinner. Your Event A Thanksgiving hosting. I recognized Thanksgiving Hosting. Planning starts here. HIGH CONFIDENCE · READY Your address Where is your place? Guests, weather and shopping all use it — a city or ZI",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "c1-rename",
+   "ok": false,
+   "error": "locator.click: Timeout 10000ms exceeded.",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "ALLOW POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [new test plan]",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [new test plan]",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [new test plan]",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps"
+ ],
+ "nav": [],
+ "created": "cust-mx0ahnu2-gan9s4"
+}

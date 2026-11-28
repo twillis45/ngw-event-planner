@@ -1,0 +1,73 @@
+{
+ "phase": "guest",
+ "steps": [
+  {
+   "name": "7a-guest-page",
+   "ok": true,
+   "text": "AN INVITATION DEC 2026 E2E_TEST_ Thanksgiving (signed-in check) It wouldn’t be the same without you WHEN Saturday, December 19 · 3:00 PM Add to calendar WHERE Home · 123 Example St, Springfield, VA 22150 HOSTED BY Vida Reyes 21 DAYS TO GO THE FAVOR OF A REPLY Yes, I’m in Can’t make it Maybe Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private. Forward this invite THANKS FOR TELLING US STRAIGHT ASK YOUR HOST A question about the day — parking, timing, what to bring. Only Vida sees it. Email me when Vida replies or posts an update. Send to your host Planning something of your own? Make it with No Guesswork Events → ",
+   "buttons": [
+    "Add to calendar",
+    "Home · 123 Example St, Springfield, VA 22150",
+    "Yes, I’m in",
+    "Can’t make it",
+    "Maybe",
+    "Forward this invite",
+    "Your name — first and last",
+    "Your name",
+    "Your email — optional",
+    "Send to your host",
+    "Planning something of your own? Make it with No Guesswork Events →",
+    "Privacy",
+    "Terms",
+    "Refunds"
+   ],
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "7b-guest-reply",
+   "ok": true,
+   "buttonsAfterYes": [
+    "Add to calendar",
+    "Yes, I’m in",
+    "Can’t make it",
+    "Maybe",
+    "Forward this invite",
+    "Standard",
+    "Vegetarian",
+    "Vegan",
+    "Pescatarian",
+    "Add dietary or access needs",
+    "Send my reply",
+    "Send to your host"
+   ],
+   "tapped": "Send my reply",
+   "after": "AN INVITATION DEC 2026 E2E_TEST_ Thanksgiving (signed-in check) It wouldn’t be the same without you WHEN Saturday, December 19 · 3:00 PM Add to calendar WHERE Home · 123 Example St, Springfield, VA 22150 HOSTED BY Vida Reyes 21DAYS TO GO YOU’RE IN E2E_TEST_ Thanksgiving (signed-in check) Saturday, December 19 See you there, Ada. 1 of you I’m in — bring a friend Add to Google Calendar Add to Apple",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/public/invite/…",
+  "GET  ngw-events-api.onrender.com/api/public/announcements/…",
+  "BLOCK POST ngw-events-api.onrender.com/api/public/invite/…/opened",
+  "GET  ngw-events-api.onrender.com/api/relay/array/phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p/config.js",
+  "GET  ngw-events-api.onrender.com/api/relay/static/surveys.js",
+  "ALLOW POST ngw-events-api.onrender.com/api/public/rsvp/…"
+ ],
+ "nav": []
+}

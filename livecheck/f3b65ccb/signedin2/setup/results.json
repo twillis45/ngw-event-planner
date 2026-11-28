@@ -1,0 +1,145 @@
+{
+ "phase": "setup",
+ "steps": [
+  {
+   "name": "s1-answers",
+   "ok": true,
+   "asked": [],
+   "buttons": [
+    "Your plan",
+    "＋",
+    "⋯",
+    "✓ Your answers about 12 · by name · no +1s · adults only · replies by Dec 13",
+    "✓ Names 3 named",
+    "Your invite Not sent yet",
+    "Updates and questions",
+    "No reply yet 3",
+    "Review your invite"
+   ],
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "s2-add-names",
+   "ok": true,
+   "skipped": "already 3 named",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "s3-reach-Ada",
+   "ok": true,
+   "filled": "email",
+   "already": true,
+   "view": "guests",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "s3-reach-Bo",
+   "ok": true,
+   "filled": "email",
+   "already": false,
+   "view": "guests",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "s3-reach-Cy",
+   "ok": true,
+   "filled": "tel",
+   "already": false,
+   "view": "guests",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "s4-check",
+   "ok": true,
+   "plan": {
+    "hasCode": true,
+    "guests": [
+     "Ada Pine ✉",
+     "Bo Reed ✉",
+     "Cy Lark ☎"
+    ],
+    "address": null,
+    "venue": "Home"
+   },
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads"
+ ],
+ "nav": []
+}

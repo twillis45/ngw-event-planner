@@ -1,0 +1,93 @@
+{
+ "phase": "fix",
+ "steps": [
+  {
+   "name": "f1-take-update-off",
+   "ok": true,
+   "had": false,
+   "stillThere": false,
+   "text": "Guests Updates and questions Post an update It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed. Post the update 2 of 3 left today · 19 of 20 left for this event Questions No questions yet. Guests can ask you one from their invite link; it lands here. Who opened ",
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  },
+  {
+   "name": "f2-street-address",
+   "ok": true,
+   "labels": [
+    "Your street, city and state",
+    "Your street, city and state"
+   ],
+   "plan": {
+    "venue": "Home",
+    "venueAddress": "123 Example St"
+   },
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/invite-opens",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/announcements",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "ALLOW PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]"
+ ],
+ "nav": []
+}

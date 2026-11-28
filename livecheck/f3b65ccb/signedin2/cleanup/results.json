@@ -1,0 +1,92 @@
+{
+ "phase": "cleanup",
+ "steps": [
+  {
+   "name": "9-delete-test-plan",
+   "ok": true,
+   "left": {
+    "cache": [
+     "cust-mwmwr5xv-2eig17"
+    ],
+    "customs": [
+     "cust-mwmwr5xv-2eig17"
+    ]
+   },
+   "sideways": 0,
+   "shot": "saved",
+   "out": {
+    "share": [],
+    "clip": [],
+    "open": [],
+    "nav": []
+   }
+  }
+ ],
+ "errs": [],
+ "net": [
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "GET  ngw-events-api.onrender.com/api/capabilities",
+  "GET  ngw-events-api.onrender.com/api/shopping/instacart/status",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mx0ahnu2-gan9s4/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "BLOCK POST ngw-events-api.onrender.com/api/cohosts/claim",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_members",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/food-prices",
+  "GET  ngw-events-api.onrender.com/api/weather/geocode",
+  "ALLOW DELETE ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events [test plan]",
+  "GET  ngw-events-api.onrender.com/api/stripe/pass",
+  "BLOCK PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mwmwr5xv-2eig17/rsvps",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mwmwr5xv-2eig17/vendor-confirmations",
+  "GET  ngw-events-api.onrender.com/api/events/cust-mwmwr5xv-2eig17/guest-threads",
+  "GET  ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "BLOCK PATCH ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/events",
+  "BLOCK POST ewoggzxarpcwesqxsdoz.supabase.co/rest/v1/studio_settings",
+  "BLOCK POST o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+  "GET  ngw-events-api.onrender.com/api/weather/onecall"
+ ],
+ "nav": []
+}

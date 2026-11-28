@@ -93,3 +93,45 @@ Its saves were blocked by the write rule. A server read afterwards shows "My Fri
 ### Observations for the product
 - On a browser where the account's plans load from the cloud (a second device), the plan picker shows "Rename" but no "Delete this event" for those plans. Delete appears only for plans in that browser's own list (`_custom`).
 - To finish steps 3, 4 and 7: create the test plan through the app's Create flow so it gets an `rsvpCode`, then rerun. That needs a new sign-in link once this session lapses.
+
+## Signed-in Guests pass, rerun (owner-approved; build session's rules of 11/28): `signedin-kit.cjs`, outputs in `signedin2/`
+Ran ~6:00–6:50 AM EST on f3b65ccb (#322 was not live yet), at 390 dark, 390 light and 1194 dark. The theme is pinned with `&theme=`, because the account's saved theme overrides the browser's.
+
+Rules:
+- Writes were allowed only when every plan in the request was the test plan, checked by id. A brand-new id was allowed only while Create made it.
+- `studio_settings` writes were always blocked.
+- Anything that could reach a person was aborted.
+- The one exception was the single guest reply's `POST /api/public/rsvp/<code>`.
+
+Setup, through the app:
+- Create ("E2E_TEST_ Thanksgiving at our place for 12, December 19 at 3pm"), which gives the plan its own rsvpCode.
+- Renamed to "E2E_TEST_ Thanksgiving (signed-in check)".
+- Kit: switched to a list of names and added Ada Pine and Bo Reed (example.com emails) and Cy Lark (a 555 phone).
+- Current app → Venue: saved the street "123 Example St". The kit's send needs a street address ("Before it can go out … The street address Missing"; the primary button reads "Add what’s missing in the current app").
+
+| Step | 390 dark | 390 light | 1194 |
+|---|---|---|---|
+| 1 Path | ok | ok | ok |
+| 2 Your invite: five voices, preview frame loads the test plan's guest page | ok | ok | ok |
+| 3 Send sheet (stopped there, not tapped) | ok | ok | ok |
+| 4 Share the link: the real reply link handed to the share sheet (stub) | ok | ok | ok |
+| 5 Updates: post blocked; questions load ("No questions yet") | ok | ok | ok |
+| 6 Notify switch: on → off, still off after a reload, then back on | ok | ok | ok |
+
+- Step 3's sheet reads: "Email · 2 guests Ada Pine, Bo Reed · Text · 1, one at a time Cy Lark · Each guest gets their own email… Send to 2 by email · Send to one guest instead (3) · I already sent it another way".
+- Step 7, guest reply from a signed-out browser, through the test plan's reply link: "Yes, I’m in" as Ada Pine, no email → "YOU’RE IN … See you there, Ada." The host's Guests screen then showed "Coming 1 · No reply yet 2", with Ada saved as Yes.
+- Cleanup: test plan deleted (`DELETE rest/v1/events`, test id). A server read shows only "My Friendsgiving", updated_at 2026-11-19 02:09 UTC, unchanged. Signed out (`POST /auth/v1/logout`); no sign-in token left. The local session file was deleted.
+- Page errors: 0. Sideways scroll: 0. sms/mailto: 0.
+
+### Findings
+1. **The path's "Replies" line didn't move.** After Ada's reply it still read "Replies 0 of 0", while the groups showed "Coming 1 · No reply yet 2". This plan's invite went out by Share the link, not by email, so it may count only emailed invites. Either way "0 of 0" contradicts "Coming 1".
+2. **A completed share marks the invite sent.** After the share sheet resolved, the path read "✓ Your invite Sent" and the primary became "Send it again". This is as designed (a code comment says "A completed share is the invite going out"), noted for the record.
+3. **The kit can't send without a street address,** and the only fix is in the current app.
+4. **Second-device delete:** as noted earlier, there is no "Delete this event" for synced plans unless the plan is in that browser's own list.
+
+### Mistake in this run (contained)
+In the first 390 dark host run, my rule allowed any app-API request whose path held the test id. So "Post the update" really posted "E2E_TEST_ Parking is on the street. (test, not sent)" to the test plan's invite page (`POST /api/events/<test id>/announcements`).
+- The screen said "No guest has asked for email yet, so nobody is emailed", and no guest had an email opt-in.
+- I took it off with the app's own "Take it off" (`DELETE …/announcements/<id>`); the screen confirmed "Taken off the invite".
+- Then I blocked `announcement`/`update`/`post` paths for every later run, which shows as BLOCK above.
+- The plan itself is now deleted.
