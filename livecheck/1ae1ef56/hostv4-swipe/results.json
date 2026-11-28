@@ -1,0 +1,532 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "01-partial-right-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Gus Bay coming": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Gus Bay maybe": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "02-maybe-saves-and-moves",
+    "ok": true,
+    "head": "4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "03-coming-saves",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "04-partial-left-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Hal Fir can’t make it": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Hal Fir no reply": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Remove Hal Fir": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "05-cant-make-it-saves",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "06-no-reply-saves",
+    "ok": true,
+    "head": "4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "07-remove-is-a-tap-with-undo",
+    "ok": true,
+    "hasUndo": true,
+    "restored": 12,
+    "sideways": 0
+   },
+   {
+    "name": "08-full-right-is-coming",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "09-full-left-is-cant-make-it",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "10-vertical-drag-reveals-nothing",
+    "ok": true,
+    "sideways": 0
+   },
+   {
+    "name": "11-one-open-and-tap-closes",
+    "ok": true,
+    "selected": "(none)",
+    "sideways": 0
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "01-partial-right-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Gus Bay coming": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Gus Bay maybe": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "02-maybe-saves-and-moves",
+    "ok": true,
+    "head": "4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "03-coming-saves",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "04-partial-left-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Hal Fir can’t make it": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Hal Fir no reply": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Remove Hal Fir": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "05-cant-make-it-saves",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "06-no-reply-saves",
+    "ok": true,
+    "head": "4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "07-remove-is-a-tap-with-undo",
+    "ok": true,
+    "hasUndo": true,
+    "restored": 12,
+    "sideways": 0
+   },
+   {
+    "name": "08-full-right-is-coming",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "09-full-left-is-cant-make-it",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "10-vertical-drag-reveals-nothing",
+    "ok": true,
+    "sideways": 0
+   },
+   {
+    "name": "11-one-open-and-tap-closes",
+    "ok": true,
+    "selected": "(none)",
+    "sideways": 0
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "01-partial-right-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Gus Bay coming": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Gus Bay maybe": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "02-maybe-saves-and-moves",
+    "ok": true,
+    "head": "4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "03-coming-saves",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "04-partial-left-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Hal Fir can’t make it": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Hal Fir no reply": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Remove Hal Fir": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "05-cant-make-it-saves",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "06-no-reply-saves",
+    "ok": true,
+    "head": "4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "07-remove-is-a-tap-with-undo",
+    "ok": true,
+    "hasUndo": true,
+    "restored": 12,
+    "sideways": 0
+   },
+   {
+    "name": "08-full-right-is-coming",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "09-full-left-is-cant-make-it",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "10-vertical-drag-reveals-nothing",
+    "ok": true,
+    "sideways": 0
+   },
+   {
+    "name": "11-one-open-and-tap-closes",
+    "ok": true,
+    "selected": "gGusBay",
+    "sideways": 0
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "01-partial-right-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Gus Bay coming": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Gus Bay maybe": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "02-maybe-saves-and-moves",
+    "ok": true,
+    "head": "4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "03-coming-saves",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "04-partial-left-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Hal Fir can’t make it": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Hal Fir no reply": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Remove Hal Fir": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "05-cant-make-it-saves",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "06-no-reply-saves",
+    "ok": true,
+    "head": "4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "07-remove-is-a-tap-with-undo",
+    "ok": true,
+    "hasUndo": true,
+    "restored": 12,
+    "sideways": 0
+   },
+   {
+    "name": "08-full-right-is-coming",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "09-full-left-is-cant-make-it",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "10-vertical-drag-reveals-nothing",
+    "ok": true,
+    "sideways": 0
+   },
+   {
+    "name": "11-one-open-and-tap-closes",
+    "ok": true,
+    "selected": "gGusBay",
+    "sideways": 0
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "01-partial-right-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Gus Bay coming": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Gus Bay maybe": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "02-maybe-saves-and-moves",
+    "ok": true,
+    "head": "4 coming, 3 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "03-coming-saves",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "04-partial-left-reveals",
+    "ok": true,
+    "btns": {
+     "Mark Hal Fir can’t make it": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Mark Hal Fir no reply": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     },
+     "Remove Hal Fir": {
+      "shown": true,
+      "w": 84,
+      "h": 52,
+      "onScreen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "05-cant-make-it-saves",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "06-no-reply-saves",
+    "ok": true,
+    "head": "4 coming, 1 maybe, 5 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "07-remove-is-a-tap-with-undo",
+    "ok": true,
+    "hasUndo": true,
+    "restored": 12,
+    "sideways": 0
+   },
+   {
+    "name": "08-full-right-is-coming",
+    "ok": true,
+    "head": "5 coming, 2 maybe, 3 no reply, 2 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "09-full-left-is-cant-make-it",
+    "ok": true,
+    "head": "4 coming, 2 maybe, 3 no reply, 3 can’t make it, of 12",
+    "sideways": 0
+   },
+   {
+    "name": "10-vertical-drag-reveals-nothing",
+    "ok": true,
+    "sideways": 0
+   },
+   {
+    "name": "11-one-open-and-tap-closes",
+    "ok": true,
+    "selected": "gGusBay",
+    "sideways": 0
+   }
+  ],
+  "console": [],
+  "http": [],
+  "blocked": []
+ }
+]
