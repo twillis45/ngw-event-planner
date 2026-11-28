@@ -1,0 +1,15 @@
+{"vp":"390x844","plan":"count","panes":["main 0–390"],"aboutDash":false,"answerLines":[],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"390x844","plan":"none","panes":["main 0–390"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"390x844","plan":"list","panes":["main 0–390"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":1,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"834x1194","plan":"count","panes":["main 0–834"],"aboutDash":false,"answerLines":[],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"834x1194","plan":"none","panes":["main 0–834"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"834x1194","plan":"list","panes":["main 0–834"],"aboutDash":false,"answerLines":["1 coming","About how many are coming?"],"pathSteps":1,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1024x1366","plan":"count","panes":["Places 0–260","main 260–659","Guest 660–1024"],"aboutDash":false,"answerLines":[],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1024x1366","plan":"none","panes":["Places 0–260","main 260–659","Guest 660–1024"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1024x1366","plan":"list","panes":["Places 0–260","main 260–659","Guest 660–1024"],"aboutDash":false,"answerLines":["1 coming","About how many are coming?"],"pathSteps":1,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1194x834","plan":"count","panes":["Places 0–260","main 260–659","Guest 660–1194"],"aboutDash":false,"answerLines":[],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1194x834","plan":"none","panes":["Places 0–260","main 260–659","Guest 660–1194"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1194x834","plan":"list","panes":["Places 0–260","main 260–659","Guest 660–1194"],"aboutDash":false,"answerLines":["1 coming","About how many are coming?"],"pathSteps":1,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1440x900","plan":"count","panes":["Places 0–260","main 260–659","Guest 660–1440"],"aboutDash":false,"answerLines":[],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1440x900","plan":"none","panes":["Places 0–260","main 260–659","Guest 660–1440"],"aboutDash":false,"answerLines":["About how many are coming?"],"pathSteps":0,"sideways":0,"errs":[],"blocked":[],"ok":true}
+{"vp":"1440x900","plan":"list","panes":["Places 0–260","main 260–659","Guest 660–1440"],"aboutDash":false,"answerLines":["1 coming","About how many are coming?"],"pathSteps":1,"sideways":0,"errs":[],"blocked":[],"ok":true}
