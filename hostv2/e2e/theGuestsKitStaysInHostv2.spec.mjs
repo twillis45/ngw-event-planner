@@ -66,6 +66,9 @@ test('⋯ More imports a list and shows the QR code here', async ({ page }) => {
   await expect(kit(page).locator('[data-show-qr]')).toHaveText(/Show QR code/);
   await kit(page).locator('[data-import]').click();
   await expect(page.locator('input[aria-label="Guest CSV file"]')).toBeAttached();
+  // The landing puts focus on the file picker; Escape there still closes the
+  // sheet (a file picker has no typing for Escape to cancel).
+  await expect.poll(() => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label'))).toBe('Guest CSV file');
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-guests-kit="guests"]')).toBeVisible();
 });
@@ -89,4 +92,43 @@ test('the preview frame shows hostv2’s own guest page', async ({ page }) => {
   await kit(page).locator('.action .primary').click();
   const src = await kit(page).locator('iframe[data-invite-preview]').getAttribute('src');
   expect(src).toMatch(/^\.\/\?invite-preview=gk-stay$/);
+});
+
+// ─── THE SAVED LINE COVERS NOTHING (live check, 11/28/2026) ─────────────────
+// hostv2's floating toast sat over the "No reply yet" group at 390, across the
+// list and the guest at 1194, and over the message on Design this page, for its
+// 6 seconds; taps in that window hit the toast. UX_12 §1.3: "Confirmations never
+// cover a control." Inside the kit the line is the kit's own, in the page where
+// hostv4 shows it, with its Undo; the floating toast stays away.
+for (const [w, h] of [[390, 844], [1194, 834]])
+test(`a saved answer says so in the page, covering nothing, and Undo puts it back — ${w}x${h}`, async ({ page }) => {
+  await page.setViewportSize({ width: w, height: h });
+  const ev = { ...EV, rsvpDeadline: '' };
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, ev);
+  await page.goto('?elegant=1&guests=kit');
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 700 });
+  await expect(kit(page).locator('h2.gk-q')).toHaveText('When should replies be in by?');
+  await kit(page).locator('[data-question] button.row', { hasText: 'Our suggestion' }).click();
+  const line = kit(page).locator('[data-done]');
+  await expect(line).toBeVisible();
+  await expect(line.getByRole('button', { name: 'Undo' })).toBeVisible();
+  await expect(page.locator('.toast')).toHaveCount(0);
+  // Nothing tappable in the kit sits under the line, other than its own Undo.
+  const hits = await page.evaluate(() => {
+    const l = document.querySelector('[data-guests-kit] [data-done]').getBoundingClientRect();
+    return [...document.querySelectorAll('[data-guests-kit] button, [data-guests-kit] a, [data-guests-kit] input, [data-guests-kit] textarea')]
+      .filter((b) => !b.closest('[data-done]'))
+      .map((b) => b.getBoundingClientRect())
+      .filter((r) => r.width && r.height && r.left < l.right && r.right > l.left && r.top < l.bottom && r.bottom > l.top).length;
+  });
+  expect(hits).toBe(0);
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].rsvpDeadline);
+  expect(await saved()).toBeTruthy();
+  await line.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(saved).toBeFalsy();
 });

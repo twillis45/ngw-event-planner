@@ -4507,6 +4507,12 @@ export default function HostShellV2() {
     // read it AND decide; a plain notice keeps the original rhythm.
     toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
   };
+  // The toast's one action (Undo, Got it), wherever the line is shown.
+  const runToastAction = () => {
+    const fn = toastAction && toastAction.fn;
+    setToastMsg(null); setToastAction(null); setToastTone(null); clearTimeout(toastTimer.current);
+    if (fn) fn();
+  };
   const endBusyToast = () => {
     if (!busyToastRef.current) return;
     busyToastRef.current = false;
@@ -6605,7 +6611,11 @@ export default function HostShellV2() {
       // the field the keystroke fired on. If Escape came from a text field, that
       // field's cancel owns it; don't also close the sheet. (activeElement kept as
       // a secondary check for fields that don't unmount on Escape.)
-      const isField = (n) => n && (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.isContentEditable);
+      // A text field only: a file picker, checkbox or button has no typing for
+      // Escape to cancel, so Escape there closes the sheet (the Guests kit's
+      // "Import a list" lands focus on the file picker).
+      const NOT_TEXT = ['file', 'checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'image'];
+      const isField = (n) => n && ((n.tagName === 'INPUT' && !NOT_TEXT.includes(String(n.type).toLowerCase())) || n.tagName === 'TEXTAREA' || n.isContentEditable);
       if (isField(e.target) || isField(document.activeElement)) return;
       closeSheet();
     };
@@ -17383,6 +17393,11 @@ export default function HostShellV2() {
         <GuestsKitV2 event={event} page={guestsKitPage} sample={!eventIsTheHostsOwn}
           backTo={(() => { const f = sheet.from; return f ? (f.kind === 'guests-kit' ? GUESTS_KIT_TITLE[f.page] : f.kind === 'guests' ? GUESTS_KIT_TITLE.guests : f.kind === 'sections' ? 'All sections' : 'Back') : 'Your plan'; })()}
           onBack={closeSheet}
+          status={toastMsg ? (
+            <p className={toastTone === 'ok' ? 'done' : 'fine'} role="status" aria-live="polite" data-done>
+              {toastMsg}{toastAction && <> <button className="link" onClick={runToastAction}>{toastAction.label || 'Undo'}</button></>}
+            </p>
+          ) : null}
           push={(pg) => setSheet((s) => ({ kind: 'guests-kit', page: pg, from: s && s.kind === 'guests' ? { kind: 'guests-kit', page: 'guests', from: s.from } : s }))}
           actions={(() => {
             // hostv2's own sheets for the kit's steps (G2c-2a): each opens over
@@ -30071,19 +30086,15 @@ export default function HostShellV2() {
         <button data-demo-bar="closed" onClick={() => setDemoBarOpen(true)} aria-label="Show demo tools"
           style={{ position: 'fixed', left: 0, top: '42%', zIndex: 90, width: 14, height: 44, padding: 0, background: 'rgba(20,20,20,0.6)', border: 'none', borderRadius: '0 6px 6px 0', color: '#bbb', fontSize: 9 }}>D</button>
       ))}
-      {toastMsg && toastMeta.spotlight && <div className="toast-dim" aria-hidden="true" data-toast-dim />}
-      {toastMsg && (
+      {/* Inside the Guests kit the line is the kit's own, in the page (GuestsKitV2's
+          status), so it never floats over a control (UX_12 §1.3). */}
+      {toastMsg && !guestsKitPage && toastMeta.spotlight && <div className="toast-dim" aria-hidden="true" data-toast-dim />}
+      {toastMsg && !guestsKitPage && (
         <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '') + (toastMeta.spotlight ? ' spot' : '')} role="status" aria-live="polite">
           {toastMeta.title && <div className="toast-eye" data-toast-title>{toastMeta.title}</div>}
           {toastMeta.busy && <span className="busy-dot" aria-hidden="true" data-toast-busy />}
           {toastMeta.title ? <div>{toastMsg}</div> : toastMsg}
-          {toastAction && (
-            <button className="toast-undo" onClick={() => {
-              const fn = toastAction.fn;
-              setToastMsg(null); setToastAction(null); setToastTone(null); clearTimeout(toastTimer.current);
-              if (fn) fn();
-            }}>{toastAction.label || 'Undo'}</button>
-          )}
+          {toastAction && <button className="toast-undo" onClick={runToastAction}>{toastAction.label || 'Undo'}</button>}
         </div>
       )}
 
