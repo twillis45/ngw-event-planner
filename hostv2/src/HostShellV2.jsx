@@ -184,8 +184,8 @@ import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account'
 import { effectiveDone, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
-import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
-import { GUEST_IMPORT_BATCHES_KEY, newImportBatchId, computeImportAuditMeta, makeImportBatch, undoLastImportBatch, loadImportBatches, persistImportBatches, MAX_PERSISTED_BATCHES, PLATFORM_LABELS, fmtBatchTs } from '@app/lib/importHistory';
+import { PLATFORMS, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
+import { GUEST_IMPORT_BATCHES_KEY, loadImportBatches, persistImportBatches, MAX_PERSISTED_BATCHES, fmtBatchTs } from '@app/lib/importHistory';
 import { downloadCSV } from '@app/lib/download';
 import { deriveEventPhaseProgress, nextPlanAttentionDate } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
@@ -354,6 +354,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
 import { mergeGuestReplies, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
+import { importPreview, importApplyEdit, importUndoEdit, importPlatformLabel } from '@app/lib/guestImport';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
@@ -6182,10 +6183,7 @@ export default function HostShellV2() {
         : sheet.focus === 'questions' ? ['guests-questions-anchor']
         : sheet.focus === 'photos' ? ['guests-photos-anchor']
         : sheet.focus === 'updates' ? ['guests-updates-anchor']   // Updates to everyone (11/21/2026)
-        // The list import, opened (the Guests kit's "Import a list", G2c-2a).
-        : sheet.focus === 'import' ? ['guests-import-anchor']
         : ['guests-invites-anchor'];
-      if (sheet.focus === 'import') { setPeopleAdminOpen(true); setCsvOpen(true); }
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
       // FIRST, in the same tick, and let the 120ms timeout find a mounted node.
@@ -8800,18 +8798,12 @@ export default function HostShellV2() {
     setImportBatches(capped);
     persistImportBatches(capped, importBatchesKey);
   };
-  // PLATFORM_LABELS covers 4 of the 7 csvParsers platforms (pre-existing lib
-  // drift, flagged there) — fall back to the parser's own label, then the
-  // capitalized key, never a blank.
-  const importPlatformLabel = (p) => PLATFORM_LABELS[p]
-    || (PLATFORMS[p] && PLATFORMS[p].label)
-    || (p ? p.charAt(0).toUpperCase() + p.slice(1) : 'CSV');
+  // The import's rules live once in lib/guestImport (G2c-2b-3), shared with the Guests kit.
   const undoLastCsvImport = () => {
-    const res = undoLastImportBatch(importBatches);
-    if (!res) return;
-    writeImportBatches(res.batches);
-    patchEvent({ guests: res.snapshot, kidsCount: kidsCountAfterRoster(event, res.snapshot) },
-      'Import undone — the list is back the way it was before that import.');
+    const ed = importUndoEdit(event, importBatches);
+    if (!ed) return;
+    writeImportBatches(ed.batches);
+    patchEvent(ed.patch, ed.msg);
   };
   // PII cleanup (engine-gap NEW-3): every batch carries a FULL pre-import
   // roster snapshot (names, emails, phones) purely so undo can restore it.
@@ -8847,46 +8839,17 @@ export default function HostShellV2() {
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
-        try {
-          const canonical = validateRows(transformRows(res.data || [], csvPlatform));
-          // Bridge canonical → the guest shape every reader here uses (the
-          // original's canonicalToGuest mapping); _valid rides along so
-          // applyMerge can filter.
-          const ts = Date.now();
-          const mapped = canonical.map((r, i) => ({
-            id: 'g-csv-' + ts + '-' + i,
-            name: r.name || '', group: r.group || '',
-            rsvp: r.rsvp_status === 'Pending' ? '' : (r.rsvp_status || ''),
-            meal: r.meal_preference || '—', table: r.table_number ?? null,
-            plusOne: r.plus_one_name || '', plusOneMeal: '—', kids: 0,
-            needs: r.dietary_restrictions || '', email: r.email || '', phone: r.phone || '',
-            partyNotes: r.notes || '', giftReceived: false, thankYouSent: false,
-            // _warnings rides along for the batch record's honest warnCount;
-            // applyMerge strips it (with _valid/_errors) before anything persists.
-            _valid: r._valid, _errors: r._errors, _warnings: r._warnings,
-          }));
-          const summary = computeMergeSummary(event.guests || [], mapped, 'merge');
-          // platform pinned at parse time — the batch records what actually parsed
-          setCsvPreview({ mapped, summary, fileName: file.name, platform: csvPlatform });
-        } catch { toast('That file didn’t read as a guest CSV — check the platform pick.'); }
+        try { setCsvPreview(importPreview(event, res.data || [], csvPlatform, file.name)); }
+        catch { toast('That file didn’t read as a guest CSV — check the platform pick.'); }
       },
       error: () => toast('Couldn’t read that file.'),
     });
   };
   const applyCsv = () => {
     if (!csvPreview) return;
-    const before = event.guests || [];
-    const batchId = newImportBatchId();
-    const merged = applyMerge(before, csvPreview.mapped, 'merge', batchId);
-    const kidsCount = kidsCountAfterRoster(event, merged);
-    // Record the batch BEFORE the write lands: id, pre-import snapshot (what
-    // undo restores), and the same audit counts the legacy wizard records.
-    const audit = computeImportAuditMeta(csvPreview.mapped, csvPreview.summary);
-    writeImportBatches([...importBatches, makeImportBatch(batchId, before, {
-      ...audit, platform: csvPreview.platform, mergeMode: 'merge',
-    })]);
-    patchEvent({ guests: merged, kidsCount },
-      (csvPreview.summary.willAdd || 0) + ' added · ' + (csvPreview.summary.willUpdate || 0) + ' updated from ' + csvPreview.fileName + ' — replies and needs came along.');
+    const ed = importApplyEdit(event, csvPreview, importBatches);
+    writeImportBatches(ed.batches);
+    patchEvent(ed.patch, ed.msg);
     setCsvPreview(null); setCsvOpen(false);
   };
   const writeGuest = (i, patch, msg) => {
@@ -17406,9 +17369,8 @@ export default function HostShellV2() {
               venue: over({ kind: 'venue' }),
               photo: over({ kind: 'invite-design' }),
               qr: () => showQr(here),
-              // The list import and the day's details live on the guest sheet
-              // until G2c-2b brings them into the kit; it opens at that spot.
-              importList: over({ kind: 'guests', focus: 'import' }),
+              // The day's details live on the guest sheet until G2c-2b-5
+              // brings them into the kit; it opens at that spot.
               // Who sits where keeps its own page (UX_12 §8a); guest photos sit
               // with the old sheet's updates until G2c-2b-5 brings them in.
               seating: over({ kind: 'seating' }),
@@ -28319,11 +28281,7 @@ export default function HostShellV2() {
                   </div>
                   {csvPreview && (
                     <>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
-                        {csvPreview.mapped.filter(r => r._valid).length} of {csvPreview.mapped.length} rows read cleanly from {csvPreview.fileName} —
-                        {' '}{csvPreview.summary.willAdd || 0} new, {csvPreview.summary.willUpdate || 0} already on your list (their replies update).
-                        {csvPreview.mapped.some(r => !r._valid) ? ' Rows without a name are skipped.' : ''}
-                      </p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{csvPreview.line}</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" onClick={applyCsv}>Bring them in</button>
                         <button className="mini" onClick={() => setCsvPreview(null)}>Not this file</button>
