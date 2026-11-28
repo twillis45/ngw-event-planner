@@ -130,8 +130,11 @@ describe('the tombstone actually does something', () => {
 
   test('an id is released only once the cloud confirms the row is gone', () => {
     const i = SHELL.indexOf('const deleteThisEvent =');
-    const fn = SHELL.slice(i, i + 2600);
-    // The release sits in the .then of the cloud delete, never before it.
-    expect(fn).toMatch(/\.then\(\(\) => \{[\s\S]{0,400}?filter\(x => x !== id\)/);
+    const fn = SHELL.slice(i, i + 3600);   // the whole function (it grew with the synced-plan delete)
+    // The release sits in the .then of the cloud delete, never before it, and
+    // after the check that the delete reached the account: deleteEvent resolves
+    // { ok: false, queued: true } for a delete it only queued (11/28/2026), and
+    // releasing then let the next account pull bring the plan back.
+    expect(fn).toMatch(/\.then\(\(r\) => \{[\s\S]{0,400}?r\.ok === false\) return;[\s\S]{0,400}?filter\(x => x !== id\)/);
   });
 });

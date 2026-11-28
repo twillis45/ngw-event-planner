@@ -4273,6 +4273,11 @@ export default function HostShellV2() {
       if (!t.includes(id)) localStorage.setItem(LS_DELETED, JSON.stringify([...t, id]));
     } catch { /* private mode — the cloud delete below is still attempted */ }
     setCustoms(next);
+    // A plan that came from the account (a second device) lives in
+    // hydratedEvents, not the store: it leaves the list here, and the tombstone
+    // above keeps the next account pull from bringing it back.
+    const synced = (hydratedEvents || []).filter(e => e && e.id !== id);
+    setHydratedEvents(synced);
     setConfirmDelete(null);
     // LEAVING THE EVENT YOU JUST DELETED IS NOT OPTIONAL, and "leave" has to
     // mean landing somewhere REAL. The first cut fell back to setSheet(null)
@@ -4283,6 +4288,7 @@ export default function HostShellV2() {
     // resolves, so there is no branch here that leaves eventId dangling.
     if (eventId === id) {
       const to = (next[0] && next[0].id)
+        || (synced[0] && synced[0].id)
         || (REAL_EVENTS[0] && REAL_EVENTS[0].id)
         || (ROSTER[0] && ROSTER[0].id)
         || BOOT_EVENT_ID;
@@ -4294,7 +4300,7 @@ export default function HostShellV2() {
       // a new visitor gets and chooses (issue #100 D-5, the same trap at boot).
       const ownLeft = next.length
         || REAL_EVENTS.some(e => e && e.id !== id)
-        || (hydratedEvents || []).some(e => e && e.id !== id);
+        || synced.length > 0;
       if (!ownLeft) {
         try { localStorage.removeItem(LS_WELCOMED); } catch { /* private mode — the gate still shows now */ }
         setWelcome(true);
@@ -4302,7 +4308,10 @@ export default function HostShellV2() {
     }
     if (isSupabaseConfigured() && session) {
       cloudDeleteEvent(id)
-        .then(() => {
+        .then((r) => {
+          // A queued delete has not reached the account; its next pull still
+          // returns the row, so the tombstone stays until it does.
+          if (r && r.ok === false) return;
           // Confirmed gone from the cloud, so the tombstone has no more work.
           try {
             const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
@@ -4328,7 +4337,8 @@ export default function HostShellV2() {
     } catch { /* private mode — the cloud delete below is still attempted */ }
     if (isSupabaseConfigured() && session) {
       cloudDeleteEvent(id)
-        .then(() => {
+        .then((r) => {
+          if (r && r.ok === false) return;   // queued, not yet in the account: keep the tombstone
           try {
             const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
             localStorage.setItem(LS_DELETED, JSON.stringify(t.filter(x => x !== id)));
@@ -22253,7 +22263,9 @@ export default function HostShellV2() {
                         {/* A co-hosted event (026) is the host's: it is labeled, and
                             there is no Delete — the database refuses it anyway. */}
                         {e._cohostOf && <span className="of" data-cohosting>Co-hosting</span>}
-                        {e._custom && !e._cohostOf && (confirmDelete === e.id ? (
+                        {/* Hers wherever it came from: made on this device, or
+                            from the account on another (owner, 11/28/2026). */}
+                        {(e._custom || hydratedEvents.some(h => h && h.id === e.id)) && !e._cohostOf && (confirmDelete === e.id ? (
                           <span className="frow-confirm">
                             <span className="v-meta">Delete “{e.name || 'this event'}” for good?</span>
                             <button className="mini danger" onClick={() => deleteThisEvent(e)}

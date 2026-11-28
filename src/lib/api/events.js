@@ -479,14 +479,18 @@ async function saveEventToCloud(event, base) {
 }
 
 /** Delete an event by id (within the current studio). */
+// Resolves { ok: true } once the account has the delete (or there is no account
+// to tell), and { ok: false, queued: true } when it was queued for later. A
+// caller that holds a tombstone keeps it until ok: a queued delete has not
+// reached the account, whose next pull still returns the row (11/28/2026).
 export async function deleteEvent(eventId) {
   writeLocal(readLocal().filter((e) => e.id !== eventId));
   forgetStamp(eventId);
   clearHold(eventId);   // a deleted event has no conflict left to resolve
-  if (!isSupabaseConfigured() || !supabase) return;
+  if (!isSupabaseConfigured() || !supabase) return { ok: true };
   const sid = await currentStudioId();
-  if (!sid) { enqueueMutation({ type: 'delete', id: eventId }); return; }
-  if (!isCloudStudioId(sid)) return; // Sprint 58E-B: dev-bypass non-uuid studio ⇒ local-only
+  if (!sid) { enqueueMutation({ type: 'delete', id: eventId }); return { ok: false, queued: true }; }
+  if (!isCloudStudioId(sid)) return { ok: true }; // Sprint 58E-B: dev-bypass non-uuid studio ⇒ local-only
   try {
     const { error } = await supabase
       .from('events')
@@ -494,9 +498,11 @@ export async function deleteEvent(eventId) {
       .eq('id', eventId)
       .eq('studio_id', sid);
     if (error) throw error;
+    return { ok: true };
   } catch (e) {
     captureError(e, { where: 'events.deleteEvent', id: eventId, onLine: onLine() });
     enqueueMutation({ type: 'delete', id: eventId });
+    return { ok: false, queued: true };
   }
 }
 
